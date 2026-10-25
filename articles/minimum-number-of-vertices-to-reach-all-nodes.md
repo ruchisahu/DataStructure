@@ -1,4 +1,29 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Graph Representation (Adjacency List)** - Required to store and traverse the directed graph
+- **Depth First Search (DFS)** - One approach uses DFS to identify reachable nodes
+- **Indegree Concept** - The optimal solution identifies nodes with zero incoming edges
+
+---
+
 ## 1. Depth First Search
+
+### Intuition
+
+We want to find the smallest set of vertices from which all other vertices are reachable. A vertex must be in this set if no other vertex can reach it, meaning it has no incoming edges.
+
+Using `dfs`, we traverse from each unvisited `node` and mark all reachable nodes. Any `node` that gets reached from another `node` can be removed from our candidate set. The nodes that remain are those with no incoming edges.
+
+### Algorithm
+
+1. Build an adjacency list from the edges.
+2. Initialize a set containing all vertices as potential starting points.
+3. For each unvisited vertex, run `dfs`:
+    - Mark the vertex as visited.
+    - For each neighbor, recursively visit it and remove it from the `res` set.
+4. Return the remaining vertices in the set.
 
 ::tabs-start
 
@@ -118,6 +143,166 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public IList<int> FindSmallestSetOfVertices(int n, IList<IList<int>> edges) {
+        List<int>[] adj = new List<int>[n];
+        for (int i = 0; i < n; i++) adj[i] = new List<int>();
+        foreach (var edge in edges) {
+            adj[edge[0]].Add(edge[1]);
+        }
+
+        HashSet<int> res = new HashSet<int>();
+        for (int i = 0; i < n; i++) res.Add(i);
+
+        bool[] visited = new bool[n];
+        for (int i = 0; i < n; i++) {
+            Dfs(i, adj, visited, res);
+        }
+        return new List<int>(res);
+    }
+
+    private void Dfs(int node, List<int>[] adj, bool[] visited, HashSet<int> res) {
+        visited[node] = true;
+        foreach (int nei in adj[node]) {
+            if (!visited[nei]) Dfs(nei, adj, visited, res);
+            res.Remove(nei);
+        }
+    }
+}
+```
+
+```go
+func findSmallestSetOfVertices(n int, edges [][]int) []int {
+    adj := make([][]int, n)
+    for i := range adj {
+        adj[i] = []int{}
+    }
+    for _, edge := range edges {
+        adj[edge[0]] = append(adj[edge[0]], edge[1])
+    }
+
+    res := make(map[int]bool)
+    for i := 0; i < n; i++ {
+        res[i] = true
+    }
+    visited := make([]bool, n)
+
+    var dfs func(node int)
+    dfs = func(node int) {
+        visited[node] = true
+        for _, nei := range adj[node] {
+            if !visited[nei] {
+                dfs(nei)
+            }
+            delete(res, nei)
+        }
+    }
+
+    for i := 0; i < n; i++ {
+        if !visited[i] {
+            dfs(i)
+        }
+    }
+
+    result := []int{}
+    for k := range res {
+        result = append(result, k)
+    }
+    return result
+}
+```
+
+```kotlin
+class Solution {
+    fun findSmallestSetOfVertices(n: Int, edges: List<List<Int>>): List<Int> {
+        val adj = Array(n) { mutableListOf<Int>() }
+        for (edge in edges) {
+            adj[edge[0]].add(edge[1])
+        }
+
+        val res = (0 until n).toMutableSet()
+        val visited = BooleanArray(n)
+
+        fun dfs(node: Int) {
+            visited[node] = true
+            for (nei in adj[node]) {
+                if (!visited[nei]) dfs(nei)
+                res.remove(nei)
+            }
+        }
+
+        for (i in 0 until n) {
+            if (!visited[i]) dfs(i)
+        }
+        return res.toList()
+    }
+}
+```
+
+```swift
+class Solution {
+    func findSmallestSetOfVertices(_ n: Int, _ edges: [[Int]]) -> [Int] {
+        var adj = [[Int]](repeating: [], count: n)
+        for edge in edges {
+            adj[edge[0]].append(edge[1])
+        }
+
+        var res = Set(0..<n)
+        var visited = [Bool](repeating: false, count: n)
+
+        func dfs(_ node: Int) {
+            visited[node] = true
+            for nei in adj[node] {
+                if !visited[nei] {
+                    dfs(nei)
+                }
+                res.remove(nei)
+            }
+        }
+
+        for i in 0..<n {
+            if !visited[i] {
+                dfs(i)
+            }
+        }
+        return Array(res)
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn find_smallest_set_of_vertices(n: i32, edges: Vec<Vec<i32>>) -> Vec<i32> {
+        let n = n as usize;
+        let mut adj = vec![vec![]; n];
+        for edge in &edges {
+            adj[edge[0] as usize].push(edge[1] as usize);
+        }
+
+        let mut res: HashSet<usize> = (0..n).collect();
+        let mut visited = vec![false; n];
+
+        fn dfs(node: usize, adj: &Vec<Vec<usize>>, visited: &mut Vec<bool>, res: &mut HashSet<usize>) {
+            visited[node] = true;
+            for &nei in &adj[node] {
+                if !visited[nei] {
+                    dfs(nei, adj, visited, res);
+                }
+                res.remove(&nei);
+            }
+        }
+
+        for i in 0..n {
+            if !visited[i] {
+                dfs(i, &adj, &mut visited, &mut res);
+            }
+        }
+        res.into_iter().map(|x| x as i32).collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -130,6 +315,20 @@ class Solution {
 ---
 
 ## 2. Iterative DFS
+
+### Intuition
+
+This is the same approach as recursive `dfs` but uses an explicit `stack` to avoid recursion. We process nodes iteratively, marking each visited `node` and removing any `node` that has an incoming edge from our candidate set.
+
+### Algorithm
+
+1. Build an adjacency list from the edges.
+2. Initialize a boolean array where all vertices are potential `res`.
+3. Use a `stack` for iterative `dfs`:
+    - Pop a `node` from the `stack`.
+    - Skip if already visited; otherwise mark as visited.
+    - For each neighbor, add to `stack` if unvisited and mark as not a `res`.
+4. Collect all vertices still marked as `res`.
 
 ::tabs-start
 
@@ -274,6 +473,201 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public IList<int> FindSmallestSetOfVertices(int n, IList<IList<int>> edges) {
+        List<int>[] adj = new List<int>[n];
+        for (int i = 0; i < n; i++) {
+            adj[i] = new List<int>();
+        }
+        foreach (var edge in edges) {
+            adj[edge[0]].Add(edge[1]);
+        }
+
+        bool[] res = new bool[n];
+        Array.Fill(res, true);
+        bool[] visited = new bool[n];
+        Stack<int> stack = new Stack<int>();
+
+        for (int i = 0; i < n; i++) {
+            if (!visited[i]) {
+                stack.Push(i);
+                while (stack.Count > 0) {
+                    int node = stack.Pop();
+                    if (visited[node]) continue;
+                    visited[node] = true;
+                    foreach (int nei in adj[node]) {
+                        if (!visited[nei]) stack.Push(nei);
+                        res[nei] = false;
+                    }
+                }
+            }
+        }
+
+        List<int> result = new List<int>();
+        for (int i = 0; i < n; i++) {
+            if (res[i]) result.Add(i);
+        }
+        return result;
+    }
+}
+```
+
+```go
+func findSmallestSetOfVertices(n int, edges [][]int) []int {
+    adj := make([][]int, n)
+    for i := range adj {
+        adj[i] = []int{}
+    }
+    for _, edge := range edges {
+        adj[edge[0]] = append(adj[edge[0]], edge[1])
+    }
+
+    res := make([]bool, n)
+    for i := range res {
+        res[i] = true
+    }
+    visited := make([]bool, n)
+    stack := []int{}
+
+    for i := 0; i < n; i++ {
+        if !visited[i] {
+            stack = append(stack, i)
+            for len(stack) > 0 {
+                node := stack[len(stack)-1]
+                stack = stack[:len(stack)-1]
+                if visited[node] {
+                    continue
+                }
+                visited[node] = true
+                for _, nei := range adj[node] {
+                    if !visited[nei] {
+                        stack = append(stack, nei)
+                    }
+                    res[nei] = false
+                }
+            }
+        }
+    }
+
+    result := []int{}
+    for i := 0; i < n; i++ {
+        if res[i] {
+            result = append(result, i)
+        }
+    }
+    return result
+}
+```
+
+```kotlin
+class Solution {
+    fun findSmallestSetOfVertices(n: Int, edges: List<List<Int>>): List<Int> {
+        val adj = Array(n) { mutableListOf<Int>() }
+        for (edge in edges) {
+            adj[edge[0]].add(edge[1])
+        }
+
+        val res = BooleanArray(n) { true }
+        val visited = BooleanArray(n)
+        val stack = ArrayDeque<Int>()
+
+        for (i in 0 until n) {
+            if (!visited[i]) {
+                stack.addLast(i)
+                while (stack.isNotEmpty()) {
+                    val node = stack.removeLast()
+                    if (visited[node]) continue
+                    visited[node] = true
+                    for (nei in adj[node]) {
+                        if (!visited[nei]) stack.addLast(nei)
+                        res[nei] = false
+                    }
+                }
+            }
+        }
+
+        return res.indices.filter { res[it] }
+    }
+}
+```
+
+```swift
+class Solution {
+    func findSmallestSetOfVertices(_ n: Int, _ edges: [[Int]]) -> [Int] {
+        var adj = [[Int]](repeating: [], count: n)
+        for edge in edges {
+            adj[edge[0]].append(edge[1])
+        }
+
+        var res = [Bool](repeating: true, count: n)
+        var visited = [Bool](repeating: false, count: n)
+        var stack = [Int]()
+
+        for i in 0..<n {
+            if !visited[i] {
+                stack.append(i)
+                while !stack.isEmpty {
+                    let node = stack.removeLast()
+                    if visited[node] { continue }
+                    visited[node] = true
+                    for nei in adj[node] {
+                        if !visited[nei] {
+                            stack.append(nei)
+                        }
+                        res[nei] = false
+                    }
+                }
+            }
+        }
+
+        var result = [Int]()
+        for i in 0..<n {
+            if res[i] {
+                result.append(i)
+            }
+        }
+        return result
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn find_smallest_set_of_vertices(n: i32, edges: Vec<Vec<i32>>) -> Vec<i32> {
+        let n = n as usize;
+        let mut adj = vec![vec![]; n];
+        for edge in &edges {
+            adj[edge[0] as usize].push(edge[1] as usize);
+        }
+
+        let mut res = vec![true; n];
+        let mut visited = vec![false; n];
+        let mut stack = Vec::new();
+
+        for i in 0..n {
+            if !visited[i] {
+                stack.push(i);
+                while let Some(node) = stack.pop() {
+                    if visited[node] {
+                        continue;
+                    }
+                    visited[node] = true;
+                    for &nei in &adj[node] {
+                        if !visited[nei] {
+                            stack.push(nei);
+                        }
+                        res[nei] = false;
+                    }
+                }
+            }
+        }
+
+        (0..n).filter(|&i| res[i]).map(|i| i as i32).collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -286,6 +680,17 @@ class Solution {
 ---
 
 ## 3. Indegree Count
+
+### Intuition
+
+A vertex needs to be in our starting set only if it cannot be reached from any other vertex. This happens exactly when the vertex has no incoming edges. We can track which vertices have incoming edges by building a list of sources for each destination.
+
+### Algorithm
+
+1. Create an array of lists where `incoming[v]` stores all vertices with edges pointing to `v`.
+2. Iterate through all edges and populate the `incoming` lists.
+3. Collect all vertices where `incoming[v]` is empty.
+4. Return these vertices as the `res`.
 
 ::tabs-start
 
@@ -370,6 +775,103 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public IList<int> FindSmallestSetOfVertices(int n, IList<IList<int>> edges) {
+        List<int>[] incoming = new List<int>[n];
+        for (int i = 0; i < n; i++) {
+            incoming[i] = new List<int>();
+        }
+        foreach (var edge in edges) {
+            incoming[edge[1]].Add(edge[0]);
+        }
+
+        List<int> res = new List<int>();
+        for (int i = 0; i < n; i++) {
+            if (incoming[i].Count == 0) {
+                res.Add(i);
+            }
+        }
+        return res;
+    }
+}
+```
+
+```go
+func findSmallestSetOfVertices(n int, edges [][]int) []int {
+    incoming := make([][]int, n)
+    for i := range incoming {
+        incoming[i] = []int{}
+    }
+    for _, edge := range edges {
+        incoming[edge[1]] = append(incoming[edge[1]], edge[0])
+    }
+
+    res := []int{}
+    for i := 0; i < n; i++ {
+        if len(incoming[i]) == 0 {
+            res = append(res, i)
+        }
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun findSmallestSetOfVertices(n: Int, edges: List<List<Int>>): List<Int> {
+        val incoming = Array(n) { mutableListOf<Int>() }
+        for (edge in edges) {
+            incoming[edge[1]].add(edge[0])
+        }
+
+        val res = mutableListOf<Int>()
+        for (i in 0 until n) {
+            if (incoming[i].isEmpty()) {
+                res.add(i)
+            }
+        }
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func findSmallestSetOfVertices(_ n: Int, _ edges: [[Int]]) -> [Int] {
+        var incoming = [[Int]](repeating: [], count: n)
+        for edge in edges {
+            incoming[edge[1]].append(edge[0])
+        }
+
+        var res = [Int]()
+        for i in 0..<n {
+            if incoming[i].isEmpty {
+                res.append(i)
+            }
+        }
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn find_smallest_set_of_vertices(n: i32, edges: Vec<Vec<i32>>) -> Vec<i32> {
+        let n = n as usize;
+        let mut incoming = vec![vec![]; n];
+        for edge in &edges {
+            incoming[edge[1] as usize].push(edge[0]);
+        }
+
+        (0..n)
+            .filter(|&i| incoming[i].is_empty())
+            .map(|i| i as i32)
+            .collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -381,7 +883,18 @@ class Solution {
 
 ---
 
-## 4. Indegree Count
+## 4. Indegree Count (Optimal)
+
+### Intuition
+
+We do not need to store the actual source vertices for each destination. We only care whether a vertex has at least one incoming edge. A simple boolean array is sufficient: mark each destination as having an incoming edge, then return all vertices that were never marked.
+
+### Algorithm
+
+1. Create a boolean array `indegree` of size `n`, initialized to `false`.
+2. For each edge `(src, dst)`, set `indegree[dst] = true`.
+3. Collect all vertices `i` where `indegree[i]` is `false`.
+4. Return these vertices as `res`.
 
 ::tabs-start
 
@@ -455,6 +968,97 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public IList<int> FindSmallestSetOfVertices(int n, IList<IList<int>> edges) {
+        bool[] indegree = new bool[n];
+        foreach (var edge in edges) {
+            indegree[edge[1]] = true;
+        }
+
+        List<int> res = new List<int>();
+        for (int i = 0; i < n; i++) {
+            if (!indegree[i]) {
+                res.Add(i);
+            }
+        }
+        return res;
+    }
+}
+```
+
+```go
+func findSmallestSetOfVertices(n int, edges [][]int) []int {
+    indegree := make([]bool, n)
+    for _, edge := range edges {
+        indegree[edge[1]] = true
+    }
+
+    res := []int{}
+    for i := 0; i < n; i++ {
+        if !indegree[i] {
+            res = append(res, i)
+        }
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun findSmallestSetOfVertices(n: Int, edges: List<List<Int>>): List<Int> {
+        val indegree = BooleanArray(n)
+        for (edge in edges) {
+            indegree[edge[1]] = true
+        }
+
+        val res = mutableListOf<Int>()
+        for (i in 0 until n) {
+            if (!indegree[i]) {
+                res.add(i)
+            }
+        }
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func findSmallestSetOfVertices(_ n: Int, _ edges: [[Int]]) -> [Int] {
+        var indegree = [Bool](repeating: false, count: n)
+        for edge in edges {
+            indegree[edge[1]] = true
+        }
+
+        var res = [Int]()
+        for i in 0..<n {
+            if !indegree[i] {
+                res.append(i)
+            }
+        }
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn find_smallest_set_of_vertices(n: i32, edges: Vec<Vec<i32>>) -> Vec<i32> {
+        let n = n as usize;
+        let mut indegree = vec![false; n];
+        for edge in &edges {
+            indegree[edge[1] as usize] = true;
+        }
+
+        (0..n)
+            .filter(|&i| !indegree[i])
+            .map(|i| i as i32)
+            .collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -463,3 +1067,15 @@ class Solution {
 - Space complexity: $O(V)$
 
 > Where $V$ is the number of vertices and $E$ is the number of edges.
+
+---
+
+## Common Pitfalls
+
+### Tracking Outgoing Edges Instead of Incoming
+
+The problem asks for nodes that cannot be reached from other nodes, which means nodes with zero incoming edges. Tracking outgoing edges instead will identify nodes that cannot reach others, which is the opposite of what is needed.
+
+### Overcomplicating With Graph Traversal
+
+Since the graph is acyclic and we only need nodes with no incoming edges, a simple pass through the edges is sufficient. Implementing full DFS or BFS adds unnecessary complexity and potential for bugs when a simple indegree check solves the problem optimally.

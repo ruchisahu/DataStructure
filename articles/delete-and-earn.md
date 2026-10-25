@@ -1,4 +1,30 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Dynamic Programming** - Understanding how to build solutions from subproblems, similar to House Robber pattern
+- **Hash Maps** - Grouping and summing values by key to precompute totals for each unique number
+- **Sorting** - Ordering elements to process consecutive values together
+
+---
+
 ## 1. Recursion
+
+### Intuition
+
+When you pick a number `x`, you earn all points from every occurrence of `x`, but you must delete all instances of `x - 1` and `x + 1`. This creates a choice at each distinct value: either take it (and skip the next consecutive value) or skip it. Sorting helps group identical values together, making it easy to sum all occurrences. We recursively explore both choices at each group of identical numbers.
+
+### Algorithm
+
+1. Sort the array to group identical numbers together.
+2. Define a recursive function `dfs(i)` starting at index `i`:
+    - If `i` is out of bounds, return `0`.
+    - Sum all occurrences of `nums[i]` and move `i` past this group.
+    - Compute the result of skipping this group: `dfs(new_i)`.
+    - Skip any numbers equal to `nums[i] + 1` (they would be deleted if we pick).
+    - Compute the result of picking this group: `pick + dfs(after_skipping)`.
+    - Return the maximum of picking vs skipping.
+3. Call `dfs(0)` and return the result.
 
 ::tabs-start
 
@@ -116,6 +142,136 @@ class Solution {
 }
 ```
 
+```go
+func deleteAndEarn(nums []int) int {
+    sort.Ints(nums)
+
+    var dfs func(i int) int
+    dfs = func(i int) int {
+        if i >= len(nums) {
+            return 0
+        }
+
+        cur := nums[i]
+        pick := 0
+        for i < len(nums) && nums[i] == cur {
+            pick += nums[i]
+            i++
+        }
+
+        res := dfs(i)
+        for i < len(nums) && nums[i] == cur+1 {
+            i++
+        }
+
+        res = max(res, pick+dfs(i))
+        return res
+    }
+
+    return dfs(0)
+}
+
+func max(a, b int) int {
+    if a > b {
+        return a
+    }
+    return b
+}
+```
+
+```kotlin
+class Solution {
+    fun deleteAndEarn(nums: IntArray): Int {
+        nums.sort()
+        return dfs(nums, 0)
+    }
+
+    private fun dfs(nums: IntArray, idx: Int): Int {
+        var i = idx
+        if (i >= nums.size) return 0
+
+        val cur = nums[i]
+        var pick = 0
+        while (i < nums.size && nums[i] == cur) {
+            pick += nums[i]
+            i++
+        }
+
+        var res = dfs(nums, i)
+        while (i < nums.size && nums[i] == cur + 1) {
+            i++
+        }
+
+        res = maxOf(res, pick + dfs(nums, i))
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func deleteAndEarn(_ nums: [Int]) -> Int {
+        let sortedNums = nums.sorted()
+
+        func dfs(_ i: Int) -> Int {
+            var i = i
+            if i >= sortedNums.count { return 0 }
+
+            let cur = sortedNums[i]
+            var pick = 0
+            while i < sortedNums.count && sortedNums[i] == cur {
+                pick += sortedNums[i]
+                i += 1
+            }
+
+            var res = dfs(i)
+            while i < sortedNums.count && sortedNums[i] == cur + 1 {
+                i += 1
+            }
+
+            res = max(res, pick + dfs(i))
+            return res
+        }
+
+        return dfs(0)
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn delete_and_earn(nums: Vec<i32>) -> i32 {
+        let mut nums = nums;
+        nums.sort();
+
+        fn dfs(nums: &[i32], i: usize) -> i32 {
+            if i >= nums.len() {
+                return 0;
+            }
+
+            let cur = nums[i];
+            let mut pick = 0;
+            let mut j = i;
+            while j < nums.len() && nums[j] == cur {
+                pick += nums[j];
+                j += 1;
+            }
+
+            let mut res = dfs(nums, j);
+            let mut k = j;
+            while k < nums.len() && nums[k] == cur + 1 {
+                k += 1;
+            }
+
+            res = res.max(pick + dfs(nums, k));
+            res
+        }
+
+        dfs(&nums, 0)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -126,6 +282,23 @@ class Solution {
 ---
 
 ## 2. Dynamic Programming (Top-Down)
+
+### Intuition
+
+The recursive solution has overlapping subproblems since we may revisit the same index multiple times. By precomputing the total value for each unique number (sum of all occurrences) and using memoization, we avoid redundant calculations. The problem reduces to: for each unique number, decide whether to take it (earning its total value but skipping the next consecutive number) or skip it.
+
+### Algorithm
+
+1. Build a map where each unique number maps to the sum of all its occurrences.
+2. Extract and sort the unique numbers.
+3. Create a memo array initialized to `-1`.
+4. Define `dfs(i)`:
+    - If `i` is out of bounds, return `0`.
+    - If `memo[i]` is set, return it.
+    - Compute the value of taking `nums[i]`: its total value plus `dfs(i + 2)` if the next number is consecutive, else `dfs(i + 1)`.
+    - The result is `max(take, dfs(i + 1))`.
+    - Store in memo and return.
+5. Return `dfs(0)`.
 
 ::tabs-start
 
@@ -269,6 +442,168 @@ class Solution {
 }
 ```
 
+```go
+func deleteAndEarn(nums []int) int {
+    val := make(map[int]int)
+    for _, num := range nums {
+        val[num] += num
+    }
+
+    uniqueSet := make(map[int]bool)
+    for _, num := range nums {
+        uniqueSet[num] = true
+    }
+    uniqueNums := make([]int, 0, len(uniqueSet))
+    for num := range uniqueSet {
+        uniqueNums = append(uniqueNums, num)
+    }
+    sort.Ints(uniqueNums)
+    memo := make([]int, len(uniqueNums))
+    for i := range memo {
+        memo[i] = -1
+    }
+
+    var dfs func(i int) int
+    dfs = func(i int) int {
+        if i >= len(uniqueNums) {
+            return 0
+        }
+        if memo[i] != -1 {
+            return memo[i]
+        }
+
+        res := val[uniqueNums[i]]
+        if i+1 < len(uniqueNums) && uniqueNums[i]+1 == uniqueNums[i+1] {
+            res += dfs(i + 2)
+        } else {
+            res += dfs(i + 1)
+        }
+
+        res = max(res, dfs(i+1))
+        memo[i] = res
+        return res
+    }
+
+    return dfs(0)
+}
+
+func max(a, b int) int {
+    if a > b {
+        return a
+    }
+    return b
+}
+```
+
+```kotlin
+class Solution {
+    private lateinit var valMap: MutableMap<Int, Int>
+    private lateinit var memo: IntArray
+
+    fun deleteAndEarn(nums: IntArray): Int {
+        valMap = mutableMapOf()
+        for (num in nums) {
+            valMap[num] = valMap.getOrDefault(num, 0) + num
+        }
+
+        val uniqueNums = valMap.keys.sorted()
+        memo = IntArray(uniqueNums.size) { -1 }
+
+        return dfs(uniqueNums, 0)
+    }
+
+    private fun dfs(nums: List<Int>, i: Int): Int {
+        if (i >= nums.size) return 0
+        if (memo[i] != -1) return memo[i]
+
+        var res = valMap[nums[i]]!!
+        res += if (i + 1 < nums.size && nums[i] + 1 == nums[i + 1]) {
+            dfs(nums, i + 2)
+        } else {
+            dfs(nums, i + 1)
+        }
+
+        res = maxOf(res, dfs(nums, i + 1))
+        memo[i] = res
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func deleteAndEarn(_ nums: [Int]) -> Int {
+        var val = [Int: Int]()
+        for num in nums {
+            val[num, default: 0] += num
+        }
+
+        let uniqueNums = Array(Set(nums)).sorted()
+        var memo = [Int](repeating: -1, count: uniqueNums.count)
+
+        func dfs(_ i: Int) -> Int {
+            if i >= uniqueNums.count { return 0 }
+            if memo[i] != -1 { return memo[i] }
+
+            var res = val[uniqueNums[i]]!
+            if i + 1 < uniqueNums.count && uniqueNums[i] + 1 == uniqueNums[i + 1] {
+                res += dfs(i + 2)
+            } else {
+                res += dfs(i + 1)
+            }
+
+            res = max(res, dfs(i + 1))
+            memo[i] = res
+            return res
+        }
+
+        return dfs(0)
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn delete_and_earn(nums: Vec<i32>) -> i32 {
+        let mut val = HashMap::new();
+        for &num in &nums {
+            *val.entry(num).or_insert(0) += num;
+        }
+
+        let mut unique_nums: Vec<i32> = val.keys().copied().collect();
+        unique_nums.sort();
+        let mut memo = vec![-1i32; unique_nums.len()];
+
+        fn dfs(
+            nums: &[i32],
+            val: &HashMap<i32, i32>,
+            memo: &mut Vec<i32>,
+            i: usize,
+        ) -> i32 {
+            if i >= nums.len() {
+                return 0;
+            }
+            if memo[i] != -1 {
+                return memo[i];
+            }
+
+            let mut res = val[&nums[i]];
+            if i + 1 < nums.len() && nums[i] + 1 == nums[i + 1] {
+                res += dfs(nums, val, memo, i + 2);
+            } else {
+                res += dfs(nums, val, memo, i + 1);
+            }
+
+            res = res.max(dfs(nums, val, memo, i + 1));
+            memo[i] = res;
+            res
+        }
+
+        dfs(&unique_nums, &val, &mut memo, 0)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -279,6 +614,20 @@ class Solution {
 ---
 
 ## 3. Dynamic Programming (Bottom-Up) - I
+
+### Intuition
+
+We can convert the top-down solution to bottom-up by processing unique numbers from right to left. At each position, we compute the maximum points achievable from that position onward. If the current and next numbers are consecutive, taking the current means skipping the next; otherwise, we can take the current and continue from the next.
+
+### Algorithm
+
+1. Build a map of each unique number to the sum of all its occurrences.
+2. Extract and sort the unique numbers.
+3. Create a DP array of size `n + 1` initialized to `0`.
+4. Iterate from the last unique number to the first:
+    - Compute `take` as the value of the current number plus `dp[i + 2]` if the next is consecutive, else `dp[i + 1]`.
+    - Set `dp[i] = max(dp[i + 1], take)`.
+5. Return `dp[0]`.
 
 ::tabs-start
 
@@ -382,6 +731,117 @@ class Solution {
 }
 ```
 
+```go
+func deleteAndEarn(nums []int) int {
+    val := make(map[int]int)
+    for _, num := range nums {
+        val[num] += num
+    }
+    sortedNums := make([]int, 0, len(val))
+    for key := range val {
+        sortedNums = append(sortedNums, key)
+    }
+    sort.Ints(sortedNums)
+
+    dp := make([]int, len(sortedNums)+1)
+    for i := len(sortedNums) - 1; i >= 0; i-- {
+        take := val[sortedNums[i]]
+        if i+1 < len(sortedNums) && sortedNums[i+1] == sortedNums[i]+1 {
+            take += dp[i+2]
+        } else {
+            take += dp[i+1]
+        }
+        dp[i] = max(dp[i+1], take)
+    }
+
+    return dp[0]
+}
+
+func max(a, b int) int {
+    if a > b {
+        return a
+    }
+    return b
+}
+```
+
+```kotlin
+class Solution {
+    fun deleteAndEarn(nums: IntArray): Int {
+        val valMap = mutableMapOf<Int, Int>()
+        for (num in nums) {
+            valMap[num] = valMap.getOrDefault(num, 0) + num
+        }
+        val sortedNums = valMap.keys.sorted()
+
+        val dp = IntArray(sortedNums.size + 1)
+        for (i in sortedNums.size - 1 downTo 0) {
+            var take = valMap[sortedNums[i]]!!
+            take += if (i + 1 < sortedNums.size && sortedNums[i + 1] == sortedNums[i] + 1) {
+                dp[i + 2]
+            } else {
+                dp[i + 1]
+            }
+            dp[i] = maxOf(dp[i + 1], take)
+        }
+
+        return dp[0]
+    }
+}
+```
+
+```swift
+class Solution {
+    func deleteAndEarn(_ nums: [Int]) -> Int {
+        var val = [Int: Int]()
+        for num in nums {
+            val[num, default: 0] += num
+        }
+        let sortedNums = val.keys.sorted()
+
+        var dp = [Int](repeating: 0, count: sortedNums.count + 1)
+        for i in stride(from: sortedNums.count - 1, through: 0, by: -1) {
+            var take = val[sortedNums[i]]!
+            if i + 1 < sortedNums.count && sortedNums[i + 1] == sortedNums[i] + 1 {
+                take += dp[i + 2]
+            } else {
+                take += dp[i + 1]
+            }
+            dp[i] = max(dp[i + 1], take)
+        }
+
+        return dp[0]
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn delete_and_earn(nums: Vec<i32>) -> i32 {
+        let mut val = HashMap::new();
+        for &num in &nums {
+            *val.entry(num).or_insert(0) += num;
+        }
+        let mut sorted_nums: Vec<i32> = val.keys().copied().collect();
+        sorted_nums.sort();
+
+        let n = sorted_nums.len();
+        let mut dp = vec![0i32; n + 1];
+        for i in (0..n).rev() {
+            let mut take = val[&sorted_nums[i]];
+            if i + 1 < n && sorted_nums[i + 1] == sorted_nums[i] + 1 {
+                take += dp[i + 2];
+            } else {
+                take += dp[i + 1];
+            }
+            dp[i] = dp[i + 1].max(take);
+        }
+
+        dp[0]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -392,6 +852,19 @@ class Solution {
 ---
 
 ## 4. Dynamic Programming (Bottom-Up) - II
+
+### Intuition
+
+Instead of working with unique sorted numbers, we can use an array indexed by the numbers themselves (`0` to max). Each index stores the total points for that number. This transforms the problem into the classic House Robber problem: you cannot take adjacent indices. We iterate backward, and at each position, choose the maximum of skipping it or taking it plus the result two positions ahead.
+
+### Algorithm
+
+1. Find the maximum value `m` in the array.
+2. Create a DP array of size `m + 2` initialized to `0`.
+3. For each number in the input, add it to `dp[num]` (accumulating total points per number).
+4. Iterate from `m - 1` down to `1`:
+    - Set `dp[i] = max(dp[i + 1], dp[i + 2] + dp[i])`.
+5. Return `dp[1]`.
 
 ::tabs-start
 
@@ -464,6 +937,88 @@ class Solution {
 }
 ```
 
+```go
+func deleteAndEarn(nums []int) int {
+    m := 0
+    for _, num := range nums {
+        if num > m {
+            m = num
+        }
+    }
+
+    dp := make([]int, m+2)
+    for _, num := range nums {
+        dp[num] += num
+    }
+
+    for i := m - 1; i > 0; i-- {
+        dp[i] = max(dp[i+1], dp[i+2]+dp[i])
+    }
+    return dp[1]
+}
+
+func max(a, b int) int {
+    if a > b {
+        return a
+    }
+    return b
+}
+```
+
+```kotlin
+class Solution {
+    fun deleteAndEarn(nums: IntArray): Int {
+        val m = nums.maxOrNull()!!
+        val dp = IntArray(m + 2)
+
+        for (num in nums) {
+            dp[num] += num
+        }
+
+        for (i in m - 1 downTo 1) {
+            dp[i] = maxOf(dp[i + 1], dp[i + 2] + dp[i])
+        }
+        return dp[1]
+    }
+}
+```
+
+```swift
+class Solution {
+    func deleteAndEarn(_ nums: [Int]) -> Int {
+        let m = nums.max()!
+        var dp = [Int](repeating: 0, count: m + 2)
+
+        for num in nums {
+            dp[num] += num
+        }
+
+        for i in stride(from: m - 1, through: 1, by: -1) {
+            dp[i] = max(dp[i + 1], dp[i + 2] + dp[i])
+        }
+        return dp[1]
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn delete_and_earn(nums: Vec<i32>) -> i32 {
+        let m = *nums.iter().max().unwrap() as usize;
+        let mut dp = vec![0i32; m + 2];
+
+        for &num in &nums {
+            dp[num as usize] += num;
+        }
+
+        for i in (1..m).rev() {
+            dp[i] = dp[i + 1].max(dp[i + 2] + dp[i]);
+        }
+        dp[1]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -476,6 +1031,21 @@ class Solution {
 ---
 
 ## 5. Dynamic Programming (Space Optimized)
+
+### Intuition
+
+We only need to track the maximum earnings for the previous two positions, similar to the space-optimized House Robber solution. By iterating through sorted unique numbers and maintaining two variables, we can reduce space complexity. When consecutive numbers differ by more than `1`, there is no conflict, so we can add the current earnings directly.
+
+### Algorithm
+
+1. Build a map of each unique number to the sum of all its occurrences.
+2. Sort the unique numbers.
+3. Initialize `earn1 = 0` and `earn2 = 0` to track the max earnings at the previous two positions.
+4. Iterate through the sorted unique numbers:
+    - If the current number is consecutive to the previous, we have a choice: `earn2 = max(curEarn + earn1, earn2)`.
+    - If not consecutive, we can freely take the current: `earn2 = curEarn + earn2`.
+    - Update `earn1` to the old `earn2` before modifying.
+5. Return `earn2`.
 
 ::tabs-start
 
@@ -583,9 +1153,176 @@ class Solution {
 }
 ```
 
+```go
+func deleteAndEarn(nums []int) int {
+    count := make(map[int]int)
+    for _, num := range nums {
+        count[num] += num
+    }
+    uniqueNums := make([]int, 0, len(count))
+    for key := range count {
+        uniqueNums = append(uniqueNums, key)
+    }
+    sort.Ints(uniqueNums)
+
+    earn1, earn2 := 0, 0
+    for i := 0; i < len(uniqueNums); i++ {
+        curEarn := count[uniqueNums[i]]
+        if i > 0 && uniqueNums[i] == uniqueNums[i-1]+1 {
+            temp := earn2
+            earn2 = max(curEarn+earn1, earn2)
+            earn1 = temp
+        } else {
+            temp := earn2
+            earn2 = curEarn + earn2
+            earn1 = temp
+        }
+    }
+    return earn2
+}
+
+func max(a, b int) int {
+    if a > b {
+        return a
+    }
+    return b
+}
+```
+
+```kotlin
+class Solution {
+    fun deleteAndEarn(nums: IntArray): Int {
+        val count = mutableMapOf<Int, Int>()
+        for (num in nums) {
+            count[num] = count.getOrDefault(num, 0) + num
+        }
+        val uniqueNums = count.keys.sorted()
+
+        var earn1 = 0
+        var earn2 = 0
+        for (i in uniqueNums.indices) {
+            val curEarn = count[uniqueNums[i]]!!
+            if (i > 0 && uniqueNums[i] == uniqueNums[i - 1] + 1) {
+                val temp = earn2
+                earn2 = maxOf(curEarn + earn1, earn2)
+                earn1 = temp
+            } else {
+                val temp = earn2
+                earn2 = curEarn + earn2
+                earn1 = temp
+            }
+        }
+        return earn2
+    }
+}
+```
+
+```swift
+class Solution {
+    func deleteAndEarn(_ nums: [Int]) -> Int {
+        var count = [Int: Int]()
+        for num in nums {
+            count[num, default: 0] += num
+        }
+        let uniqueNums = count.keys.sorted()
+
+        var earn1 = 0
+        var earn2 = 0
+        for i in 0..<uniqueNums.count {
+            let curEarn = count[uniqueNums[i]]!
+            if i > 0 && uniqueNums[i] == uniqueNums[i - 1] + 1 {
+                let temp = earn2
+                earn2 = max(curEarn + earn1, earn2)
+                earn1 = temp
+            } else {
+                let temp = earn2
+                earn2 = curEarn + earn2
+                earn1 = temp
+            }
+        }
+        return earn2
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn delete_and_earn(nums: Vec<i32>) -> i32 {
+        let mut count = HashMap::new();
+        for &num in &nums {
+            *count.entry(num).or_insert(0) += num;
+        }
+        let mut unique_nums: Vec<i32> = count.keys().copied().collect();
+        unique_nums.sort();
+
+        let mut earn1 = 0i32;
+        let mut earn2 = 0i32;
+        for i in 0..unique_nums.len() {
+            let cur_earn = count[&unique_nums[i]];
+            if i > 0 && unique_nums[i] == unique_nums[i - 1] + 1 {
+                let temp = earn2;
+                earn2 = (cur_earn + earn1).max(earn2);
+                earn1 = temp;
+            } else {
+                let temp = earn2;
+                earn2 = cur_earn + earn2;
+                earn1 = temp;
+            }
+        }
+        earn2
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n \log n)$
 - Space complexity: $O(n)$
+
+---
+
+## Common Pitfalls
+
+### Not Summing All Occurrences
+
+When you pick a number, you earn points from every occurrence of that number in the array. A common mistake is only counting it once instead of summing all instances.
+
+```python
+# Wrong: only counts one occurrence
+val[num] = num
+
+# Correct: sum all occurrences
+val[num] += num
+```
+
+### Forgetting to Skip Adjacent Values
+
+When you earn points for a number `x`, you must delete all instances of `x-1` and `x+1`. This means if you pick a value, you cannot pick the consecutive values. Missing this skip logic leads to incorrect results.
+
+```python
+# Wrong: doesn't skip consecutive numbers
+res = val[nums[i]] + dfs(i + 1)
+
+# Correct: skip next if consecutive
+if nums[i] + 1 == nums[i + 1]:
+    res = val[nums[i]] + dfs(i + 2)
+else:
+    res = val[nums[i]] + dfs(i + 1)
+```
+
+### Treating Non-Consecutive Numbers as Adjacent
+
+In the House Robber transformation, only consecutive numbers conflict. If numbers have gaps (e.g., 2 and 5), both can be taken without any penalty. Treating all numbers as adjacent loses points.
+
+```python
+# Wrong: always treats as adjacent
+earn2 = max(curEarn + earn1, earn2)
+
+# Correct: check if actually consecutive
+if i > 0 and nums[i] == nums[i - 1] + 1:
+    earn2 = max(curEarn + earn1, earn2)
+else:
+    earn2 = curEarn + earn2  # No conflict, add freely
+```

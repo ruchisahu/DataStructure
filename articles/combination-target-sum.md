@@ -1,4 +1,45 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Recursion** - Understanding how recursive function calls work and how to define base cases
+- **Backtracking** - The pattern of exploring choices, making a decision, recursing, and then undoing the decision
+- **Arrays/Lists** - Working with dynamic lists and understanding how to add/remove elements
+
+---
+
 ## 1. Backtracking
+
+### Intuition
+
+We want to build all combinations of numbers that add up to the target.  
+Each number can be used multiple times, so at every index we have two choices:
+
+1. **Include the current number** - stay at the same index (because we can reuse it).
+2. **Skip the current number** - move to the next index.
+
+We explore all possible choices using backtracking.  
+Whenever the running total equals the target, we store that combination.  
+If the total becomes greater than the target or we run out of numbers, we stop exploring that path.
+
+### Algorithm
+
+1. Define a recursive function `dfs(i, currentList, total)` where:
+    - `i` is the current index in `nums`
+    - `currentList` is the current combination being built
+    - `total` is the sum of numbers in `currentList`
+
+2. If `total == target`, add a copy of `currentList` to the result and return.
+3. If `i` goes out of bounds or `total` exceeds the target, return (stop exploring).
+4. **Choose to include `nums[i]`:**
+    - Add `nums[i]` to `currentList`
+    - Call `dfs(i, currentList, total + nums[i])` (stay at same index)
+    - Remove `nums[i]` (backtrack)
+
+5. **Choose to skip `nums[i]`:**
+    - Call `dfs(i + 1, currentList, total)`
+
+6. Start with `dfs(0, [], 0)` and return the result list.
 
 ::tabs-start
 
@@ -221,6 +262,31 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn combination_sum(nums: Vec<i32>, target: i32) -> Vec<Vec<i32>> {
+        let mut res = Vec::new();
+
+        fn dfs(nums: &[i32], target: i32, i: usize, cur: &mut Vec<i32>, total: i32, res: &mut Vec<Vec<i32>>) {
+            if total == target {
+                res.push(cur.clone());
+                return;
+            }
+            if i >= nums.len() || total > target {
+                return;
+            }
+            cur.push(nums[i]);
+            dfs(nums, target, i, cur, total + nums[i], res);
+            cur.pop();
+            dfs(nums, target, i + 1, cur, total, res);
+        }
+
+        dfs(&nums, target, 0, &mut vec![], 0, &mut res);
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -233,6 +299,33 @@ class Solution {
 ---
 
 ## 2. Backtracking (Optimal)
+
+### Intuition
+
+This optimized backtracking solution avoids exploring useless paths by using **sorting + early stopping**.
+
+- We sort the numbers so that once a number makes the sum exceed the target,
+  **all numbers after it will also exceed the target** - we can safely stop exploring further (break / return).
+- At each position, we try every number starting from index `i`, allowing reuse of the same number.
+- We build combinations step-by-step, and whenever the running total equals the target, we record the current list.
+
+Sorting + pruning significantly reduces unnecessary recursion.
+
+### Algorithm
+
+1. **Sort `nums`** so we can stop early when the sum exceeds the target.
+2. Define a recursive function `dfs(i, currentList, total)`:
+    - If `total == target`:
+        - Add a copy of `currentList` to the result.
+        - Return.
+3. Loop `j` from `i` to end of list:
+    - If `total + nums[j] > target`, **stop the loop** (no need to check larger numbers).
+    - Add `nums[j]` to `currentList`.
+    - Call `dfs(j, currentList, total + nums[j])` (reuse allowed).
+    - Remove last element to backtrack.
+4. Start recursion with `dfs(0, [], 0)` and return the result.
+
+This ensures we explore only valid combinations while eliminating unnecessary work.
 
 ::tabs-start
 
@@ -462,6 +555,34 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn combination_sum(nums: Vec<i32>, target: i32) -> Vec<Vec<i32>> {
+        let mut res = Vec::new();
+        let mut nums = nums;
+        nums.sort();
+
+        fn dfs(nums: &[i32], target: i32, i: usize, cur: &mut Vec<i32>, total: i32, res: &mut Vec<Vec<i32>>) {
+            if total == target {
+                res.push(cur.clone());
+                return;
+            }
+            for j in i..nums.len() {
+                if total + nums[j] > target {
+                    return;
+                }
+                cur.push(nums[j]);
+                dfs(nums, target, j, cur, total + nums[j], res);
+                cur.pop();
+            }
+        }
+
+        dfs(&nums, target, 0, &mut vec![], 0, &mut res);
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -470,3 +591,39 @@ class Solution {
 - Space complexity: $O(\frac{t}{m})$
 
 > Where $t$ is the given $target$ and $m$ is the minimum value in $nums$.
+
+---
+
+## Common Pitfalls
+
+### Moving to Next Index After Including an Element
+
+Since each number can be used unlimited times, after including `nums[i]`, you should stay at index `i`, not move to `i + 1`. Moving forward prevents reusing the same element.
+
+```python
+# Wrong: can't reuse the same number
+cur.append(nums[i])
+dfs(i + 1, cur, total + nums[i])
+# Correct: stay at same index to allow reuse
+cur.append(nums[i])
+dfs(i, cur, total + nums[i])
+```
+
+### Generating Duplicate Combinations
+
+Without maintaining an index, you might generate `[2,3]` and `[3,2]` as separate combinations. Always iterate from the current index forward, never backward, to ensure each combination is generated only once in sorted order.
+
+### Not Pruning When Sum Exceeds Target
+
+Continuing recursion when `total > target` wastes time exploring invalid paths. With sorted input, you can break early once `total + nums[j] > target` since all subsequent numbers are larger.
+
+```python
+# Inefficient: explores all paths
+for j in range(i, len(nums)):
+    dfs(j, cur, total + nums[j])
+# Optimized: stop early when sum exceeds target
+for j in range(i, len(nums)):
+    if total + nums[j] > target:
+        return
+    dfs(j, cur, total + nums[j])
+```

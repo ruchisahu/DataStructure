@@ -1,4 +1,35 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Hash Maps** - Using dictionaries to count element frequencies efficiently
+- **Sorting** - Sorting elements by custom criteria (frequency in this case)
+- **Heap/Priority Queue** - Using min-heaps to maintain the top k elements efficiently
+- **Bucket Sort** - Understanding how to use array indices as buckets for counting-based sorting
+
+---
+
 ## 1. Sorting
+
+### Intuition
+
+To find the `k` most frequent elements, we first need to know how often each number appears.
+Once we count the frequencies, we can sort the unique numbers based on how many times they occur.
+After sorting, the numbers with the highest frequencies will naturally appear at the end of the list.
+By taking the last `k` entries, we get the `k` most frequent elements.
+
+This approach is easy to reason about:
+**count the frequencies → sort by frequency → take the top `k`.**
+
+### Algorithm
+
+1. Create a hash map to store the frequency of each number.
+2. Build a list of `[frequency, number]` pairs from the map.
+3. Sort this list in ascending order based on frequency.
+4. Create an empty result list.
+5. Repeatedly pop from the end of the sorted list (highest frequency) and append the number to the result.
+6. Stop when the result contains `k` elements.
+7. Return the result list.
 
 ::tabs-start
 
@@ -183,6 +214,23 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn top_k_frequent(nums: Vec<i32>, k: i32) -> Vec<i32> {
+        let k = k as usize;
+        let mut count = HashMap::new();
+        for &num in &nums {
+            *count.entry(num).or_insert(0) += 1;
+        }
+
+        let mut arr: Vec<(i32, i32)> = count.into_iter().map(|(num, cnt)| (cnt, num)).collect();
+        arr.sort_unstable_by(|a, b| b.0.cmp(&a.0));
+
+        arr.iter().take(k).map(|&(_, num)| num).collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -193,6 +241,24 @@ class Solution {
 ---
 
 ## 2. Min-Heap
+
+### Intuition
+
+After counting how often each number appears, we want to efficiently keep track of only the `k` most frequent elements.
+A **min-heap** is perfect for this because it always keeps the smallest element at the top.
+By pushing `(frequency, value)` pairs into the heap and removing the smallest whenever the heap grows beyond size `k`, we ensure that the heap always contains the top `k` most frequent elements.
+In the end, the heap holds exactly the `k` values with the highest frequencies.
+
+### Algorithm
+
+1. Build a frequency map that counts how many times each number appears.
+2. Create an empty min-heap.
+3. For each number in the frequency map:
+    - Push `(frequency, number)` into the heap.
+    - If the heap size becomes greater than `k`, pop once to remove the smallest frequency.
+4. After processing all numbers, the heap contains the `k` most frequent elements.
+5. Pop all elements from the heap and collect their numbers into the result list.
+6. Return the result.
 
 ::tabs-start
 
@@ -326,29 +392,39 @@ public class Solution {
 ```
 
 ```go
+type MinHeap [][2]int
+
+func (h MinHeap) Len() int            { return len(h) }
+func (h MinHeap) Less(i, j int) bool  { return h[i][0] < h[j][0] }
+func (h MinHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
+func (h *MinHeap) Push(x interface{}) { *h = append(*h, x.([2]int)) }
+func (h *MinHeap) Pop() interface{} {
+    old := *h
+    n := len(old)
+    x := old[n-1]
+    *h = old[:n-1]
+    return x
+}
+
 func topKFrequent(nums []int, k int) []int {
     count := make(map[int]int)
     for _, num := range nums {
         count[num]++
     }
 
-    heap := priorityqueue.NewWith(func(a, b interface{}) int {
-        freqA := a.([2]int)[0]
-        freqB := b.([2]int)[0]
-        return utils.IntComparator(freqA, freqB)
-    })
+    minHeap := &MinHeap{}
+    heap.Init(minHeap)
 
     for num, freq := range count {
-        heap.Enqueue([2]int{freq, num})
-        if heap.Size() > k {
-            heap.Dequeue()
+        heap.Push(minHeap, [2]int{freq, num})
+        if minHeap.Len() > k {
+            heap.Pop(minHeap)
         }
     }
 
     res := make([]int, k)
     for i := k - 1; i >= 0; i-- {
-        value, _ := heap.Dequeue()
-        res[i] = value.([2]int)[1]
+        res[i] = heap.Pop(minHeap).([2]int)[1]
     }
     return res
 }
@@ -414,6 +490,28 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn top_k_frequent(nums: Vec<i32>, k: i32) -> Vec<i32> {
+        let k = k as usize;
+        let mut count = HashMap::new();
+        for &num in &nums {
+            *count.entry(num).or_insert(0i32) += 1;
+        }
+
+        let mut heap = BinaryHeap::new();
+        for (&num, &freq) in &count {
+            heap.push(Reverse((freq, num)));
+            if heap.len() > k {
+                heap.pop();
+            }
+        }
+
+        heap.into_iter().map(|Reverse((_, num))| num).collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -426,6 +524,30 @@ class Solution {
 ---
 
 ## 3. Bucket Sort
+
+### Intuition
+
+Each number in the array appears a certain number of times, and the maximum possible frequency is the length of the array.
+We can use this idea by creating a list where the index represents a frequency, and at each index we store all numbers that appear exactly that many times.
+
+For example:
+
+- All numbers that appear `1` time go into group `freq[1]`.
+- All numbers that appear `2` times go into group `freq[2]`.
+- And so on.
+
+After we build these groups, we look from the highest possible frequency down to the lowest and collect numbers from these groups until we have `k` of them.
+This way, we directly jump to the most frequent numbers without sorting all the elements by frequency.
+
+### Algorithm
+
+1. Build a frequency map that counts how many times each number appears.
+2. Create a list of groups `freq`, where `freq[i]` will store all numbers that appear exactly `i` times.
+3. For each number and its frequency in the map, add the number to `freq[frequency]`.
+4. Initialize an empty result list.
+5. Loop from the largest possible frequency down to `1`:
+    - For each number in `freq[i]`, add it to the result list.
+    - Once the result contains `k` numbers, return it.
 
 ::tabs-start
 
@@ -655,9 +777,53 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn top_k_frequent(nums: Vec<i32>, k: i32) -> Vec<i32> {
+        let k = k as usize;
+        let mut count = HashMap::new();
+        let mut freq = vec![vec![]; nums.len() + 1];
+
+        for &num in &nums {
+            *count.entry(num).or_insert(0usize) += 1;
+        }
+        for (&num, &cnt) in &count {
+            freq[cnt].push(num);
+        }
+
+        let mut res = Vec::new();
+        for i in (1..freq.len()).rev() {
+            for &num in &freq[i] {
+                res.push(num);
+                if res.len() == k {
+                    return res;
+                }
+            }
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(n)$
+
+---
+
+## Common Pitfalls
+
+### Using a Max-Heap Instead of Min-Heap
+
+When keeping track of the top `k` elements, a min-heap of size `k` is needed so you can efficiently remove the smallest frequency when the heap exceeds size `k`. Using a max-heap requires storing all elements and then extracting `k` times, which is less efficient. The min-heap approach maintains only the `k` largest frequencies at any time.
+
+### Forgetting to Handle Ties in Frequency
+
+When multiple numbers have the same frequency, the order in which they appear in the result may vary. Most problem statements accept any valid ordering, but some solutions incorrectly assume a specific order or break when frequencies are equal. Ensure your comparison function handles equal frequencies gracefully.
+
+### Off-By-One in Bucket Sort Index
+
+In bucket sort, frequencies range from `1` to `n` (the array length), so you need `n + 1` buckets indexed `0` to `n`. A common mistake is creating only `n` buckets, causing an index out of bounds error when an element appears `n` times. Always allocate `len(nums) + 1` buckets to accommodate all possible frequencies.

@@ -1,4 +1,26 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Recursion and Backtracking** - Used to explore all possible ways to partition characters into two subsequences
+- **Palindrome Checking** - Understanding how to verify if a string reads the same forwards and backwards using two pointers
+- **Bitmask/Bit Manipulation** - Representing subsets of characters as binary numbers for efficient enumeration
+- **Dynamic Programming (Longest Palindromic Subsequence)** - Computing the LPS of a string using DP to optimize the solution
+
+---
+
 ## 1. Recursion (Backtracking)
+
+### Intuition
+
+We need two disjoint palindromic subsequences with maximum product of their lengths. For each character, we have three choices: add it to the first subsequence, add it to the second subsequence, or skip it entirely. At the end, if both subsequences are palindromes, we compute their product.
+
+### Algorithm
+
+1. Use recursion with three branches per character: skip, add to `seq1`, or add to `seq2`.
+2. At the end of the string, check if both subsequences are palindromes.
+3. If both are palindromes, update the result with their length product.
+4. Return the maximum product found.
 
 ::tabs-start
 
@@ -146,6 +168,187 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int MaxProduct(string s) {
+        int res = 0;
+        Rec(0, s, "", "", ref res);
+        return res;
+    }
+
+    private void Rec(int i, string s, string seq1, string seq2, ref int res) {
+        if (i == s.Length) {
+            if (IsPal(seq1) && IsPal(seq2)) {
+                res = Math.Max(res, seq1.Length * seq2.Length);
+            }
+            return;
+        }
+
+        Rec(i + 1, s, seq1, seq2, ref res);
+        Rec(i + 1, s, seq1 + s[i], seq2, ref res);
+        Rec(i + 1, s, seq1, seq2 + s[i], ref res);
+    }
+
+    private bool IsPal(string s) {
+        int i = 0, j = s.Length - 1;
+        while (i < j) {
+            if (s[i] != s[j]) return false;
+            i++;
+            j--;
+        }
+        return true;
+    }
+}
+```
+
+```go
+func maxProduct(s string) int {
+    res := 0
+
+    var isPal func(str string) bool
+    isPal = func(str string) bool {
+        i, j := 0, len(str)-1
+        for i < j {
+            if str[i] != str[j] {
+                return false
+            }
+            i++
+            j--
+        }
+        return true
+    }
+
+    var rec func(i int, seq1, seq2 string)
+    rec = func(i int, seq1, seq2 string) {
+        if i == len(s) {
+            if isPal(seq1) && isPal(seq2) {
+                if len(seq1)*len(seq2) > res {
+                    res = len(seq1) * len(seq2)
+                }
+            }
+            return
+        }
+
+        rec(i+1, seq1, seq2)
+        rec(i+1, seq1+string(s[i]), seq2)
+        rec(i+1, seq1, seq2+string(s[i]))
+    }
+
+    rec(0, "", "")
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun maxProduct(s: String): Int {
+        var res = 0
+
+        fun isPal(str: String): Boolean {
+            var i = 0
+            var j = str.length - 1
+            while (i < j) {
+                if (str[i] != str[j]) return false
+                i++
+                j--
+            }
+            return true
+        }
+
+        fun rec(i: Int, seq1: String, seq2: String) {
+            if (i == s.length) {
+                if (isPal(seq1) && isPal(seq2)) {
+                    res = maxOf(res, seq1.length * seq2.length)
+                }
+                return
+            }
+
+            rec(i + 1, seq1, seq2)
+            rec(i + 1, seq1 + s[i], seq2)
+            rec(i + 1, seq1, seq2 + s[i])
+        }
+
+        rec(0, "", "")
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func maxProduct(_ s: String) -> Int {
+        let chars = Array(s)
+        var res = 0
+
+        func isPal(_ str: [Character]) -> Bool {
+            var i = 0, j = str.count - 1
+            while i < j {
+                if str[i] != str[j] { return false }
+                i += 1
+                j -= 1
+            }
+            return true
+        }
+
+        func rec(_ i: Int, _ seq1: [Character], _ seq2: [Character]) {
+            if i == chars.count {
+                if isPal(seq1) && isPal(seq2) {
+                    res = max(res, seq1.count * seq2.count)
+                }
+                return
+            }
+
+            rec(i + 1, seq1, seq2)
+            rec(i + 1, seq1 + [chars[i]], seq2)
+            rec(i + 1, seq1, seq2 + [chars[i]])
+        }
+
+        rec(0, [], [])
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn max_product(s: String) -> i32 {
+        let s = s.as_bytes();
+        let mut res = 0;
+
+        fn is_pal(seq: &[u8]) -> bool {
+            let (mut i, mut j) = (0, seq.len() as i32 - 1);
+            while i < j {
+                if seq[i as usize] != seq[j as usize] {
+                    return false;
+                }
+                i += 1;
+                j -= 1;
+            }
+            true
+        }
+
+        fn rec(i: usize, s: &[u8], seq1: &mut Vec<u8>, seq2: &mut Vec<u8>, res: &mut i32) {
+            if i == s.len() {
+                if is_pal(seq1) && is_pal(seq2) {
+                    *res = (*res).max((seq1.len() * seq2.len()) as i32);
+                }
+                return;
+            }
+            rec(i + 1, s, seq1, seq2, res);
+            seq1.push(s[i]);
+            rec(i + 1, s, seq1, seq2, res);
+            seq1.pop();
+            seq2.push(s[i]);
+            rec(i + 1, s, seq1, seq2, res);
+            seq2.pop();
+        }
+
+        rec(0, s, &mut vec![], &mut vec![], &mut res);
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -156,6 +359,18 @@ class Solution {
 ---
 
 ## 2. Bit Mask
+
+### Intuition
+
+Since the string length is small (up to 12), we can represent each subsequence as a bitmask. We first enumerate all possible subsequences, check which ones are palindromes, and store them. Then we check all pairs of palindromic subsequences. Two subsequences are disjoint if their masks have no overlapping bits (bitwise AND equals `0`).
+
+### Algorithm
+
+1. Enumerate all bitmasks from `1` to $2^n - 1$.
+2. For each mask, extract the corresponding subsequence and check if it is a palindrome.
+3. Store palindromic masks with their lengths in a map.
+4. For each pair of palindromic masks, if they are disjoint (AND equals `0`), compute the product.
+5. Return the maximum product.
 
 ::tabs-start
 
@@ -331,6 +546,225 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int MaxProduct(string s) {
+        int N = s.Length;
+        int res = 0;
+        var pali = new Dictionary<int, int>();
+
+        for (int mask = 1; mask < (1 << N); mask++) {
+            var subseq = new System.Text.StringBuilder();
+            for (int i = 0; i < N; i++) {
+                if ((mask & (1 << i)) != 0) {
+                    subseq.Append(s[i]);
+                }
+            }
+
+            if (IsPal(subseq.ToString())) {
+                pali[mask] = subseq.Length;
+            }
+        }
+
+        foreach (var m1 in pali) {
+            foreach (var m2 in pali) {
+                if ((m1.Key & m2.Key) == 0) {
+                    res = Math.Max(res, m1.Value * m2.Value);
+                }
+            }
+        }
+
+        return res;
+    }
+
+    private bool IsPal(string s) {
+        int i = 0, j = s.Length - 1;
+        while (i < j) {
+            if (s[i] != s[j]) return false;
+            i++;
+            j--;
+        }
+        return true;
+    }
+}
+```
+
+```go
+func maxProduct(s string) int {
+    isPal := func(str string) bool {
+        i, j := 0, len(str)-1
+        for i < j {
+            if str[i] != str[j] {
+                return false
+            }
+            i++
+            j--
+        }
+        return true
+    }
+
+    N := len(s)
+    res := 0
+    pali := make(map[int]int)
+
+    for mask := 1; mask < (1 << N); mask++ {
+        subseq := ""
+        for i := 0; i < N; i++ {
+            if mask&(1<<i) != 0 {
+                subseq += string(s[i])
+            }
+        }
+
+        if isPal(subseq) {
+            pali[mask] = len(subseq)
+        }
+    }
+
+    for m1, len1 := range pali {
+        for m2, len2 := range pali {
+            if m1&m2 == 0 {
+                if len1*len2 > res {
+                    res = len1 * len2
+                }
+            }
+        }
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun maxProduct(s: String): Int {
+        fun isPal(str: String): Boolean {
+            var i = 0
+            var j = str.length - 1
+            while (i < j) {
+                if (str[i] != str[j]) return false
+                i++
+                j--
+            }
+            return true
+        }
+
+        val N = s.length
+        var res = 0
+        val pali = mutableMapOf<Int, Int>()
+
+        for (mask in 1 until (1 shl N)) {
+            val subseq = StringBuilder()
+            for (i in 0 until N) {
+                if ((mask and (1 shl i)) != 0) {
+                    subseq.append(s[i])
+                }
+            }
+
+            if (isPal(subseq.toString())) {
+                pali[mask] = subseq.length
+            }
+        }
+
+        for ((m1, len1) in pali) {
+            for ((m2, len2) in pali) {
+                if ((m1 and m2) == 0) {
+                    res = maxOf(res, len1 * len2)
+                }
+            }
+        }
+
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func maxProduct(_ s: String) -> Int {
+        func isPal(_ str: String) -> Bool {
+            let chars = Array(str)
+            var i = 0, j = chars.count - 1
+            while i < j {
+                if chars[i] != chars[j] { return false }
+                i += 1
+                j -= 1
+            }
+            return true
+        }
+
+        let chars = Array(s)
+        let N = chars.count
+        var res = 0
+        var pali = [Int: Int]()
+
+        for mask in 1..<(1 << N) {
+            var subseq = ""
+            for i in 0..<N {
+                if (mask & (1 << i)) != 0 {
+                    subseq.append(chars[i])
+                }
+            }
+
+            if isPal(subseq) {
+                pali[mask] = subseq.count
+            }
+        }
+
+        for (m1, len1) in pali {
+            for (m2, len2) in pali {
+                if (m1 & m2) == 0 {
+                    res = max(res, len1 * len2)
+                }
+            }
+        }
+
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn max_product(s: String) -> i32 {
+        let s = s.as_bytes();
+        let n = s.len();
+        let mut pali = HashMap::new();
+
+        fn is_pal(seq: &[u8]) -> bool {
+            let (mut i, mut j) = (0i32, seq.len() as i32 - 1);
+            while i < j {
+                if seq[i as usize] != seq[j as usize] {
+                    return false;
+                }
+                i += 1;
+                j -= 1;
+            }
+            true
+        }
+
+        for mask in 1..(1 << n) {
+            let subseq: Vec<u8> = (0..n)
+                .filter(|&i| mask & (1 << i) != 0)
+                .map(|i| s[i])
+                .collect();
+            if is_pal(&subseq) {
+                pali.insert(mask, subseq.len() as i32);
+            }
+        }
+
+        let mut res = 0;
+        for (&m1, &len1) in &pali {
+            for (&m2, &len2) in &pali {
+                if m1 & m2 == 0 {
+                    res = res.max(len1 * len2);
+                }
+            }
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -340,7 +774,19 @@ class Solution {
 
 ---
 
-## 3. Bit Mask + Longest Pallindromic Subsequence
+## 3. Bit Mask + Longest Palindromic Subsequence
+
+### Intuition
+
+Instead of checking all pairs of palindromic masks, we can optimize by iterating through palindromic masks for the first subsequence and computing the longest palindromic subsequence (LPS) in the remaining characters. This avoids redundant pair comparisons while still finding the optimal solution.
+
+### Algorithm
+
+1. Enumerate all bitmasks from `1` to $2^n - 1$.
+2. For each mask, check if the corresponding subsequence is a palindrome.
+3. If it is, compute the LPS of the remaining characters (those not in the mask) using dynamic programming.
+4. Update the result with the product of the palindrome length and the LPS length.
+5. Return the maximum product.
 
 ::tabs-start
 
@@ -581,6 +1027,304 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int LongestPalindromeSubseq(string s) {
+        int n = s.Length;
+        if (n == 0) return 0;
+
+        int[] dp = new int[n];
+        Array.Fill(dp, 1);
+        for (int i = n - 1; i >= 0; i--) {
+            int prev = 0;
+            for (int j = i + 1; j < n; j++) {
+                int tmp = dp[j];
+                if (s[i] == s[j]) {
+                    dp[j] = 2 + prev;
+                } else {
+                    dp[j] = Math.Max(dp[j - 1], dp[j]);
+                }
+                prev = tmp;
+            }
+        }
+        return dp[n - 1];
+    }
+
+    public int MaxProduct(string s) {
+        int n = s.Length;
+        int res = 0;
+
+        for (int i = 1; i < (1 << n); i++) {
+            var seq1 = new System.Text.StringBuilder();
+            var seq2 = new System.Text.StringBuilder();
+
+            for (int j = 0; j < n; j++) {
+                if ((i & (1 << j)) != 0) seq1.Append(s[j]);
+                else seq2.Append(s[j]);
+            }
+
+            if (!IsPal(seq1.ToString())) continue;
+            int lps = LongestPalindromeSubseq(seq2.ToString());
+            res = Math.Max(res, seq1.Length * lps);
+        }
+
+        return res;
+    }
+
+    private bool IsPal(string s) {
+        int i = 0, j = s.Length - 1;
+        while (i < j) {
+            if (s[i] != s[j]) return false;
+            i++;
+            j--;
+        }
+        return true;
+    }
+}
+```
+
+```go
+func maxProduct(s string) int {
+    longestPalindromeSubseq := func(str string) int {
+        n := len(str)
+        if n == 0 {
+            return 0
+        }
+
+        dp := make([]int, n)
+        for i := range dp {
+            dp[i] = 1
+        }
+        for i := n - 1; i >= 0; i-- {
+            prev := 0
+            for j := i + 1; j < n; j++ {
+                tmp := dp[j]
+                if str[i] == str[j] {
+                    dp[j] = 2 + prev
+                } else {
+                    dp[j] = max(dp[j-1], dp[j])
+                }
+                prev = tmp
+            }
+        }
+        return dp[n-1]
+    }
+
+    isPal := func(str string) bool {
+        i, j := 0, len(str)-1
+        for i < j {
+            if str[i] != str[j] {
+                return false
+            }
+            i++
+            j--
+        }
+        return true
+    }
+
+    n := len(s)
+    res := 0
+
+    for i := 1; i < (1 << n); i++ {
+        seq1, seq2 := "", ""
+
+        for j := 0; j < n; j++ {
+            if i&(1<<j) != 0 {
+                seq1 += string(s[j])
+            } else {
+                seq2 += string(s[j])
+            }
+        }
+
+        if !isPal(seq1) {
+            continue
+        }
+
+        lps := longestPalindromeSubseq(seq2)
+        res = max(res, len(seq1)*lps)
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun longestPalindromeSubseq(s: String): Int {
+        val n = s.length
+        if (n == 0) return 0
+
+        val dp = IntArray(n) { 1 }
+        for (i in n - 1 downTo 0) {
+            var prev = 0
+            for (j in i + 1 until n) {
+                val tmp = dp[j]
+                if (s[i] == s[j]) {
+                    dp[j] = 2 + prev
+                } else {
+                    dp[j] = maxOf(dp[j - 1], dp[j])
+                }
+                prev = tmp
+            }
+        }
+        return dp[n - 1]
+    }
+
+    fun maxProduct(s: String): Int {
+        val n = s.length
+        var res = 0
+
+        for (i in 1 until (1 shl n)) {
+            val seq1 = StringBuilder()
+            val seq2 = StringBuilder()
+
+            for (j in 0 until n) {
+                if ((i and (1 shl j)) != 0) seq1.append(s[j])
+                else seq2.append(s[j])
+            }
+
+            if (!isPal(seq1.toString())) continue
+            val lps = longestPalindromeSubseq(seq2.toString())
+            res = maxOf(res, seq1.length * lps)
+        }
+
+        return res
+    }
+
+    private fun isPal(s: String): Boolean {
+        var i = 0
+        var j = s.length - 1
+        while (i < j) {
+            if (s[i] != s[j]) return false
+            i++
+            j--
+        }
+        return true
+    }
+}
+```
+
+```swift
+class Solution {
+    func longestPalindromeSubseq(_ s: String) -> Int {
+        let chars = Array(s)
+        let n = chars.count
+        if n == 0 { return 0 }
+
+        var dp = [Int](repeating: 1, count: n)
+        for i in stride(from: n - 1, through: 0, by: -1) {
+            var prev = 0
+            for j in (i + 1)..<n {
+                let tmp = dp[j]
+                if chars[i] == chars[j] {
+                    dp[j] = 2 + prev
+                } else {
+                    dp[j] = max(dp[j - 1], dp[j])
+                }
+                prev = tmp
+            }
+        }
+        return dp[n - 1]
+    }
+
+    func maxProduct(_ s: String) -> Int {
+        let chars = Array(s)
+        let n = chars.count
+        var res = 0
+
+        for i in 1..<(1 << n) {
+            var seq1 = ""
+            var seq2 = ""
+
+            for j in 0..<n {
+                if (i & (1 << j)) != 0 {
+                    seq1.append(chars[j])
+                } else {
+                    seq2.append(chars[j])
+                }
+            }
+
+            if !isPal(seq1) { continue }
+            let lps = longestPalindromeSubseq(seq2)
+            res = max(res, seq1.count * lps)
+        }
+
+        return res
+    }
+
+    private func isPal(_ s: String) -> Bool {
+        let chars = Array(s)
+        var i = 0, j = chars.count - 1
+        while i < j {
+            if chars[i] != chars[j] { return false }
+            i += 1
+            j -= 1
+        }
+        return true
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn max_product(s: String) -> i32 {
+        let s = s.as_bytes();
+        let n = s.len();
+        let mut res = 0;
+
+        for i in 1..(1 << n) {
+            let (mut seq1, mut seq2) = (vec![], vec![]);
+            for j in 0..n {
+                if i & (1 << j) != 0 {
+                    seq1.push(s[j]);
+                } else {
+                    seq2.push(s[j]);
+                }
+            }
+            if !Self::is_pal(&seq1) {
+                continue;
+            }
+            let lps = Self::longest_palindrome_subseq(&seq2);
+            res = res.max(seq1.len() as i32 * lps);
+        }
+        res
+    }
+
+    fn longest_palindrome_subseq(s: &[u8]) -> i32 {
+        let n = s.len();
+        if n == 0 {
+            return 0;
+        }
+        let mut dp = vec![1i32; n];
+        for i in (0..n).rev() {
+            let mut prev = 0;
+            for j in (i + 1)..n {
+                let tmp = dp[j];
+                if s[i] == s[j] {
+                    dp[j] = 2 + prev;
+                } else {
+                    dp[j] = dp[j].max(dp[j - 1]);
+                }
+                prev = tmp;
+            }
+        }
+        dp[n - 1]
+    }
+
+    fn is_pal(s: &[u8]) -> bool {
+        let (mut i, mut j) = (0i32, s.len() as i32 - 1);
+        while i < j {
+            if s[i as usize] != s[j as usize] {
+                return false;
+            }
+            i += 1;
+            j -= 1;
+        }
+        true
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -591,6 +1335,17 @@ class Solution {
 ---
 
 ## 4. Bit Mask + LPS (Optimal)
+
+### Intuition
+
+We can further optimize by computing the LPS directly on the original string while using the mask to skip characters that belong to the first subsequence. This avoids creating new strings and reduces overhead. We also validate palindromes efficiently using two pointers with mask-based skipping.
+
+### Algorithm
+
+1. For each bitmask, use a two-pointer approach to check if the selected characters form a palindrome and compute its length.
+2. If it is a palindrome, run the LPS algorithm on the original string, but skip indices that are set in the mask.
+3. Reset the DP array appropriately before each LPS computation.
+4. Track and return the maximum product.
 
 ::tabs-start
 
@@ -851,9 +1606,345 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int LongestPalindromeSubseq(string s, int mask, int[] dp) {
+        int n = s.Length;
+        for (int i = n - 1; i >= 0; i--) {
+            if ((mask & (1 << i)) != 0) continue;
+
+            int prev = 0;
+            for (int j = i + 1; j < n; j++) {
+                int tmp = dp[j];
+                if ((mask & (1 << j)) == 0 && s[i] == s[j]) {
+                    dp[j] = 2 + prev;
+                } else {
+                    dp[j] = Math.Max(dp[j - 1], dp[j]);
+                }
+                prev = tmp;
+            }
+        }
+        return dp[n - 1];
+    }
+
+    public int MaxProduct(string s) {
+        int n = s.Length;
+        int res = 0;
+        int[] dp = new int[n];
+
+        for (int i = 1; i < (1 << n); i++) {
+            int m1 = Palsize(s, i);
+            if (m1 == 0) continue;
+
+            for (int j = 0; j < n; j++) {
+                if ((i & (1 << j)) == 0) {
+                    dp[j] = 1;
+                } else {
+                    dp[j] = 0;
+                }
+            }
+            int m2 = LongestPalindromeSubseq(s, i, dp);
+            res = Math.Max(res, m1 * m2);
+        }
+        return res;
+    }
+
+    public int Palsize(string s, int mask) {
+        int i = 0, j = s.Length - 1;
+        int res = 0;
+        while (i <= j) {
+            if ((mask & (1 << i)) == 0) i++;
+            else if ((mask & (1 << j)) == 0) j--;
+            else {
+                if (s[i] != s[j]) return 0;
+                res += (i == j) ? 1 : 2;
+                i++;
+                j--;
+            }
+        }
+        return res;
+    }
+}
+```
+
+```go
+func maxProduct(s string) int {
+    n := len(s)
+    res := 0
+    dp := make([]int, n)
+
+    longestPalindromeSubseq := func(mask int) int {
+        for i := n - 1; i >= 0; i-- {
+            if (mask & (1 << i)) != 0 {
+                continue
+            }
+
+            prev := 0
+            for j := i + 1; j < n; j++ {
+                tmp := dp[j]
+                if (mask&(1<<j)) == 0 && s[i] == s[j] {
+                    dp[j] = 2 + prev
+                } else {
+                    dp[j] = max(dp[j-1], dp[j])
+                }
+                prev = tmp
+            }
+        }
+        return dp[n-1]
+    }
+
+    palsize := func(mask int) int {
+        i, j := 0, n-1
+        res := 0
+        for i <= j {
+            if (mask & (1 << i)) == 0 {
+                i++
+            } else if (mask & (1 << j)) == 0 {
+                j--
+            } else {
+                if s[i] != s[j] {
+                    return 0
+                }
+                if i == j {
+                    res += 1
+                } else {
+                    res += 2
+                }
+                i++
+                j--
+            }
+        }
+        return res
+    }
+
+    for i := 1; i < (1 << n); i++ {
+        m1 := palsize(i)
+        if m1 == 0 {
+            continue
+        }
+
+        for j := 0; j < n; j++ {
+            if (i & (1 << j)) == 0 {
+                dp[j] = 1
+            } else {
+                dp[j] = 0
+            }
+        }
+        m2 := longestPalindromeSubseq(i)
+        res = max(res, m1*m2)
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun longestPalindromeSubseq(s: String, mask: Int, dp: IntArray): Int {
+        val n = s.length
+        for (i in n - 1 downTo 0) {
+            if ((mask and (1 shl i)) != 0) continue
+
+            var prev = 0
+            for (j in i + 1 until n) {
+                val tmp = dp[j]
+                if ((mask and (1 shl j)) == 0 && s[i] == s[j]) {
+                    dp[j] = 2 + prev
+                } else {
+                    dp[j] = maxOf(dp[j - 1], dp[j])
+                }
+                prev = tmp
+            }
+        }
+        return dp[n - 1]
+    }
+
+    fun maxProduct(s: String): Int {
+        val n = s.length
+        var res = 0
+        val dp = IntArray(n) { 1 }
+
+        for (i in 1 until (1 shl n)) {
+            val m1 = palsize(s, i)
+            if (m1 == 0) continue
+
+            for (j in 0 until n) {
+                if ((i and (1 shl j)) == 0) {
+                    dp[j] = 1
+                } else {
+                    dp[j] = 0
+                }
+            }
+            val m2 = longestPalindromeSubseq(s, i, dp)
+            res = maxOf(res, m1 * m2)
+        }
+        return res
+    }
+
+    fun palsize(s: String, mask: Int): Int {
+        var i = 0
+        var j = s.length - 1
+        var res = 0
+        while (i <= j) {
+            if ((mask and (1 shl i)) == 0) i++
+            else if ((mask and (1 shl j)) == 0) j--
+            else {
+                if (s[i] != s[j]) return 0
+                res += if (i == j) 1 else 2
+                i++
+                j--
+            }
+        }
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func longestPalindromeSubseq(_ s: [Character], _ mask: Int, _ dp: inout [Int]) -> Int {
+        let n = s.count
+        for i in stride(from: n - 1, through: 0, by: -1) {
+            if (mask & (1 << i)) != 0 { continue }
+
+            var prev = 0
+            for j in (i + 1)..<n {
+                let tmp = dp[j]
+                if (mask & (1 << j)) == 0 && s[i] == s[j] {
+                    dp[j] = 2 + prev
+                } else {
+                    dp[j] = max(dp[j - 1], dp[j])
+                }
+                prev = tmp
+            }
+        }
+        return dp[n - 1]
+    }
+
+    func maxProduct(_ s: String) -> Int {
+        let chars = Array(s)
+        let n = chars.count
+        var res = 0
+        var dp = [Int](repeating: 1, count: n)
+
+        for i in 1..<(1 << n) {
+            let m1 = palsize(chars, i)
+            if m1 == 0 { continue }
+
+            for j in 0..<n {
+                if (i & (1 << j)) == 0 {
+                    dp[j] = 1
+                } else {
+                    dp[j] = 0
+                }
+            }
+            let m2 = longestPalindromeSubseq(chars, i, &dp)
+            res = max(res, m1 * m2)
+        }
+        return res
+    }
+
+    func palsize(_ s: [Character], _ mask: Int) -> Int {
+        var i = 0, j = s.count - 1
+        var res = 0
+        while i <= j {
+            if (mask & (1 << i)) == 0 { i += 1 }
+            else if (mask & (1 << j)) == 0 { j -= 1 }
+            else {
+                if s[i] != s[j] { return 0 }
+                res += (i == j) ? 1 : 2
+                i += 1
+                j -= 1
+            }
+        }
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn max_product(s: String) -> i32 {
+        let s = s.as_bytes();
+        let n = s.len();
+        let mut res = 0i32;
+        let mut dp = vec![1i32; n];
+
+        for i in 1..(1 << n) {
+            let m1 = Self::palsize(s, i);
+            if m1 == 0 {
+                continue;
+            }
+            for j in 0..n {
+                dp[j] = if i & (1 << j) == 0 { 1 } else { 0 };
+            }
+            let m2 = Self::longest_palindrome_subseq(s, i, &mut dp);
+            res = res.max(m1 * m2);
+        }
+        res
+    }
+
+    fn longest_palindrome_subseq(s: &[u8], mask: usize, dp: &mut [i32]) -> i32 {
+        let n = s.len();
+        for i in (0..n).rev() {
+            if mask & (1 << i) != 0 {
+                continue;
+            }
+            let mut prev = 0;
+            for j in (i + 1)..n {
+                let tmp = dp[j];
+                if mask & (1 << j) == 0 && s[i] == s[j] {
+                    dp[j] = 2 + prev;
+                } else {
+                    dp[j] = dp[j].max(dp[j - 1]);
+                }
+                prev = tmp;
+            }
+        }
+        dp[n - 1]
+    }
+
+    fn palsize(s: &[u8], mask: usize) -> i32 {
+        let (mut i, mut j) = (0i32, s.len() as i32 - 1);
+        let mut res = 0;
+        while i <= j {
+            if mask & (1 << i) == 0 {
+                i += 1;
+            } else if mask & (1 << j as usize) == 0 {
+                j -= 1;
+            } else {
+                if s[i as usize] != s[j as usize] {
+                    return 0;
+                }
+                res += if i == j { 1 } else { 2 };
+                i += 1;
+                j -= 1;
+            }
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n ^ 2 * 2 ^ n)$
 - Space complexity: $O(n)$
+
+---
+
+## Common Pitfalls
+
+### Allowing Overlapping Characters Between Subsequences
+
+The two palindromic subsequences must be disjoint, meaning they cannot share any character. When using bitmasks, ensure that `(mask1 & mask2) == 0` before considering a pair. Forgetting this check leads to invalid solutions where the same character is counted in both subsequences.
+
+### Not Validating Palindrome Before Computing Product
+
+When iterating through bitmasks, some masks represent subsequences that are not palindromes. Computing the product of lengths without first verifying that both subsequences are actually palindromes leads to incorrect maximum values.
+
+### Inefficient Palindrome Checking in Tight Loops
+
+Constructing new strings for each subsequence and then checking if they are palindromes is expensive. For optimal solutions, use two-pointer validation directly on the original string with mask-based index skipping to avoid repeated string allocations inside the exponential loop.

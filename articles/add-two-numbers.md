@@ -1,4 +1,48 @@
+## Prerequisites
+Before attempting this problem, you should be comfortable with:
+- **Linked Lists** - Traversing and creating new nodes in a singly linked list
+- **Recursion** - Understanding how to break down problems into smaller subproblems
+- **Carry Propagation** - How carry works when adding numbers digit by digit
+
+---
+
 ## 1. Recursion
+
+### Intuition
+
+We add the two linked lists exactly like adding two numbers on paper.
+
+Each node contains one digit, and since the lists are stored in **reverse order**, the head contains the ones place — making addition easy.  
+At every step:
+
+1. Take a digit from `l1` (or `0` if it's finished)
+2. Take a digit from `l2` (or `0` if it's finished)
+3. Add them with the incoming `carry`
+4. Create a new node for the current digit (`sum % 10`)
+5. Pass the new `carry` (`sum // 10`) forward using **recursion**
+
+The recursion naturally processes digits from left to right and stops only when:
+- both lists are fully processed **and**
+- no carry remains.
+
+### Algorithm
+
+1. Define a recursive function `add(l1, l2, carry)`:
+   - If `l1`, `l2` are both `None` and `carry` is `0`, return `None`.
+   - Extract:
+     - `v1 = l1.val` if `l1` exists, else `0`
+     - `v2 = l2.val` if `l2` exists, else `0`
+   - Compute:
+     - `total = v1 + v2 + carry`
+     - `carry, digit = divmod(total, 10)`
+   - Recursively compute the next node using:
+     - `l1.next` if exists
+     - `l2.next` if exists
+     - updated `carry`
+   - Return a node with value `digit` whose `next` is the recursive result.
+
+2. In `addTwoNumbers`, call:
+    - `return add(l1, l2, 0)`
 
 ::tabs-start
 
@@ -337,18 +381,103 @@ class Solution {
 }
 ```
 
+
+```rust
+// Definition for singly-linked list.
+// #[derive(PartialEq, Eq, Clone, Debug)]
+// pub struct ListNode {
+//   pub val: i32,
+//   pub next: Option<Box<ListNode>>
+// }
+impl Solution {
+    fn add(
+        l1: Option<Box<ListNode>>,
+        l2: Option<Box<ListNode>>,
+        carry: i32,
+    ) -> Option<Box<ListNode>> {
+        if l1.is_none() && l2.is_none() && carry == 0 {
+            return None;
+        }
+
+        let v1 = l1.as_ref().map_or(0, |n| n.val);
+        let v2 = l2.as_ref().map_or(0, |n| n.val);
+
+        let sum = v1 + v2 + carry;
+        let new_carry = sum / 10;
+        let node_value = sum % 10;
+
+        let next_node = Self::add(
+            l1.and_then(|n| n.next),
+            l2.and_then(|n| n.next),
+            new_carry,
+        );
+
+        Some(Box::new(ListNode { val: node_value, next: next_node }))
+    }
+
+    pub fn add_two_numbers(
+        l1: Option<Box<ListNode>>,
+        l2: Option<Box<ListNode>>,
+    ) -> Option<Box<ListNode>> {
+        Self::add(l1, l2, 0)
+    }
+}
+```
 ::tabs-end
 
 ### Time & Space Complexity
 
-- Time complexity: $O(m + n)$
-- Space complexity: $O(m + n)$
+- Time complexity: $O(max(m, n))$
+    - This is asymptotically equivalent to $O(m + n)$.
+- Space complexity: $O(max(m, n))$
+    - $O(max(m, n))$ for the recursion call stack.
+    - $O(max(m, n))$ for the output list.
 
 > Where $m$ is the length of $l1$ and $n$ is the length of $l2$.
 
 ---
 
 ## 2. Iteration
+
+### Intuition
+
+We simulate normal addition the same way we do on paper — digit by digit.
+
+The linked lists store numbers in **reverse order**, so the first nodes represent the 1’s place.  
+This makes addition straightforward:
+
+- Add the two digits.
+- Add the `carry` from the previous step.
+- Save the resulting digit (`sum % 10`) into a new node.
+- Update the `carry` (`sum // 10`).
+- Move both pointers forward.
+
+We continue until **both lists are finished AND no carry remains**.  
+A dummy node helps us easily build and return the final linked list.
+
+### Algorithm
+
+1. Create:
+   - A `dummy` node (to build the answer)
+   - A pointer `cur` pointing to `dummy`
+   - An integer `carry = 0`
+
+2. Loop while `l1` exists, `l2` exists, or `carry` is non-zero:
+   - Read the current digit of each list (`0` if that list already ended)
+   - Compute
+     `sum = v1 + v2 + carry`
+   - Update:
+     `carry = sum // 10`
+     `digit = sum % 10`
+   - Append a new node containing `digit`
+   - Move the pointers `l1`, `l2`, and `cur` forward
+
+3. Return `dummy.next` (the head of the result list)
+
+This ensures correct handling of:
+- different lengths of input lists  
+- leftover carry  
+- building the result in one pass  
 
 ::tabs-start
 
@@ -647,13 +776,70 @@ class Solution {
 }
 ```
 
+
+```rust
+// Definition for singly-linked list.
+// #[derive(PartialEq, Eq, Clone, Debug)]
+// pub struct ListNode {
+//   pub val: i32,
+//   pub next: Option<Box<ListNode>>
+// }
+impl Solution {
+    pub fn add_two_numbers(
+        l1: Option<Box<ListNode>>,
+        l2: Option<Box<ListNode>>,
+    ) -> Option<Box<ListNode>> {
+        let mut dummy = Box::new(ListNode::new(0));
+        let mut cur = &mut dummy;
+        let mut l1 = l1;
+        let mut l2 = l2;
+        let mut carry = 0;
+
+        while l1.is_some() || l2.is_some() || carry != 0 {
+            let v1 = l1.as_ref().map_or(0, |n| n.val);
+            let v2 = l2.as_ref().map_or(0, |n| n.val);
+
+            let sum = v1 + v2 + carry;
+            carry = sum / 10;
+            cur.next = Some(Box::new(ListNode::new(sum % 10)));
+
+            cur = cur.next.as_mut().unwrap();
+            l1 = l1.and_then(|n| n.next);
+            l2 = l2.and_then(|n| n.next);
+        }
+
+        dummy.next
+    }
+}
+```
 ::tabs-end
 
 ### Time & Space Complexity
 
-- Time complexity: $O(m + n)$
+- Time complexity: $O(max(m, n))$
+    - This is asymptotically equivalent to $O(m + n)$.
 - Space complexity:
     - $O(1)$ extra space.
     - $O(max(m, n))$ for the output list.
 
 > Where $m$ is the length of $l1$ and $n$ is the length of $l2$.
+
+---
+
+## Common Pitfalls
+
+### Forgetting the Final Carry
+When both lists are exhausted, there may still be a carry of 1 (e.g., `999 + 1 = 1000`). Stopping the loop early without checking for remaining carry produces an incorrect result.
+```python
+# Wrong: missing carry check
+while l1 or l2:  # Should be: while l1 or l2 or carry
+    # ...
+```
+
+### Not Handling Lists of Different Lengths
+When one list is longer than the other, the loop must continue processing the remaining nodes. Using `l1 and l2` instead of `l1 or l2` stops too early.
+```python
+# Wrong: requires both lists to have nodes
+while l1 and l2:  # Stops when either list ends
+    # ...
+```

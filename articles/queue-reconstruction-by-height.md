@@ -1,4 +1,28 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Custom Sorting** - Sorting with multiple criteria (height and k-value)
+- **Greedy Algorithms** - Processing people in an order that simplifies placement decisions
+- **List Insertion** - Understanding how inserting at an index shifts subsequent elements
+- **Segment Tree / Binary Indexed Tree** - For optimal solutions tracking available slots efficiently
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+Each person has a height and a count of how many taller-or-equal people should be in front of them. We build the queue one person at a time, always choosing someone whose `k`-value matches exactly how many qualifying people are already placed. Among valid candidates, we pick the shortest to avoid blocking future placements.
+
+### Algorithm
+
+1. Group people by their `k`-value and sort each group by height in descending order.
+2. Build the result array iteratively, placing one person per iteration.
+3. For each position, find a valid candidate: someone whose `k`-value equals the count of already-placed people with height >= their height.
+4. Among valid candidates, choose the one with the smallest height.
+5. Remove the chosen person from the map and add to the result.
+6. Return the reconstructed queue.
 
 ::tabs-start
 
@@ -174,6 +198,211 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int[][] ReconstructQueue(int[][] people) {
+        int n = people.Length;
+        var mp = new Dictionary<int, List<int>>();
+
+        foreach (var p in people) {
+            if (!mp.ContainsKey(p[1])) mp[p[1]] = new List<int>();
+            mp[p[1]].Add(p[0]);
+        }
+        foreach (var key in mp.Keys.ToList()) {
+            mp[key].Sort((a, b) => b.CompareTo(a));
+        }
+
+        var res = new List<int[]>();
+        for (int i = 0; i < n; i++) {
+            int mini = -1;
+            foreach (var k in mp.Keys) {
+                if (k > i) continue;
+
+                int cnt = 0;
+                for (int j = res.Count - 1; j >= 0; j--) {
+                    if (res[j][0] >= mp[k][mp[k].Count - 1]) cnt++;
+                }
+
+                if (cnt == k && (mini == -1 || mp[k][mp[k].Count - 1] < mp[mini][mp[mini].Count - 1])) {
+                    mini = k;
+                }
+            }
+
+            res.Add(new int[] { mp[mini][mp[mini].Count - 1], mini });
+            mp[mini].RemoveAt(mp[mini].Count - 1);
+            if (mp[mini].Count == 0) {
+                mp.Remove(mini);
+            }
+        }
+
+        return res.ToArray();
+    }
+}
+```
+
+```go
+func reconstructQueue(people [][]int) [][]int {
+    n := len(people)
+    mp := make(map[int][]int)
+
+    for _, p := range people {
+        mp[p[1]] = append(mp[p[1]], p[0])
+    }
+    for k := range mp {
+        sort.Sort(sort.Reverse(sort.IntSlice(mp[k])))
+    }
+
+    res := [][]int{}
+    for i := 0; i < n; i++ {
+        mini := -1
+        for k := range mp {
+            if k > i {
+                continue
+            }
+
+            cnt := 0
+            for j := len(res) - 1; j >= 0; j-- {
+                if res[j][0] >= mp[k][len(mp[k])-1] {
+                    cnt++
+                }
+            }
+
+            if cnt == k && (mini == -1 || mp[k][len(mp[k])-1] < mp[mini][len(mp[mini])-1]) {
+                mini = k
+            }
+        }
+
+        res = append(res, []int{mp[mini][len(mp[mini])-1], mini})
+        mp[mini] = mp[mini][:len(mp[mini])-1]
+        if len(mp[mini]) == 0 {
+            delete(mp, mini)
+        }
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun reconstructQueue(people: Array<IntArray>): Array<IntArray> {
+        val n = people.size
+        val mp = mutableMapOf<Int, MutableList<Int>>()
+
+        for (p in people) {
+            mp.getOrPut(p[1]) { mutableListOf() }.add(p[0])
+        }
+        for (key in mp.keys) {
+            mp[key]!!.sortDescending()
+        }
+
+        val res = mutableListOf<IntArray>()
+        for (i in 0 until n) {
+            var mini = -1
+            for (k in mp.keys) {
+                if (k > i) continue
+
+                var cnt = 0
+                for (j in res.indices.reversed()) {
+                    if (res[j][0] >= mp[k]!!.last()) cnt++
+                }
+
+                if (cnt == k && (mini == -1 || mp[k]!!.last() < mp[mini]!!.last())) {
+                    mini = k
+                }
+            }
+
+            res.add(intArrayOf(mp[mini]!!.removeLast(), mini))
+            if (mp[mini]!!.isEmpty()) {
+                mp.remove(mini)
+            }
+        }
+
+        return res.toTypedArray()
+    }
+}
+```
+
+```swift
+class Solution {
+    func reconstructQueue(_ people: [[Int]]) -> [[Int]] {
+        let n = people.count
+        var mp = [Int: [Int]]()
+
+        for p in people {
+            mp[p[1], default: []].append(p[0])
+        }
+        for key in mp.keys {
+            mp[key]!.sort(by: >)
+        }
+
+        var res = [[Int]]()
+        for i in 0..<n {
+            var mini = -1
+            for k in mp.keys {
+                if k > i { continue }
+
+                var cnt = 0
+                for j in stride(from: res.count - 1, through: 0, by: -1) {
+                    if res[j][0] >= mp[k]!.last! {
+                        cnt += 1
+                    }
+                }
+
+                if cnt == k && (mini == -1 || mp[k]!.last! < mp[mini]!.last!) {
+                    mini = k
+                }
+            }
+
+            res.append([mp[mini]!.removeLast(), mini])
+            if mp[mini]!.isEmpty {
+                mp.removeValue(forKey: mini)
+            }
+        }
+
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn reconstruct_queue(people: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+        let n = people.len();
+        let mut mp: HashMap<i32, Vec<i32>> = HashMap::new();
+
+        for p in &people {
+            mp.entry(p[1]).or_default().push(p[0]);
+        }
+        for v in mp.values_mut() {
+            v.sort_unstable_by(|a, b| b.cmp(a));
+        }
+
+        let mut res: Vec<Vec<i32>> = Vec::new();
+        for i in 0..n {
+            let mut mini: i32 = -1;
+            let keys: Vec<i32> = mp.keys().copied().collect();
+            for &k in &keys {
+                if k as usize > i { continue; }
+                let last = *mp[&k].last().unwrap();
+                let cnt = res.iter().filter(|r| r[0] >= last).count() as i32;
+                if cnt == k && (mini == -1 || last < *mp[&mini].last().unwrap()) {
+                    mini = k;
+                }
+            }
+
+            let val = mp.get_mut(&mini).unwrap().pop().unwrap();
+            res.push(vec![val, mini]);
+            if mp[&mini].is_empty() {
+                mp.remove(&mini);
+            }
+        }
+
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -184,6 +413,18 @@ class Solution {
 ---
 
 ## 2. Sorting by Height in Descending Order
+
+### Intuition
+
+If we process people from tallest to shortest, when placing each person, all previously placed people are at least as tall. This means a person's `k`-value directly tells us their insertion position. We sort by height descending (and by `k` ascending for ties), then insert each person at index `k`.
+
+### Algorithm
+
+1. Sort people by height in descending order. For same heights, sort by `k` in ascending order.
+2. Initialize an empty result list.
+3. For each person in sorted order, insert them at index equal to their `k`-value.
+4. Since all previously inserted people are taller or equal, inserting at position `k` guarantees exactly `k` people are in front.
+5. Return the result list.
 
 ::tabs-start
 
@@ -247,6 +488,80 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int[][] ReconstructQueue(int[][] people) {
+        Array.Sort(people, (a, b) => a[0] == b[0] ? a[1] - b[1] : b[0] - a[0]);
+        var res = new List<int[]>();
+        foreach (var person in people) {
+            res.Insert(person[1], person);
+        }
+        return res.ToArray();
+    }
+}
+```
+
+```go
+func reconstructQueue(people [][]int) [][]int {
+    sort.Slice(people, func(i, j int) bool {
+        if people[i][0] == people[j][0] {
+            return people[i][1] < people[j][1]
+        }
+        return people[i][0] > people[j][0]
+    })
+
+    res := [][]int{}
+    for _, p := range people {
+        res = append(res[:p[1]], append([][]int{p}, res[p[1]:]...)...)
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun reconstructQueue(people: Array<IntArray>): Array<IntArray> {
+        people.sortWith(compareBy({ -it[0] }, { it[1] }))
+        val res = mutableListOf<IntArray>()
+        for (person in people) {
+            res.add(person[1], person)
+        }
+        return res.toTypedArray()
+    }
+}
+```
+
+```swift
+class Solution {
+    func reconstructQueue(_ people: [[Int]]) -> [[Int]] {
+        var people = people.sorted {
+            $0[0] == $1[0] ? $0[1] < $1[1] : $0[0] > $1[0]
+        }
+        var res = [[Int]]()
+        for p in people {
+            res.insert(p, at: p[1])
+        }
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn reconstruct_queue(mut people: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+        people.sort_unstable_by(|a, b| {
+            if a[0] == b[0] { a[1].cmp(&b[1]) } else { b[0].cmp(&a[0]) }
+        });
+        let mut res: Vec<Vec<i32>> = Vec::new();
+        for p in people {
+            let k = p[1] as usize;
+            res.insert(k, p);
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -257,6 +572,18 @@ class Solution {
 ---
 
 ## 3. Sorting by Height in Ascending Order
+
+### Intuition
+
+Processing from shortest to tallest, each person only cares about empty slots since all future placements will be taller. A person with `k`-value `x` needs to be placed in the `(x + 1)`th empty slot. We sort by height ascending (and by `k` descending for ties), then find the appropriate empty slot for each person.
+
+### Algorithm
+
+1. Sort people by height in ascending order. For same heights, sort by `k` in descending order.
+2. Initialize a result array with empty slots.
+3. For each person, count empty slots from left to right until we find the `(k + 1)`th empty slot.
+4. Place the person at that position.
+5. Return the filled result array.
 
 ::tabs-start
 
@@ -361,6 +688,139 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int[][] ReconstructQueue(int[][] people) {
+        int n = people.Length;
+        Array.Sort(people, (a, b) => a[0] == b[0] ? b[1] - a[1] : a[0] - b[0]);
+        int[][] res = new int[n][];
+
+        foreach (var p in people) {
+            int cnt = 0, i = 0;
+            while (i < n) {
+                if (res[i] == null) {
+                    if (cnt == p[1]) break;
+                    cnt++;
+                }
+                i++;
+            }
+            res[i] = p;
+        }
+
+        return res;
+    }
+}
+```
+
+```go
+func reconstructQueue(people [][]int) [][]int {
+    n := len(people)
+    sort.Slice(people, func(i, j int) bool {
+        if people[i][0] == people[j][0] {
+            return people[i][1] > people[j][1]
+        }
+        return people[i][0] < people[j][0]
+    })
+
+    res := make([][]int, n)
+    for _, p := range people {
+        cnt, i := 0, 0
+        for i < n {
+            if res[i] == nil {
+                if cnt == p[1] {
+                    break
+                }
+                cnt++
+            }
+            i++
+        }
+        res[i] = p
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun reconstructQueue(people: Array<IntArray>): Array<IntArray> {
+        val n = people.size
+        people.sortWith(compareBy({ it[0] }, { -it[1] }))
+        val res = arrayOfNulls<IntArray>(n)
+
+        for (p in people) {
+            var cnt = 0
+            var i = 0
+            while (i < n) {
+                if (res[i] == null) {
+                    if (cnt == p[1]) break
+                    cnt++
+                }
+                i++
+            }
+            res[i] = p
+        }
+
+        return res.requireNoNulls()
+    }
+}
+```
+
+```swift
+class Solution {
+    func reconstructQueue(_ people: [[Int]]) -> [[Int]] {
+        let n = people.count
+        var people = people.sorted {
+            $0[0] == $1[0] ? $0[1] > $1[1] : $0[0] < $1[0]
+        }
+        var res = [[Int]?](repeating: nil, count: n)
+
+        for p in people {
+            var cnt = 0, i = 0
+            while i < n {
+                if res[i] == nil {
+                    if cnt == p[1] { break }
+                    cnt += 1
+                }
+                i += 1
+            }
+            res[i] = p
+        }
+
+        return res.compactMap { $0 }
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn reconstruct_queue(mut people: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+        let n = people.len();
+        people.sort_unstable_by(|a, b| {
+            if a[0] == b[0] { b[1].cmp(&a[1]) } else { a[0].cmp(&b[0]) }
+        });
+        let mut res: Vec<Option<Vec<i32>>> = vec![None; n];
+        let mut used = vec![false; n];
+
+        for p in &people {
+            let mut cnt = 0;
+            let mut i = 0;
+            while i < n {
+                if !used[i] {
+                    if cnt == p[1] { break; }
+                    cnt += 1;
+                }
+                i += 1;
+            }
+            used[i] = true;
+            res[i] = Some(p.clone());
+        }
+
+        res.into_iter().map(|x| x.unwrap()).collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -371,6 +831,20 @@ class Solution {
 ---
 
 ## 4. Binary Search + Segment Tree
+
+### Intuition
+
+The ascending-order approach requires finding the `(k + 1)`th empty slot, which takes `O(n)` time per person. We can speed this up using a segment tree that tracks the count of empty slots in ranges. Binary search combined with range queries lets us find the target slot in `O(log n)` time.
+
+### Algorithm
+
+1. Sort people by height ascending, then by `k` descending for ties.
+2. Build a segment tree where each leaf is initialized to `1` (empty slot).
+3. For each person:
+    - Binary search for the smallest index where the prefix sum of empty slots exceeds `k`.
+    - Place the person at that index.
+    - Update the segment tree to mark that slot as filled.
+4. Return the result array.
 
 ::tabs-start
 
@@ -674,6 +1148,364 @@ class Solution {
 }
 ```
 
+```csharp
+public class SegmentTree {
+    private int n;
+    private int[] tree;
+
+    public SegmentTree(int N) {
+        n = N;
+        while ((n & (n - 1)) != 0) n++;
+        Build(N);
+    }
+
+    private void Build(int N) {
+        tree = new int[2 * n];
+        for (int i = 0; i < N; i++) {
+            tree[n + i] = 1;
+        }
+        for (int i = n - 1; i > 0; i--) {
+            tree[i] = tree[i << 1] + tree[(i << 1) | 1];
+        }
+    }
+
+    public void Update(int i, int val) {
+        tree[n + i] = val;
+        for (int j = (n + i) >> 1; j >= 1; j >>= 1) {
+            tree[j] = tree[j << 1] + tree[(j << 1) | 1];
+        }
+    }
+
+    public int Query(int l, int r) {
+        int res = 0;
+        for (l += n, r += n + 1; l < r; l >>= 1, r >>= 1) {
+            if ((l & 1) == 1) res += tree[l++];
+            if ((r & 1) == 1) res += tree[--r];
+        }
+        return res;
+    }
+}
+
+public class Solution {
+    public int[][] ReconstructQueue(int[][] people) {
+        int n = people.Length;
+        Array.Sort(people, (a, b) => a[0] == b[0] ? b[1] - a[1] : a[0] - b[0]);
+        int[][] res = new int[n][];
+
+        var segTree = new SegmentTree(n);
+        foreach (var p in people) {
+            int l = 0, r = n - 1, idx = 0;
+            while (l <= r) {
+                int mid = (l + r) >> 1;
+                int cnt = segTree.Query(0, mid);
+                if (cnt > p[1]) {
+                    idx = mid;
+                    r = mid - 1;
+                } else {
+                    l = mid + 1;
+                }
+            }
+
+            res[idx] = p;
+            segTree.Update(idx, 0);
+        }
+
+        return res;
+    }
+}
+```
+
+```go
+type SegmentTree struct {
+    n    int
+    tree []int
+}
+
+func NewSegmentTree(N int) *SegmentTree {
+    n := N
+    for n&(n-1) != 0 {
+        n++
+    }
+    st := &SegmentTree{n: n, tree: make([]int, 2*n)}
+    for i := 0; i < N; i++ {
+        st.tree[n+i] = 1
+    }
+    for i := n - 1; i > 0; i-- {
+        st.tree[i] = st.tree[i<<1] + st.tree[i<<1|1]
+    }
+    return st
+}
+
+func (st *SegmentTree) Update(i, val int) {
+    st.tree[st.n+i] = val
+    for j := (st.n + i) >> 1; j >= 1; j >>= 1 {
+        st.tree[j] = st.tree[j<<1] + st.tree[j<<1|1]
+    }
+}
+
+func (st *SegmentTree) Query(l, r int) int {
+    res := 0
+    for l, r = l+st.n, r+st.n+1; l < r; l, r = l>>1, r>>1 {
+        if l&1 == 1 {
+            res += st.tree[l]
+            l++
+        }
+        if r&1 == 1 {
+            r--
+            res += st.tree[r]
+        }
+    }
+    return res
+}
+
+func reconstructQueue(people [][]int) [][]int {
+    n := len(people)
+    sort.Slice(people, func(i, j int) bool {
+        if people[i][0] == people[j][0] {
+            return people[i][1] > people[j][1]
+        }
+        return people[i][0] < people[j][0]
+    })
+
+    res := make([][]int, n)
+    segTree := NewSegmentTree(n)
+    for _, p := range people {
+        l, r, idx := 0, n-1, 0
+        for l <= r {
+            mid := (l + r) >> 1
+            cnt := segTree.Query(0, mid)
+            if cnt > p[1] {
+                idx = mid
+                r = mid - 1
+            } else {
+                l = mid + 1
+            }
+        }
+
+        res[idx] = p
+        segTree.Update(idx, 0)
+    }
+
+    return res
+}
+```
+
+```kotlin
+class SegmentTree(N: Int) {
+    private var n: Int = N
+    private lateinit var tree: IntArray
+
+    init {
+        while (n and (n - 1) != 0) n++
+        build(N)
+    }
+
+    private fun build(N: Int) {
+        tree = IntArray(2 * n)
+        for (i in 0 until N) {
+            tree[n + i] = 1
+        }
+        for (i in n - 1 downTo 1) {
+            tree[i] = tree[i shl 1] + tree[i shl 1 or 1]
+        }
+    }
+
+    fun update(i: Int, value: Int) {
+        tree[n + i] = value
+        var j = (n + i) shr 1
+        while (j >= 1) {
+            tree[j] = tree[j shl 1] + tree[j shl 1 or 1]
+            j = j shr 1
+        }
+    }
+
+    fun query(l: Int, r: Int): Int {
+        var res = 0
+        var left = l + n
+        var right = r + n + 1
+        while (left < right) {
+            if (left and 1 == 1) res += tree[left++]
+            if (right and 1 == 1) res += tree[--right]
+            left = left shr 1
+            right = right shr 1
+        }
+        return res
+    }
+}
+
+class Solution {
+    fun reconstructQueue(people: Array<IntArray>): Array<IntArray> {
+        val n = people.size
+        people.sortWith(compareBy({ it[0] }, { -it[1] }))
+        val res = arrayOfNulls<IntArray>(n)
+
+        val segTree = SegmentTree(n)
+        for (p in people) {
+            var l = 0
+            var r = n - 1
+            var idx = 0
+            while (l <= r) {
+                val mid = (l + r) shr 1
+                val cnt = segTree.query(0, mid)
+                if (cnt > p[1]) {
+                    idx = mid
+                    r = mid - 1
+                } else {
+                    l = mid + 1
+                }
+            }
+
+            res[idx] = p
+            segTree.update(idx, 0)
+        }
+
+        return res.requireNoNulls()
+    }
+}
+```
+
+```swift
+class SegmentTree {
+    private var n: Int
+    private var tree: [Int]
+
+    init(_ N: Int) {
+        n = N
+        while n & (n - 1) != 0 { n += 1 }
+        tree = [Int](repeating: 0, count: 2 * n)
+        for i in 0..<N {
+            tree[n + i] = 1
+        }
+        for i in stride(from: n - 1, through: 1, by: -1) {
+            tree[i] = tree[i << 1] + tree[i << 1 | 1]
+        }
+    }
+
+    func update(_ i: Int, _ val: Int) {
+        tree[n + i] = val
+        var j = (n + i) >> 1
+        while j >= 1 {
+            tree[j] = tree[j << 1] + tree[j << 1 | 1]
+            j >>= 1
+        }
+    }
+
+    func query(_ l: Int, _ r: Int) -> Int {
+        var res = 0
+        var left = l + n
+        var right = r + n + 1
+        while left < right {
+            if left & 1 == 1 {
+                res += tree[left]
+                left += 1
+            }
+            if right & 1 == 1 {
+                right -= 1
+                res += tree[right]
+            }
+            left >>= 1
+            right >>= 1
+        }
+        return res
+    }
+}
+
+class Solution {
+    func reconstructQueue(_ people: [[Int]]) -> [[Int]] {
+        let n = people.count
+        var people = people.sorted {
+            $0[0] == $1[0] ? $0[1] > $1[1] : $0[0] < $1[0]
+        }
+        var res = [[Int]?](repeating: nil, count: n)
+
+        let segTree = SegmentTree(n)
+        for p in people {
+            var l = 0, r = n - 1, idx = 0
+            while l <= r {
+                let mid = (l + r) >> 1
+                let cnt = segTree.query(0, mid)
+                if cnt > p[1] {
+                    idx = mid
+                    r = mid - 1
+                } else {
+                    l = mid + 1
+                }
+            }
+
+            res[idx] = p
+            segTree.update(idx, 0)
+        }
+
+        return res.compactMap { $0 }
+    }
+}
+```
+
+```rust
+struct SegTree {
+    n: usize,
+    tree: Vec<i32>,
+}
+
+impl SegTree {
+    fn new(big_n: usize) -> Self {
+        let mut n = big_n;
+        while n & (n - 1) != 0 { n += 1; }
+        let mut tree = vec![0i32; 2 * n];
+        for i in 0..big_n { tree[n + i] = 1; }
+        for i in (1..n).rev() { tree[i] = tree[i << 1] + tree[i << 1 | 1]; }
+        Self { n, tree }
+    }
+    fn update(&mut self, i: usize, val: i32) {
+        self.tree[self.n + i] = val;
+        let mut j = (self.n + i) >> 1;
+        while j >= 1 {
+            self.tree[j] = self.tree[j << 1] + self.tree[j << 1 | 1];
+            j >>= 1;
+        }
+    }
+    fn query(&self, l: usize, r: usize) -> i32 {
+        let (mut l, mut r) = (l + self.n, r + self.n + 1);
+        let mut res = 0;
+        while l < r {
+            if l & 1 == 1 { res += self.tree[l]; l += 1; }
+            if r & 1 == 1 { r -= 1; res += self.tree[r]; }
+            l >>= 1; r >>= 1;
+        }
+        res
+    }
+}
+
+impl Solution {
+    pub fn reconstruct_queue(mut people: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+        let n = people.len();
+        people.sort_unstable_by(|a, b| {
+            if a[0] == b[0] { b[1].cmp(&a[1]) } else { a[0].cmp(&b[0]) }
+        });
+        let mut res: Vec<Option<Vec<i32>>> = vec![None; n];
+        let mut seg = SegTree::new(n);
+
+        for p in &people {
+            let (mut lo, mut hi, mut idx) = (0usize, n - 1, 0usize);
+            while lo <= hi {
+                let mid = (lo + hi) >> 1;
+                if seg.query(0, mid) > p[1] {
+                    idx = mid;
+                    if mid == 0 { break; }
+                    hi = mid - 1;
+                } else {
+                    lo = mid + 1;
+                }
+            }
+            res[idx] = Some(p.clone());
+            seg.update(idx, 0);
+        }
+
+        res.into_iter().map(|x| x.unwrap()).collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -684,6 +1516,20 @@ class Solution {
 ---
 
 ## 5. Binary Search + Binary Indexed Tree (Fenwick Tree)
+
+### Intuition
+
+Similar to the segment tree approach, but using a Binary Indexed Tree (Fenwick Tree) for prefix sum queries. The BIT supports efficient point updates and prefix queries, making it well-suited for tracking empty slot counts. We still use binary search to find the target position.
+
+### Algorithm
+
+1. Sort people by height ascending, then by `k` descending for ties.
+2. Initialize a BIT with all positions marked as available (value `1`).
+3. For each person:
+    - Binary search for the position where the prefix count of available slots first exceeds `k`.
+    - Place the person at that position.
+    - Update the BIT to decrement the count at that position.
+4. Return the result array.
 
 ::tabs-start
 
@@ -953,6 +1799,335 @@ class Solution {
 }
 ```
 
+```csharp
+public class BIT {
+    private int[] tree;
+    private int n;
+
+    public BIT(int N) {
+        n = N + 1;
+        tree = new int[n];
+        for (int i = 0; i < n - 1; i++) {
+            Update(i, 1);
+        }
+    }
+
+    public void Update(int index, int val) {
+        index++;
+        while (index < n) {
+            tree[index] += val;
+            index += index & -index;
+        }
+    }
+
+    public int PrefixSum(int index) {
+        int totalSum = 0;
+        while (index > 0) {
+            totalSum += tree[index];
+            index -= index & -index;
+        }
+        return totalSum;
+    }
+
+    public int Query(int left, int right) {
+        return PrefixSum(right + 1) - PrefixSum(left);
+    }
+}
+
+public class Solution {
+    public int[][] ReconstructQueue(int[][] people) {
+        int n = people.Length;
+        Array.Sort(people, (a, b) => a[0] == b[0] ? b[1] - a[1] : a[0] - b[0]);
+        int[][] res = new int[n][];
+
+        var bit = new BIT(n);
+        foreach (var p in people) {
+            int l = 0, r = n - 1, idx = 0;
+            while (l <= r) {
+                int mid = (l + r) >> 1;
+                int cnt = bit.Query(0, mid);
+                if (cnt > p[1]) {
+                    idx = mid;
+                    r = mid - 1;
+                } else {
+                    l = mid + 1;
+                }
+            }
+
+            res[idx] = p;
+            bit.Update(idx, -1);
+        }
+
+        return res;
+    }
+}
+```
+
+```go
+type BIT struct {
+    tree []int
+    n    int
+}
+
+func NewBIT(N int) *BIT {
+    n := N + 1
+    bit := &BIT{tree: make([]int, n), n: n}
+    for i := 0; i < n-1; i++ {
+        bit.Update(i, 1)
+    }
+    return bit
+}
+
+func (bit *BIT) Update(index, val int) {
+    index++
+    for index < bit.n {
+        bit.tree[index] += val
+        index += index & -index
+    }
+}
+
+func (bit *BIT) PrefixSum(index int) int {
+    totalSum := 0
+    for index > 0 {
+        totalSum += bit.tree[index]
+        index -= index & -index
+    }
+    return totalSum
+}
+
+func (bit *BIT) Query(left, right int) int {
+    return bit.PrefixSum(right+1) - bit.PrefixSum(left)
+}
+
+func reconstructQueue(people [][]int) [][]int {
+    n := len(people)
+    sort.Slice(people, func(i, j int) bool {
+        if people[i][0] == people[j][0] {
+            return people[i][1] > people[j][1]
+        }
+        return people[i][0] < people[j][0]
+    })
+
+    res := make([][]int, n)
+    bit := NewBIT(n)
+    for _, p := range people {
+        l, r, idx := 0, n-1, 0
+        for l <= r {
+            mid := (l + r) >> 1
+            cnt := bit.Query(0, mid)
+            if cnt > p[1] {
+                idx = mid
+                r = mid - 1
+            } else {
+                l = mid + 1
+            }
+        }
+
+        res[idx] = p
+        bit.Update(idx, -1)
+    }
+
+    return res
+}
+```
+
+```kotlin
+class BIT(N: Int) {
+    private val tree: IntArray
+    private val n: Int = N + 1
+
+    init {
+        tree = IntArray(n)
+        for (i in 0 until n - 1) {
+            update(i, 1)
+        }
+    }
+
+    fun update(index: Int, value: Int) {
+        var idx = index + 1
+        while (idx < n) {
+            tree[idx] += value
+            idx += idx and -idx
+        }
+    }
+
+    fun prefixSum(index: Int): Int {
+        var totalSum = 0
+        var idx = index
+        while (idx > 0) {
+            totalSum += tree[idx]
+            idx -= idx and -idx
+        }
+        return totalSum
+    }
+
+    fun query(left: Int, right: Int): Int {
+        return prefixSum(right + 1) - prefixSum(left)
+    }
+}
+
+class Solution {
+    fun reconstructQueue(people: Array<IntArray>): Array<IntArray> {
+        val n = people.size
+        people.sortWith(compareBy({ it[0] }, { -it[1] }))
+        val res = arrayOfNulls<IntArray>(n)
+
+        val bit = BIT(n)
+        for (p in people) {
+            var l = 0
+            var r = n - 1
+            var idx = 0
+            while (l <= r) {
+                val mid = (l + r) shr 1
+                val cnt = bit.query(0, mid)
+                if (cnt > p[1]) {
+                    idx = mid
+                    r = mid - 1
+                } else {
+                    l = mid + 1
+                }
+            }
+
+            res[idx] = p
+            bit.update(idx, -1)
+        }
+
+        return res.requireNoNulls()
+    }
+}
+```
+
+```swift
+class BIT {
+    private var tree: [Int]
+    private var n: Int
+
+    init(_ N: Int) {
+        n = N + 1
+        tree = [Int](repeating: 0, count: n)
+        for i in 0..<(n - 1) {
+            update(i, 1)
+        }
+    }
+
+    func update(_ index: Int, _ val: Int) {
+        var idx = index + 1
+        while idx < n {
+            tree[idx] += val
+            idx += idx & -idx
+        }
+    }
+
+    func prefixSum(_ index: Int) -> Int {
+        var totalSum = 0
+        var idx = index
+        while idx > 0 {
+            totalSum += tree[idx]
+            idx -= idx & -idx
+        }
+        return totalSum
+    }
+
+    func query(_ left: Int, _ right: Int) -> Int {
+        return prefixSum(right + 1) - prefixSum(left)
+    }
+}
+
+class Solution {
+    func reconstructQueue(_ people: [[Int]]) -> [[Int]] {
+        let n = people.count
+        var people = people.sorted {
+            $0[0] == $1[0] ? $0[1] > $1[1] : $0[0] < $1[0]
+        }
+        var res = [[Int]?](repeating: nil, count: n)
+
+        let bit = BIT(n)
+        for p in people {
+            var l = 0, r = n - 1, idx = 0
+            while l <= r {
+                let mid = (l + r) >> 1
+                let cnt = bit.query(0, mid)
+                if cnt > p[1] {
+                    idx = mid
+                    r = mid - 1
+                } else {
+                    l = mid + 1
+                }
+            }
+
+            res[idx] = p
+            bit.update(idx, -1)
+        }
+
+        return res.compactMap { $0 }
+    }
+}
+```
+
+```rust
+struct BIT {
+    tree: Vec<i32>,
+    n: usize,
+}
+
+impl BIT {
+    fn new(big_n: usize) -> Self {
+        let n = big_n + 1;
+        let mut bit = Self { tree: vec![0; n], n };
+        for i in 0..big_n { bit.update(i, 1); }
+        bit
+    }
+    fn update(&mut self, index: usize, val: i32) {
+        let mut i = index + 1;
+        while i < self.n {
+            self.tree[i] += val;
+            i += i & i.wrapping_neg();
+        }
+    }
+    fn prefix_sum(&self, index: usize) -> i32 {
+        let mut s = 0;
+        let mut i = index;
+        while i > 0 {
+            s += self.tree[i];
+            i -= i & i.wrapping_neg();
+        }
+        s
+    }
+    fn query(&self, l: usize, r: usize) -> i32 {
+        self.prefix_sum(r + 1) - self.prefix_sum(l)
+    }
+}
+
+impl Solution {
+    pub fn reconstruct_queue(mut people: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+        let n = people.len();
+        people.sort_unstable_by(|a, b| {
+            if a[0] == b[0] { b[1].cmp(&a[1]) } else { a[0].cmp(&b[0]) }
+        });
+        let mut res: Vec<Option<Vec<i32>>> = vec![None; n];
+        let mut bit = BIT::new(n);
+
+        for p in &people {
+            let (mut lo, mut hi, mut idx) = (0usize, n - 1, 0usize);
+            while lo <= hi {
+                let mid = (lo + hi) >> 1;
+                if bit.query(0, mid) > p[1] {
+                    idx = mid;
+                    if mid == 0 { break; }
+                    hi = mid - 1;
+                } else {
+                    lo = mid + 1;
+                }
+            }
+            res[idx] = Some(p.clone());
+            bit.update(idx, -1);
+        }
+
+        res.into_iter().map(|x| x.unwrap()).collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -963,6 +2138,20 @@ class Solution {
 ---
 
 ## 6. Binary Indexed Tree (Fenwick Tree)
+
+### Intuition
+
+We can eliminate the explicit binary search by leveraging the BIT's structure directly. Instead of querying prefix sums and binary searching, we walk down the BIT's implicit tree structure, using the most significant bit to guide our traversal. This finds the `(k + 1)`th empty slot in `O(log n)` time with a single pass.
+
+### Algorithm
+
+1. Sort people by height ascending, then by `k` descending for ties.
+2. Initialize a BIT with all positions marked as available.
+3. For each person:
+    - Use bit manipulation to traverse the BIT directly, finding the position with exactly `k` available slots before it.
+    - Place the person at the found position.
+    - Update the BIT to mark that slot as filled.
+4. Return the result array.
 
 ::tabs-start
 
@@ -1187,9 +2376,305 @@ class Solution {
 }
 ```
 
+```csharp
+public class BIT {
+    private int[] tree;
+    private int n;
+
+    public BIT(int N) {
+        n = N + 1;
+        tree = new int[n];
+        for (int i = 0; i < n - 1; i++) {
+            Update(i, 1);
+        }
+    }
+
+    public void Update(int index, int val) {
+        index++;
+        while (index < n) {
+            tree[index] += val;
+            index += index & -index;
+        }
+    }
+
+    public int GetIdx(int cnt, int MSB) {
+        int idx = 0;
+        while (MSB != 0) {
+            int nxtIdx = idx + MSB;
+            if (nxtIdx < n && cnt >= tree[nxtIdx]) {
+                idx = nxtIdx;
+                cnt -= tree[nxtIdx];
+            }
+            MSB >>= 1;
+        }
+        return idx;
+    }
+}
+
+public class Solution {
+    public int[][] ReconstructQueue(int[][] people) {
+        int n = people.Length;
+        Array.Sort(people, (a, b) => a[0] == b[0] ? b[1] - a[1] : a[0] - b[0]);
+        int[][] res = new int[n][];
+
+        var bit = new BIT(n);
+        int MSB = 1 << (31 - System.Numerics.BitOperations.LeadingZeroCount((uint)n));
+        foreach (var p in people) {
+            int idx = bit.GetIdx(p[1], MSB);
+            res[idx] = p;
+            bit.Update(idx, -1);
+        }
+
+        return res;
+    }
+}
+```
+
+```go
+type BIT struct {
+    tree []int
+    n    int
+}
+
+func NewBIT(N int) *BIT {
+    n := N + 1
+    bit := &BIT{tree: make([]int, n), n: n}
+    for i := 0; i < n-1; i++ {
+        bit.Update(i, 1)
+    }
+    return bit
+}
+
+func (bit *BIT) Update(index, val int) {
+    index++
+    for index < bit.n {
+        bit.tree[index] += val
+        index += index & -index
+    }
+}
+
+func (bit *BIT) GetIdx(cnt, MSB int) int {
+    idx := 0
+    for MSB != 0 {
+        nxtIdx := idx + MSB
+        if nxtIdx < bit.n && cnt >= bit.tree[nxtIdx] {
+            idx = nxtIdx
+            cnt -= bit.tree[nxtIdx]
+        }
+        MSB >>= 1
+    }
+    return idx
+}
+
+func reconstructQueue(people [][]int) [][]int {
+    n := len(people)
+    sort.Slice(people, func(i, j int) bool {
+        if people[i][0] == people[j][0] {
+            return people[i][1] > people[j][1]
+        }
+        return people[i][0] < people[j][0]
+    })
+
+    res := make([][]int, n)
+    bit := NewBIT(n)
+    MSB := 1 << (bits.Len(uint(n)) - 1)
+    for _, p := range people {
+        idx := bit.GetIdx(p[1], MSB)
+        res[idx] = p
+        bit.Update(idx, -1)
+    }
+
+    return res
+}
+```
+
+```kotlin
+class BIT(N: Int) {
+    private val tree: IntArray
+    private val n: Int = N + 1
+
+    init {
+        tree = IntArray(n)
+        for (i in 0 until n - 1) {
+            update(i, 1)
+        }
+    }
+
+    fun update(index: Int, value: Int) {
+        var idx = index + 1
+        while (idx < n) {
+            tree[idx] += value
+            idx += idx and -idx
+        }
+    }
+
+    fun getIdx(cnt: Int, msb: Int): Int {
+        var count = cnt
+        var idx = 0
+        var bit = msb
+        while (bit != 0) {
+            val nxtIdx = idx + bit
+            if (nxtIdx < n && count >= tree[nxtIdx]) {
+                idx = nxtIdx
+                count -= tree[nxtIdx]
+            }
+            bit = bit shr 1
+        }
+        return idx
+    }
+}
+
+class Solution {
+    fun reconstructQueue(people: Array<IntArray>): Array<IntArray> {
+        val n = people.size
+        people.sortWith(compareBy({ it[0] }, { -it[1] }))
+        val res = arrayOfNulls<IntArray>(n)
+
+        val bit = BIT(n)
+        val msb = 1 shl (31 - Integer.numberOfLeadingZeros(n))
+        for (p in people) {
+            val idx = bit.getIdx(p[1], msb)
+            res[idx] = p
+            bit.update(idx, -1)
+        }
+
+        return res.requireNoNulls()
+    }
+}
+```
+
+```swift
+class BIT {
+    private var tree: [Int]
+    private var n: Int
+
+    init(_ N: Int) {
+        n = N + 1
+        tree = [Int](repeating: 0, count: n)
+        for i in 0..<(n - 1) {
+            update(i, 1)
+        }
+    }
+
+    func update(_ index: Int, _ val: Int) {
+        var idx = index + 1
+        while idx < n {
+            tree[idx] += val
+            idx += idx & -idx
+        }
+    }
+
+    func getIdx(_ cnt: Int, _ msb: Int) -> Int {
+        var count = cnt
+        var idx = 0
+        var bit = msb
+        while bit != 0 {
+            let nxtIdx = idx + bit
+            if nxtIdx < n && count >= tree[nxtIdx] {
+                idx = nxtIdx
+                count -= tree[nxtIdx]
+            }
+            bit >>= 1
+        }
+        return idx
+    }
+}
+
+class Solution {
+    func reconstructQueue(_ people: [[Int]]) -> [[Int]] {
+        let n = people.count
+        var people = people.sorted {
+            $0[0] == $1[0] ? $0[1] > $1[1] : $0[0] < $1[0]
+        }
+        var res = [[Int]?](repeating: nil, count: n)
+
+        let bit = BIT(n)
+        let msb = 1 << (Int.bitWidth - n.leadingZeroBitCount - 1)
+        for p in people {
+            let idx = bit.getIdx(p[1], msb)
+            res[idx] = p
+            bit.update(idx, -1)
+        }
+
+        return res.compactMap { $0 }
+    }
+}
+```
+
+```rust
+struct BIT {
+    tree: Vec<i32>,
+    n: usize,
+}
+
+impl BIT {
+    fn new(big_n: usize) -> Self {
+        let n = big_n + 1;
+        let mut bit = Self { tree: vec![0; n], n };
+        for i in 0..big_n { bit.update(i, 1); }
+        bit
+    }
+    fn update(&mut self, index: usize, val: i32) {
+        let mut i = index + 1;
+        while i < self.n {
+            self.tree[i] += val;
+            i += i & i.wrapping_neg();
+        }
+    }
+    fn get_idx(&self, mut cnt: i32, mut msb: usize) -> usize {
+        let mut idx = 0;
+        while msb != 0 {
+            let nxt = idx + msb;
+            if nxt < self.n && cnt >= self.tree[nxt] {
+                idx = nxt;
+                cnt -= self.tree[nxt];
+            }
+            msb >>= 1;
+        }
+        idx
+    }
+}
+
+impl Solution {
+    pub fn reconstruct_queue(mut people: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+        let n = people.len();
+        people.sort_unstable_by(|a, b| {
+            if a[0] == b[0] { b[1].cmp(&a[1]) } else { a[0].cmp(&b[0]) }
+        });
+        let mut res: Vec<Option<Vec<i32>>> = vec![None; n];
+        let mut bit = BIT::new(n);
+        let msb = 1usize << (usize::BITS - 1 - n.leading_zeros());
+
+        for p in &people {
+            let idx = bit.get_idx(p[1], msb);
+            res[idx] = Some(p.clone());
+            bit.update(idx, -1);
+        }
+
+        res.into_iter().map(|x| x.unwrap()).collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n\log n)$
 - Space complexity: $O(n)$
+
+---
+
+## Common Pitfalls
+
+### Incorrect Sorting Order for Same Heights
+
+When two people have the same height, they must be sorted by k-value in the correct secondary order. For descending height approach, sort by k ascending (smaller k first). Reversing this order causes insertions to shift previously placed same-height people incorrectly.
+
+### Using Wrong Insertion Index
+
+The k-value represents how many people with height >= current person's height should be in front. When processing tallest-first, k directly gives the insertion index since all previously placed people are at least as tall. Misinterpreting k as the count of taller (not taller-or-equal) people leads to wrong placements.
+
+### Modifying List While Iterating
+
+Some implementations attempt to build the queue by modifying the input array in place or iterating while inserting. This causes elements to shift unexpectedly. Always use a separate result list and insert into it, or use the ascending height approach with pre-allocated slots.

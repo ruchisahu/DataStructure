@@ -1,4 +1,26 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Arrays** - Traversing and comparing elements in an array
+- **Monotonic Stack** - Understanding how to maintain a stack with elements in decreasing/increasing order
+- **Reverse Iteration** - Processing arrays from right to left for optimization
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+A building has an ocean view if no building to its right is taller or equal in height. The ocean is to the right of all buildings. The simplest approach is to check each building individually: for every building, scan all buildings to its right and see if any of them block the view.
+
+### Algorithm
+
+1. Iterate through each building from left to right.
+2. For each building at index `i`, check all buildings from index `i+1` to the end.
+3. If any building to the right has height greater than or equal to the current building, mark this building as having no ocean view.
+4. If no taller or equal building is found to the right, add this index to the result.
+5. Return all indices of buildings with ocean views.
 
 ::tabs-start
 
@@ -117,6 +139,98 @@ public class Solution {
 }
 ```
 
+```go
+func findBuildings(heights []int) []int {
+    n := len(heights)
+    res := []int{}
+
+    for i := 0; i < n; i++ {
+        flag := true
+        for j := i + 1; j < n; j++ {
+            if heights[i] <= heights[j] {
+                flag = false
+                break
+            }
+        }
+        if flag {
+            res = append(res, i)
+        }
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun findBuildings(heights: IntArray): IntArray {
+        val n = heights.size
+        val res = mutableListOf<Int>()
+
+        for (i in 0 until n) {
+            var flag = true
+            for (j in i + 1 until n) {
+                if (heights[i] <= heights[j]) {
+                    flag = false
+                    break
+                }
+            }
+            if (flag) res.add(i)
+        }
+
+        return res.toIntArray()
+    }
+}
+```
+
+```swift
+class Solution {
+    func findBuildings(_ heights: [Int]) -> [Int] {
+        let n = heights.count
+        var res = [Int]()
+
+        for i in 0..<n {
+            var flag = true
+            for j in (i + 1)..<n {
+                if heights[i] <= heights[j] {
+                    flag = false
+                    break
+                }
+            }
+            if flag {
+                res.append(i)
+            }
+        }
+
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn find_buildings(heights: Vec<i32>) -> Vec<i32> {
+        let n = heights.len();
+        let mut res = Vec::new();
+
+        for i in 0..n {
+            let mut flag = true;
+            for j in (i + 1)..n {
+                if heights[i] <= heights[j] {
+                    flag = false;
+                    break;
+                }
+            }
+            if flag {
+                res.push(i as i32);
+            }
+        }
+
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -127,6 +241,19 @@ public class Solution {
 ---
 
 ## 2. Monotonic Stack
+
+### Intuition
+
+We can use a monotonic decreasing stack to efficiently track buildings with ocean views. As we scan from left to right, whenever we encounter a building that is taller than or equal to the building at the top of the stack, the stack building loses its ocean view (because this new building blocks it). We pop such buildings and push the current one. The remaining buildings in the stack at the end all have ocean views.
+
+### Algorithm
+
+1. Initialize an empty stack to store building indices.
+2. Iterate through buildings from left to right.
+3. While the stack is not empty and the current building's height is greater than or equal to the height of the building at the stack top:
+    - Pop from the stack (that building no longer has an ocean view).
+4. Push the current building index onto the stack.
+5. Return the stack contents as the result (indices are already in increasing order).
 
 ::tabs-start
 
@@ -225,6 +352,76 @@ public class Solution {
 }
 ```
 
+```go
+func findBuildings(heights []int) []int {
+    stack := []int{}
+
+    for i, h := range heights {
+        for len(stack) > 0 && heights[stack[len(stack)-1]] <= h {
+            stack = stack[:len(stack)-1]
+        }
+        stack = append(stack, i)
+    }
+
+    return stack
+}
+```
+
+```kotlin
+class Solution {
+    fun findBuildings(heights: IntArray): IntArray {
+        val stack = mutableListOf<Int>()
+
+        for (i in heights.indices) {
+            while (stack.isNotEmpty() && heights[stack.last()] <= heights[i]) {
+                stack.removeAt(stack.size - 1)
+            }
+            stack.add(i)
+        }
+
+        return stack.toIntArray()
+    }
+}
+```
+
+```swift
+class Solution {
+    func findBuildings(_ heights: [Int]) -> [Int] {
+        var stack = [Int]()
+
+        for i in 0..<heights.count {
+            while !stack.isEmpty && heights[stack.last!] <= heights[i] {
+                stack.removeLast()
+            }
+            stack.append(i)
+        }
+
+        return stack
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn find_buildings(heights: Vec<i32>) -> Vec<i32> {
+        let mut stack: Vec<i32> = Vec::new();
+
+        for i in 0..heights.len() {
+            while let Some(&top) = stack.last() {
+                if heights[top as usize] <= heights[i] {
+                    stack.pop();
+                } else {
+                    break;
+                }
+            }
+            stack.push(i as i32);
+        }
+
+        stack
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -235,6 +432,18 @@ public class Solution {
 ---
 
 ## 3. Greedy
+
+### Intuition
+
+The most elegant approach is to scan from right to left. A building has an ocean view if it is strictly taller than every building to its right. We only need to track the maximum height seen so far as we traverse from the rightmost building toward the left.
+
+### Algorithm
+
+1. Start from the rightmost building (it always has an ocean view) and add it to the result.
+2. Move leftward through the buildings.
+3. For each building, if its height is greater than the height of the last building added to our result (which represents the tallest building seen so far), add this building to the result.
+4. Reverse the result since we collected indices from right to left but need them in increasing order.
+5. Return the result.
 
 ::tabs-start
 
@@ -332,6 +541,78 @@ public class Solution {
 }
 ```
 
+```go
+func findBuildings(heights []int) []int {
+    n := len(heights)
+    res := []int{n - 1}
+
+    for i := n - 2; i >= 0; i-- {
+        if heights[i] > heights[res[len(res)-1]] {
+            res = append(res, i)
+        }
+    }
+
+    for i, j := 0, len(res)-1; i < j; i, j = i+1, j-1 {
+        res[i], res[j] = res[j], res[i]
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun findBuildings(heights: IntArray): IntArray {
+        val n = heights.size
+        val res = mutableListOf(n - 1)
+
+        for (i in n - 2 downTo 0) {
+            if (heights[i] > heights[res.last()]) {
+                res.add(i)
+            }
+        }
+
+        res.reverse()
+        return res.toIntArray()
+    }
+}
+```
+
+```swift
+class Solution {
+    func findBuildings(_ heights: [Int]) -> [Int] {
+        let n = heights.count
+        var res = [n - 1]
+
+        for i in stride(from: n - 2, through: 0, by: -1) {
+            if heights[i] > heights[res.last!] {
+                res.append(i)
+            }
+        }
+
+        res.reverse()
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn find_buildings(heights: Vec<i32>) -> Vec<i32> {
+        let n = heights.len();
+        let mut res = vec![(n - 1) as i32];
+
+        for i in (0..n - 1).rev() {
+            if heights[i] > heights[*res.last().unwrap() as usize] {
+                res.push(i as i32);
+            }
+        }
+
+        res.reverse();
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -340,3 +621,28 @@ public class Solution {
 - Space complexity:
     - $O(1)$ extra space.
     - $O(n)$ for the output array.
+
+---
+
+## Common Pitfalls
+
+### Using Wrong Comparison Operator
+
+A building loses its ocean view if any building to its right is taller OR EQUAL in height. Using strictly greater than (`>`) instead of greater than or equal (`>=`) incorrectly keeps buildings that are blocked by same-height buildings.
+
+```python
+# Wrong: same height doesn't block
+if heights[i] > heights[j]:  # Misses equal heights
+
+# Correct: equal or greater blocks the view
+if heights[i] <= heights[j]:
+    has_view = False
+```
+
+### Forgetting to Reverse the Result
+
+When iterating from right to left (the optimal approach), indices are collected in reverse order. Forgetting to reverse the final result returns indices in descending order instead of the required ascending order.
+
+### Not Handling Single Building Case
+
+An array with one building should return `[0]` since the only building always has an ocean view. Edge case handling ensures the rightmost building is always included in the initial result.

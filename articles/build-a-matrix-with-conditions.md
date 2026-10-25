@@ -1,4 +1,33 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Graph Representation** - Building adjacency lists from edge lists to represent directed graphs
+- **Topological Sort** - Ordering nodes in a directed acyclic graph such that all edges point forward
+- **Cycle Detection** - Identifying cycles in directed graphs using DFS path tracking or in-degree analysis
+- **DFS and BFS** - Implementing depth-first and breadth-first traversals for graph algorithms
+
+---
+
 ## 1. Topological Sort (DFS)
+
+### Intuition
+
+The problem asks us to place numbers `1` to `k` in a `k x k` matrix such that certain numbers appear above others (row conditions) and certain numbers appear to the left of others (column conditions). This is essentially two independent ordering problems: one for rows and one for columns.
+
+Each set of conditions forms a directed graph where an edge from A to B means A must come before B. Finding a valid ordering that satisfies all constraints is exactly what topological sort does. If there's a cycle in either graph, no valid ordering exists and we return an empty matrix.
+
+### Algorithm
+
+1. Build two directed graphs from `rowConditions` and `colConditions`.
+2. Perform topological sort on `rowConditions` using DFS:
+    - Track visited nodes and nodes in the current path (to detect cycles).
+    - If a cycle is detected (node appears in current path), return empty.
+    - Add nodes to the order in reverse post-order, then reverse the result.
+3. Perform topological sort on `colConditions` similarly.
+4. Create mappings from each number to its row index (from row order) and column index (from column order).
+5. Place each number `1` to `k` at the position determined by these mappings.
+6. Return the constructed matrix.
 
 ::tabs-start
 
@@ -351,6 +380,272 @@ public class Solution {
 }
 ```
 
+```go
+func buildMatrix(k int, rowConditions [][]int, colConditions [][]int) [][]int {
+    topoSort := func(edges [][]int) []int {
+        adj := make([][]int, k+1)
+        for i := range adj {
+            adj[i] = []int{}
+        }
+        for _, edge := range edges {
+            adj[edge[0]] = append(adj[edge[0]], edge[1])
+        }
+
+        visit := make(map[int]bool)
+        path := make(map[int]bool)
+        order := []int{}
+
+        var dfs func(src int) bool
+        dfs = func(src int) bool {
+            if path[src] {
+                return false
+            }
+            if visit[src] {
+                return true
+            }
+            visit[src] = true
+            path[src] = true
+            for _, nei := range adj[src] {
+                if !dfs(nei) {
+                    return false
+                }
+            }
+            delete(path, src)
+            order = append(order, src)
+            return true
+        }
+
+        for i := 1; i <= k; i++ {
+            if !visit[i] {
+                if !dfs(i) {
+                    return nil
+                }
+            }
+        }
+
+        for i, j := 0, len(order)-1; i < j; i, j = i+1, j-1 {
+            order[i], order[j] = order[j], order[i]
+        }
+        return order
+    }
+
+    rowOrder := topoSort(rowConditions)
+    if rowOrder == nil {
+        return [][]int{}
+    }
+
+    colOrder := topoSort(colConditions)
+    if colOrder == nil {
+        return [][]int{}
+    }
+
+    valToRow := make(map[int]int)
+    for i, num := range rowOrder {
+        valToRow[num] = i
+    }
+    valToCol := make(map[int]int)
+    for i, num := range colOrder {
+        valToCol[num] = i
+    }
+
+    res := make([][]int, k)
+    for i := range res {
+        res[i] = make([]int, k)
+    }
+    for num := 1; num <= k; num++ {
+        r, c := valToRow[num], valToCol[num]
+        res[r][c] = num
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun buildMatrix(k: Int, rowConditions: Array<IntArray>, colConditions: Array<IntArray>): Array<IntArray> {
+        fun topoSort(edges: Array<IntArray>): IntArray? {
+            val adj = Array(k + 1) { mutableListOf<Int>() }
+            for (edge in edges) {
+                adj[edge[0]].add(edge[1])
+            }
+
+            val visit = mutableSetOf<Int>()
+            val path = mutableSetOf<Int>()
+            val order = mutableListOf<Int>()
+
+            fun dfs(src: Int): Boolean {
+                if (src in path) return false
+                if (src in visit) return true
+                visit.add(src)
+                path.add(src)
+                for (nei in adj[src]) {
+                    if (!dfs(nei)) return false
+                }
+                path.remove(src)
+                order.add(src)
+                return true
+            }
+
+            for (i in 1..k) {
+                if (i !in visit) {
+                    if (!dfs(i)) return null
+                }
+            }
+            return order.reversed().toIntArray()
+        }
+
+        val rowOrder = topoSort(rowConditions) ?: return arrayOf()
+        val colOrder = topoSort(colConditions) ?: return arrayOf()
+
+        val valToRow = mutableMapOf<Int, Int>()
+        rowOrder.forEachIndexed { i, num -> valToRow[num] = i }
+        val valToCol = mutableMapOf<Int, Int>()
+        colOrder.forEachIndexed { i, num -> valToCol[num] = i }
+
+        val res = Array(k) { IntArray(k) }
+        for (num in 1..k) {
+            val r = valToRow[num]!!
+            val c = valToCol[num]!!
+            res[r][c] = num
+        }
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func buildMatrix(_ k: Int, _ rowConditions: [[Int]], _ colConditions: [[Int]]) -> [[Int]] {
+        func topoSort(_ edges: [[Int]]) -> [Int]? {
+            var adj = [[Int]](repeating: [], count: k + 1)
+            for edge in edges {
+                adj[edge[0]].append(edge[1])
+            }
+
+            var visit = Set<Int>()
+            var path = Set<Int>()
+            var order = [Int]()
+
+            func dfs(_ src: Int) -> Bool {
+                if path.contains(src) { return false }
+                if visit.contains(src) { return true }
+                visit.insert(src)
+                path.insert(src)
+                for nei in adj[src] {
+                    if !dfs(nei) { return false }
+                }
+                path.remove(src)
+                order.append(src)
+                return true
+            }
+
+            for i in 1...k {
+                if !visit.contains(i) {
+                    if !dfs(i) { return nil }
+                }
+            }
+            return order.reversed()
+        }
+
+        guard let rowOrder = topoSort(rowConditions) else { return [] }
+        guard let colOrder = topoSort(colConditions) else { return [] }
+
+        var valToRow = [Int: Int]()
+        for (i, num) in rowOrder.enumerated() {
+            valToRow[num] = i
+        }
+        var valToCol = [Int: Int]()
+        for (i, num) in colOrder.enumerated() {
+            valToCol[num] = i
+        }
+
+        var res = [[Int]](repeating: [Int](repeating: 0, count: k), count: k)
+        for num in 1...k {
+            let r = valToRow[num]!
+            let c = valToCol[num]!
+            res[r][c] = num
+        }
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn build_matrix(k: i32, row_conditions: Vec<Vec<i32>>, col_conditions: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+        let k = k as usize;
+
+        let row_order = match Self::topo_sort(k, &row_conditions) {
+            Some(o) => o,
+            None => return vec![],
+        };
+        let col_order = match Self::topo_sort(k, &col_conditions) {
+            Some(o) => o,
+            None => return vec![],
+        };
+
+        let mut val_to_row = vec![0usize; k + 1];
+        for (i, &num) in row_order.iter().enumerate() {
+            val_to_row[num] = i;
+        }
+        let mut val_to_col = vec![0usize; k + 1];
+        for (i, &num) in col_order.iter().enumerate() {
+            val_to_col[num] = i;
+        }
+
+        let mut res = vec![vec![0i32; k]; k];
+        for num in 1..=k {
+            let r = val_to_row[num];
+            let c = val_to_col[num];
+            res[r][c] = num as i32;
+        }
+        res
+    }
+
+    fn topo_sort(k: usize, edges: &[Vec<i32>]) -> Option<Vec<usize>> {
+        let mut adj = vec![vec![]; k + 1];
+        for edge in edges {
+            adj[edge[0] as usize].push(edge[1] as usize);
+        }
+
+        let mut visit = vec![false; k + 1];
+        let mut path = vec![false; k + 1];
+        let mut order = Vec::new();
+
+        for i in 1..=k {
+            if !visit[i] {
+                if !Self::dfs(i, &adj, &mut visit, &mut path, &mut order) {
+                    return None;
+                }
+            }
+        }
+        order.reverse();
+        Some(order)
+    }
+
+    fn dfs(
+        src: usize,
+        adj: &[Vec<usize>],
+        visit: &mut Vec<bool>,
+        path: &mut Vec<bool>,
+        order: &mut Vec<usize>,
+    ) -> bool {
+        if path[src] { return false; }
+        if visit[src] { return true; }
+        visit[src] = true;
+        path[src] = true;
+        for &nei in &adj[src] {
+            if !Self::dfs(nei, adj, visit, path, order) {
+                return false;
+            }
+        }
+        path[src] = false;
+        order.push(src);
+        true
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -365,6 +660,25 @@ public class Solution {
 ---
 
 ## 2. Topological Sort (Kahn's Algorithm)
+
+### Intuition
+
+This approach solves the same problem using Kahn's algorithm (BFS-based topological sort) instead of DFS. The key insight remains the same: we need valid orderings for both rows and columns. Kahn's algorithm processes nodes with zero incoming edges first, which naturally produces a valid topological order when no cycle exists.
+
+If we process fewer than `k` nodes, it means there's a cycle in the graph and no valid ordering is possible.
+
+### Algorithm
+
+1. For each condition set (row and column), build an adjacency list and compute in-degrees for all nodes.
+2. Initialize a queue with all nodes that have zero in-degree.
+3. Process nodes from the queue:
+    - Add the current node to the order.
+    - Decrease the in-degree of all neighbors.
+    - Add neighbors with zero in-degree to the queue.
+4. If the order contains fewer than `k` nodes, a cycle exists; return empty matrix.
+5. Create index mappings from the row and column orderings.
+6. Place each number at its determined (row, column) position in the matrix.
+7. Return the matrix.
 
 ::tabs-start
 
@@ -657,6 +971,226 @@ public class Solution {
 }
 ```
 
+```go
+func buildMatrix(k int, rowConditions [][]int, colConditions [][]int) [][]int {
+    topoSort := func(edges [][]int) []int {
+        indegree := make([]int, k+1)
+        adj := make([][]int, k+1)
+        for i := range adj {
+            adj[i] = []int{}
+        }
+        for _, edge := range edges {
+            adj[edge[0]] = append(adj[edge[0]], edge[1])
+            indegree[edge[1]]++
+        }
+
+        queue := []int{}
+        order := []int{}
+        for i := 1; i <= k; i++ {
+            if indegree[i] == 0 {
+                queue = append(queue, i)
+            }
+        }
+
+        for len(queue) > 0 {
+            node := queue[0]
+            queue = queue[1:]
+            order = append(order, node)
+            for _, nei := range adj[node] {
+                indegree[nei]--
+                if indegree[nei] == 0 {
+                    queue = append(queue, nei)
+                }
+            }
+        }
+
+        if len(order) != k {
+            return nil
+        }
+        return order
+    }
+
+    rowOrder := topoSort(rowConditions)
+    if rowOrder == nil {
+        return [][]int{}
+    }
+
+    colOrder := topoSort(colConditions)
+    if colOrder == nil {
+        return [][]int{}
+    }
+
+    res := make([][]int, k)
+    for i := range res {
+        res[i] = make([]int, k)
+    }
+    colIndex := make([]int, k+1)
+    for i := 0; i < k; i++ {
+        colIndex[colOrder[i]] = i
+    }
+    for i := 0; i < k; i++ {
+        res[i][colIndex[rowOrder[i]]] = rowOrder[i]
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun buildMatrix(k: Int, rowConditions: Array<IntArray>, colConditions: Array<IntArray>): Array<IntArray> {
+        fun topoSort(edges: Array<IntArray>): IntArray? {
+            val indegree = IntArray(k + 1)
+            val adj = Array(k + 1) { mutableListOf<Int>() }
+            for (edge in edges) {
+                adj[edge[0]].add(edge[1])
+                indegree[edge[1]]++
+            }
+
+            val queue = ArrayDeque<Int>()
+            val order = mutableListOf<Int>()
+            for (i in 1..k) {
+                if (indegree[i] == 0) {
+                    queue.add(i)
+                }
+            }
+
+            while (queue.isNotEmpty()) {
+                val node = queue.removeFirst()
+                order.add(node)
+                for (nei in adj[node]) {
+                    indegree[nei]--
+                    if (indegree[nei] == 0) {
+                        queue.add(nei)
+                    }
+                }
+            }
+
+            return if (order.size == k) order.toIntArray() else null
+        }
+
+        val rowOrder = topoSort(rowConditions) ?: return arrayOf()
+        val colOrder = topoSort(colConditions) ?: return arrayOf()
+
+        val res = Array(k) { IntArray(k) }
+        val colIndex = IntArray(k + 1)
+        for (i in 0 until k) {
+            colIndex[colOrder[i]] = i
+        }
+        for (i in 0 until k) {
+            res[i][colIndex[rowOrder[i]]] = rowOrder[i]
+        }
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func buildMatrix(_ k: Int, _ rowConditions: [[Int]], _ colConditions: [[Int]]) -> [[Int]] {
+        func topoSort(_ edges: [[Int]]) -> [Int]? {
+            var indegree = [Int](repeating: 0, count: k + 1)
+            var adj = [[Int]](repeating: [], count: k + 1)
+            for edge in edges {
+                adj[edge[0]].append(edge[1])
+                indegree[edge[1]] += 1
+            }
+
+            var queue = [Int]()
+            var order = [Int]()
+            for i in 1...k {
+                if indegree[i] == 0 {
+                    queue.append(i)
+                }
+            }
+
+            var front = 0
+            while front < queue.count {
+                let node = queue[front]
+                front += 1
+                order.append(node)
+                for nei in adj[node] {
+                    indegree[nei] -= 1
+                    if indegree[nei] == 0 {
+                        queue.append(nei)
+                    }
+                }
+            }
+
+            return order.count == k ? order : nil
+        }
+
+        guard let rowOrder = topoSort(rowConditions) else { return [] }
+        guard let colOrder = topoSort(colConditions) else { return [] }
+
+        var res = [[Int]](repeating: [Int](repeating: 0, count: k), count: k)
+        var colIndex = [Int](repeating: 0, count: k + 1)
+        for i in 0..<k {
+            colIndex[colOrder[i]] = i
+        }
+        for i in 0..<k {
+            res[i][colIndex[rowOrder[i]]] = rowOrder[i]
+        }
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn build_matrix(k: i32, row_conditions: Vec<Vec<i32>>, col_conditions: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+        let k = k as usize;
+
+        let row_order = match Self::topo_sort(k, &row_conditions) {
+            Some(o) => o,
+            None => return vec![],
+        };
+        let col_order = match Self::topo_sort(k, &col_conditions) {
+            Some(o) => o,
+            None => return vec![],
+        };
+
+        let mut res = vec![vec![0i32; k]; k];
+        let mut col_index = vec![0usize; k + 1];
+        for i in 0..k {
+            col_index[col_order[i]] = i;
+        }
+        for i in 0..k {
+            res[i][col_index[row_order[i]]] = row_order[i] as i32;
+        }
+        res
+    }
+
+    fn topo_sort(k: usize, edges: &[Vec<i32>]) -> Option<Vec<usize>> {
+        let mut indegree = vec![0i32; k + 1];
+        let mut adj = vec![vec![]; k + 1];
+        for edge in edges {
+            adj[edge[0] as usize].push(edge[1] as usize);
+            indegree[edge[1] as usize] += 1;
+        }
+
+        let mut queue = VecDeque::new();
+        let mut order = Vec::new();
+        for i in 1..=k {
+            if indegree[i] == 0 {
+                queue.push_back(i);
+            }
+        }
+
+        while let Some(node) = queue.pop_front() {
+            order.push(node);
+            for &nei in &adj[node] {
+                indegree[nei] -= 1;
+                if indegree[nei] == 0 {
+                    queue.push_back(nei);
+                }
+            }
+        }
+
+        if order.len() == k { Some(order) } else { None }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -667,3 +1201,35 @@ public class Solution {
     - $O(k ^ 2)$ space for the output matrix.
 
 > Where $n$ is the size of the array $rowConditions$, $m$ is the size of the array $colConditions$, and $k$ is the size of the output matrix.
+
+---
+
+## Common Pitfalls
+
+### Treating Row and Column Conditions as One Graph
+
+Row conditions and column conditions must be processed as two separate, independent graphs. Combining them into a single graph leads to incorrect cycle detection and wrong orderings since row ordering has no relation to column ordering.
+
+### Not Detecting Cycles Properly in DFS
+
+When using DFS for topological sort, you need both a `visited` set (permanently processed nodes) and a `path` set (nodes in current recursion stack). Using only one set fails to detect back edges that indicate cycles.
+
+```python
+# Wrong: single visited set misses cycles
+if src in visited:
+    return True  # Should check path set too
+
+# Correct: check both sets
+if src in path:
+    return False  # Cycle detected
+if src in visited:
+    return True   # Already processed
+```
+
+### Forgetting to Include Nodes Without Edges
+
+Numbers from 1 to k that don't appear in any condition still need positions in the matrix. The topological sort must iterate over all values 1 to k, not just those present in the edge list.
+
+### Off-by-One Errors with 1-Indexed Values
+
+The values are 1 to k (1-indexed) but arrays are typically 0-indexed. When building adjacency lists or index mappings, mixing these up causes index out of bounds errors or incorrect placements.

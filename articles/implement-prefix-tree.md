@@ -1,4 +1,69 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Tree Data Structures** - Understanding parent-child relationships and tree traversal
+- **Hash Maps / Arrays for Children** - Storing and accessing child nodes efficiently
+- **String Processing** - Character-by-character iteration and ASCII manipulation
+- **Object-Oriented Design** - Creating classes with methods that maintain internal state
+
+---
+
 ## 1. Prefix Tree (Array)
+
+### Intuition
+
+A **Prefix Tree (Trie)** is a tree-like data structure designed for **fast string operations**.
+
+Each node represents a character, and paths from the root represent words.
+
+- Common prefixes are **shared**, which saves space.
+- Each node has **26 children** (for letters `a`-`z`), indexed directly using character positions.
+- A boolean flag `endOfWord` tells us whether a complete word ends at that node.
+
+Why Trie is useful:
+
+- Searching words and prefixes is **O(length of word)**, not dependent on how many words exist.
+- Ideal for problems involving **dictionary lookups**, **autocomplete**, and **prefix checks**.
+
+### Algorithm
+
+**Data Structure**
+
+- Each node contains:
+    - `children[26]`: array of child pointers (one for each letter)
+    - `endOfWord`: marks completion of a word
+
+---
+
+**Insert(word)**
+
+1. Start from the root.
+2. For each character in the word:
+    - Convert character to index (`c - 'a'`)
+    - If the child node doesn’t exist, create it.
+    - Move to the child.
+3. After processing all characters, mark `endOfWord = true`.
+
+---
+
+**Search(word)**
+
+1. Start from the root.
+2. For each character:
+    - Move to the corresponding child.
+    - If missing, return `false`.
+3. After traversal:
+    - Return `true` only if `endOfWord` is `true`.
+
+---
+
+**StartsWith(prefix)**
+
+1. Start from the root.
+2. Traverse characters of the prefix.
+3. If all characters exist in sequence, return `true`.
+4. No need to check `endOfWord`.
 
 ::tabs-start
 
@@ -419,6 +484,65 @@ class PrefixTree {
 }
 ```
 
+```rust
+struct TrieNode {
+    children: [Option<Box<TrieNode>>; 26],
+    end_of_word: bool,
+}
+
+impl TrieNode {
+    fn new() -> Self {
+        Self {
+            children: Default::default(),
+            end_of_word: false,
+        }
+    }
+}
+
+struct PrefixTree {
+    root: TrieNode,
+}
+
+impl PrefixTree {
+    fn new() -> Self {
+        Self { root: TrieNode::new() }
+    }
+
+    fn insert(&mut self, word: String) {
+        let mut cur = &mut self.root;
+        for c in word.bytes() {
+            let i = (c - b'a') as usize;
+            cur = cur.children[i].get_or_insert_with(|| Box::new(TrieNode::new()));
+        }
+        cur.end_of_word = true;
+    }
+
+    fn search(&self, word: String) -> bool {
+        let mut cur = &self.root;
+        for c in word.bytes() {
+            let i = (c - b'a') as usize;
+            match &cur.children[i] {
+                Some(node) => cur = node,
+                None => return false,
+            }
+        }
+        cur.end_of_word
+    }
+
+    fn starts_with(&self, prefix: String) -> bool {
+        let mut cur = &self.root;
+        for c in prefix.bytes() {
+            let i = (c - b'a') as usize;
+            match &cur.children[i] {
+                Some(node) => cur = node,
+                None => return false,
+            }
+        }
+        true
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -817,6 +941,62 @@ class PrefixTree {
 }
 ```
 
+```rust
+struct TrieNode {
+    children: HashMap<char, TrieNode>,
+    end_of_word: bool,
+}
+
+impl TrieNode {
+    fn new() -> Self {
+        Self {
+            children: HashMap::new(),
+            end_of_word: false,
+        }
+    }
+}
+
+struct PrefixTree {
+    root: TrieNode,
+}
+
+impl PrefixTree {
+    fn new() -> Self {
+        Self { root: TrieNode::new() }
+    }
+
+    fn insert(&mut self, word: String) {
+        let mut cur = &mut self.root;
+        for c in word.chars() {
+            cur = cur.children.entry(c).or_insert_with(TrieNode::new);
+        }
+        cur.end_of_word = true;
+    }
+
+    fn search(&self, word: String) -> bool {
+        let mut cur = &self.root;
+        for c in word.chars() {
+            match cur.children.get(&c) {
+                Some(node) => cur = node,
+                None => return false,
+            }
+        }
+        cur.end_of_word
+    }
+
+    fn starts_with(&self, prefix: String) -> bool {
+        let mut cur = &self.root;
+        for c in prefix.chars() {
+            match cur.children.get(&c) {
+                Some(node) => cur = node,
+                None => return false,
+            }
+        }
+        true
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -825,3 +1005,19 @@ class PrefixTree {
 - Space complexity: $O(t)$
 
 > Where $n$ is the length of the string and $t$ is the total number of TrieNodes created in the Trie.
+
+---
+
+## Common Pitfalls
+
+### Confusing search and startsWith
+
+A frequent mistake is returning `true` in `search()` whenever the traversal completes successfully, without checking the `endOfWord` flag. The `search()` method must verify that the final node marks the end of a complete word, while `startsWith()` only checks if the prefix path exists. For example, if "apple" is inserted, `search("app")` should return `false` (no word ends there), but `startsWith("app")` should return `true`.
+
+### Incorrect Character Index Calculation
+
+When using an array-based Trie with 26 children, the character must be converted to an index using `c - 'a'`. A common error is using the ASCII value directly without subtraction, which causes index out of bounds errors. Another mistake is assuming uppercase letters, which would require `c - 'A'` instead. Always ensure the input constraints match the indexing scheme.
+
+### Forgetting to Initialize Child Nodes
+
+When traversing during `insert()`, forgetting to create a new `TrieNode` when the child does not exist leads to null pointer exceptions on subsequent character accesses. The check `if cur.children[i] == None: cur.children[i] = TrieNode()` must happen before moving to the next node. Similarly, in the hash map approach, forgetting to add the character key before accessing it causes key errors.

@@ -1,4 +1,27 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Stack Data Structure** - Operations like push, pop, and accessing the top element
+- **String Parsing** - Converting string inputs to integers and handling special characters
+
+---
+
 ## 1. Stack - I
+
+### Intuition
+
+A stack is perfect for this problem because each operation depends on the most recent scores. When we see `+`, we need the last two scores. When we see `D`, we need the last score. When we see `C`, we need to remove the last score. A stack gives us efficient access to these recent elements.
+
+### Algorithm
+
+1. Initialize an empty stack to store valid scores.
+2. For each operation:
+    - If it's `+`, add the sum of the top two elements to the stack.
+    - If it's `D`, add double the top element to the stack.
+    - If it's `C`, pop the top element.
+    - Otherwise, it's a number, so push it onto the stack.
+3. Return the sum of all elements in the stack.
 
 ::tabs-start
 
@@ -126,6 +149,102 @@ public class Solution {
 }
 ```
 
+```go
+func calPoints(operations []string) int {
+    stack := []int{}
+    for _, op := range operations {
+        if op == "+" {
+            n := len(stack)
+            stack = append(stack, stack[n-1]+stack[n-2])
+        } else if op == "D" {
+            stack = append(stack, 2*stack[len(stack)-1])
+        } else if op == "C" {
+            stack = stack[:len(stack)-1]
+        } else {
+            num, _ := strconv.Atoi(op)
+            stack = append(stack, num)
+        }
+    }
+    sum := 0
+    for _, v := range stack {
+        sum += v
+    }
+    return sum
+}
+```
+
+```kotlin
+class Solution {
+    fun calPoints(operations: Array<String>): Int {
+        val stack = mutableListOf<Int>()
+        for (op in operations) {
+            when (op) {
+                "+" -> {
+                    val top = stack.removeLast()
+                    val newTop = top + stack.last()
+                    stack.add(top)
+                    stack.add(newTop)
+                }
+                "D" -> stack.add(2 * stack.last())
+                "C" -> stack.removeLast()
+                else -> stack.add(op.toInt())
+            }
+        }
+        return stack.sum()
+    }
+}
+```
+
+```swift
+class Solution {
+    func calPoints(_ operations: [String]) -> Int {
+        var stack = [Int]()
+        for op in operations {
+            if op == "+" {
+                let top = stack.removeLast()
+                let newTop = top + stack.last!
+                stack.append(top)
+                stack.append(newTop)
+            } else if op == "D" {
+                stack.append(2 * stack.last!)
+            } else if op == "C" {
+                stack.removeLast()
+            } else {
+                stack.append(Int(op)!)
+            }
+        }
+        return stack.reduce(0, +)
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn cal_points(operations: Vec<String>) -> i32 {
+        let mut stack: Vec<i32> = Vec::new();
+        for op in &operations {
+            match op.as_str() {
+                "+" => {
+                    let top = stack[stack.len() - 1];
+                    let second = stack[stack.len() - 2];
+                    stack.push(top + second);
+                }
+                "D" => {
+                    stack.push(2 * stack.last().unwrap());
+                }
+                "C" => {
+                    stack.pop();
+                }
+                _ => {
+                    stack.push(op.parse::<i32>().unwrap());
+                }
+            }
+        }
+        stack.iter().sum()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -136,6 +255,20 @@ public class Solution {
 ---
 
 ## 2. Stack - II
+
+### Intuition
+
+This approach is similar to the first one, but we maintain a running total as we process operations instead of computing the sum at the end. Whenever we add a score, we add it to our result. When we remove a score with `C`, we subtract it. This gives us the same answer but avoids a final pass through the stack.
+
+### Algorithm
+
+1. Initialize an empty stack and a result variable set to `0`.
+2. For each operation:
+    - If it's `+`, calculate the sum of the top two elements, push it, and add to result.
+    - If it's `D`, calculate double the top element, push it, and add to result.
+    - If it's `C`, pop the top element and subtract it from result.
+    - Otherwise, parse the number, push it, and add to result.
+3. Return the result.
 
 ::tabs-start
 
@@ -277,9 +410,148 @@ public class Solution {
 }
 ```
 
+```go
+func calPoints(operations []string) int {
+    stack := []int{}
+    res := 0
+    for _, op := range operations {
+        if op == "+" {
+            n := len(stack)
+            newTop := stack[n-1] + stack[n-2]
+            stack = append(stack, newTop)
+            res += newTop
+        } else if op == "D" {
+            val := 2 * stack[len(stack)-1]
+            stack = append(stack, val)
+            res += val
+        } else if op == "C" {
+            res -= stack[len(stack)-1]
+            stack = stack[:len(stack)-1]
+        } else {
+            num, _ := strconv.Atoi(op)
+            stack = append(stack, num)
+            res += num
+        }
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun calPoints(operations: Array<String>): Int {
+        val stack = mutableListOf<Int>()
+        var res = 0
+        for (op in operations) {
+            when (op) {
+                "+" -> {
+                    val top = stack.removeLast()
+                    val newTop = top + stack.last()
+                    stack.add(top)
+                    stack.add(newTop)
+                    res += newTop
+                }
+                "D" -> {
+                    val doubleVal = 2 * stack.last()
+                    stack.add(doubleVal)
+                    res += doubleVal
+                }
+                "C" -> res -= stack.removeLast()
+                else -> {
+                    val num = op.toInt()
+                    stack.add(num)
+                    res += num
+                }
+            }
+        }
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func calPoints(_ operations: [String]) -> Int {
+        var stack = [Int]()
+        var res = 0
+        for op in operations {
+            if op == "+" {
+                let top = stack.removeLast()
+                let newTop = top + stack.last!
+                stack.append(top)
+                stack.append(newTop)
+                res += newTop
+            } else if op == "D" {
+                let doubleVal = 2 * stack.last!
+                stack.append(doubleVal)
+                res += doubleVal
+            } else if op == "C" {
+                res -= stack.removeLast()
+            } else {
+                let num = Int(op)!
+                stack.append(num)
+                res += num
+            }
+        }
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn cal_points(operations: Vec<String>) -> i32 {
+        let mut stack: Vec<i32> = Vec::new();
+        let mut res = 0;
+        for op in &operations {
+            match op.as_str() {
+                "+" => {
+                    let top = stack[stack.len() - 1];
+                    let second = stack[stack.len() - 2];
+                    let new_top = top + second;
+                    stack.push(new_top);
+                    res += new_top;
+                }
+                "D" => {
+                    let double_val = 2 * stack.last().unwrap();
+                    stack.push(double_val);
+                    res += double_val;
+                }
+                "C" => {
+                    res -= stack.pop().unwrap();
+                }
+                _ => {
+                    let num = op.parse::<i32>().unwrap();
+                    stack.push(num);
+                    res += num;
+                }
+            }
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(n)$
+
+---
+
+## Common Pitfalls
+
+### Forgetting to Convert String to Integer
+
+When the operation is a number, it comes as a string. Forgetting to parse it as an integer causes type errors or incorrect arithmetic.
+
+```python
+# Wrong: pushing string instead of integer
+stack.append(op)  # op is "5", not 5
+```
+
+### Accessing Stack Elements in Wrong Order for "+"
+
+The `+` operation requires adding the last two scores. When popping, the first pop gives the most recent score, and the second pop gives the one before it. Getting this order confused can lead to wrong results when the operation depends on position.

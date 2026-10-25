@@ -1,4 +1,28 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Stacks** - Understanding LIFO (Last-In-First-Out) operations including push, pop, and peek
+- **Queues** - Understanding FIFO (First-In-First-Out) behavior and why it differs from stacks
+- **Amortized Analysis** - Recognizing when operations have different worst-case vs average-case time complexities
+
+---
+
 ## 1. Using Two Stacks (Brute Force)
+
+### Intuition
+
+A stack is LIFO (last in, first out) while a queue is FIFO (first in, first out).
+To simulate a queue, we need to reverse the order of elements.
+By transferring all elements except the bottom one to a second stack, popping the bottom, and transferring back, we can access the first element.
+This approach is simple but inefficient since every pop/peek requires moving all elements twice.
+
+### Algorithm
+
+1. For `push`: Simply push the element onto `stack1`.
+2. For `pop`: Move all elements except the last from `stack1` to `stack2`, pop the remaining element from `stack1`, then move all elements back from `stack2` to `stack1`.
+3. For `peek`: Same as `pop`, but instead of popping, just read the top element of `stack1` after moving elements.
+4. For `empty`: Return `true` if `stack1` is empty.
 
 ::tabs-start
 
@@ -214,6 +238,182 @@ public class MyQueue {
 }
 ```
 
+```go
+type MyQueue struct {
+    stack1 []int
+    stack2 []int
+}
+
+func Constructor() MyQueue {
+    return MyQueue{
+        stack1: []int{},
+        stack2: []int{},
+    }
+}
+
+func (this *MyQueue) Push(x int) {
+    this.stack1 = append(this.stack1, x)
+}
+
+func (this *MyQueue) Pop() int {
+    for len(this.stack1) > 1 {
+        this.stack2 = append(this.stack2, this.stack1[len(this.stack1)-1])
+        this.stack1 = this.stack1[:len(this.stack1)-1]
+    }
+    res := this.stack1[len(this.stack1)-1]
+    this.stack1 = this.stack1[:len(this.stack1)-1]
+    for len(this.stack2) > 0 {
+        this.stack1 = append(this.stack1, this.stack2[len(this.stack2)-1])
+        this.stack2 = this.stack2[:len(this.stack2)-1]
+    }
+    return res
+}
+
+func (this *MyQueue) Peek() int {
+    for len(this.stack1) > 1 {
+        this.stack2 = append(this.stack2, this.stack1[len(this.stack1)-1])
+        this.stack1 = this.stack1[:len(this.stack1)-1]
+    }
+    res := this.stack1[len(this.stack1)-1]
+    for len(this.stack2) > 0 {
+        this.stack1 = append(this.stack1, this.stack2[len(this.stack2)-1])
+        this.stack2 = this.stack2[:len(this.stack2)-1]
+    }
+    return res
+}
+
+func (this *MyQueue) Empty() bool {
+    return len(this.stack1) == 0
+}
+```
+
+```kotlin
+class MyQueue() {
+    private val stack1 = ArrayDeque<Int>()
+    private val stack2 = ArrayDeque<Int>()
+
+    fun push(x: Int) {
+        stack1.addLast(x)
+    }
+
+    fun pop(): Int {
+        while (stack1.size > 1) {
+            stack2.addLast(stack1.removeLast())
+        }
+        val res = stack1.removeLast()
+        while (stack2.isNotEmpty()) {
+            stack1.addLast(stack2.removeLast())
+        }
+        return res
+    }
+
+    fun peek(): Int {
+        while (stack1.size > 1) {
+            stack2.addLast(stack1.removeLast())
+        }
+        val res = stack1.last()
+        while (stack2.isNotEmpty()) {
+            stack1.addLast(stack2.removeLast())
+        }
+        return res
+    }
+
+    fun empty(): Boolean {
+        return stack1.isEmpty()
+    }
+}
+```
+
+```swift
+class MyQueue {
+    private var stack1: [Int]
+    private var stack2: [Int]
+
+    init() {
+        stack1 = []
+        stack2 = []
+    }
+
+    func push(_ x: Int) {
+        stack1.append(x)
+    }
+
+    func pop() -> Int {
+        while stack1.count > 1 {
+            stack2.append(stack1.removeLast())
+        }
+        let res = stack1.removeLast()
+        while !stack2.isEmpty {
+            stack1.append(stack2.removeLast())
+        }
+        return res
+    }
+
+    func peek() -> Int {
+        while stack1.count > 1 {
+            stack2.append(stack1.removeLast())
+        }
+        let res = stack1.last!
+        while !stack2.isEmpty {
+            stack1.append(stack2.removeLast())
+        }
+        return res
+    }
+
+    func empty() -> Bool {
+        return stack1.isEmpty
+    }
+}
+```
+
+```rust
+struct MyQueue {
+    stack1: Vec<i32>,
+    stack2: Vec<i32>,
+}
+
+impl MyQueue {
+    fn new() -> Self {
+        MyQueue {
+            stack1: Vec::new(),
+            stack2: Vec::new(),
+        }
+    }
+
+    fn push(&mut self, x: i32) {
+        self.stack1.push(x);
+    }
+
+    fn pop(&mut self) -> i32 {
+        while self.stack1.len() > 1 {
+            let val = self.stack1.pop().unwrap();
+            self.stack2.push(val);
+        }
+        let res = self.stack1.pop().unwrap();
+        while let Some(val) = self.stack2.pop() {
+            self.stack1.push(val);
+        }
+        res
+    }
+
+    fn peek(&mut self) -> i32 {
+        while self.stack1.len() > 1 {
+            let val = self.stack1.pop().unwrap();
+            self.stack2.push(val);
+        }
+        let res = *self.stack1.last().unwrap();
+        while let Some(val) = self.stack2.pop() {
+            self.stack1.push(val);
+        }
+        res
+    }
+
+    fn empty(&self) -> bool {
+        self.stack1.is_empty()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -227,6 +427,20 @@ public class MyQueue {
 ---
 
 ## 2. Using Two Stacks (Amortized Complexity)
+
+### Intuition
+
+Instead of moving elements back after each pop, we can keep them in the second stack.
+`stack1` handles incoming elements (push), while `stack2` holds elements in reversed order for popping.
+When `stack2` is empty and we need to pop, we transfer all elements from `stack1` to `stack2` at once.
+Each element is moved at most twice (once to `stack2`, once when popped), giving amortized O(1) per operation.
+
+### Algorithm
+
+1. For `push`: Push the element onto `s1`.
+2. For `pop`: If `s2` is empty, transfer all elements from `s1` to `s2`. Then pop from `s2`.
+3. For `peek`: If `s2` is empty, transfer all elements from `s1` to `s2`. Then return the top of `s2`.
+4. For `empty`: Return `true` if both `s1` and `s2` are empty.
 
 ::tabs-start
 
@@ -420,6 +634,163 @@ public class MyQueue {
 }
 ```
 
+```go
+type MyQueue struct {
+    s1 []int
+    s2 []int
+}
+
+func Constructor() MyQueue {
+    return MyQueue{
+        s1: []int{},
+        s2: []int{},
+    }
+}
+
+func (this *MyQueue) Push(x int) {
+    this.s1 = append(this.s1, x)
+}
+
+func (this *MyQueue) Pop() int {
+    if len(this.s2) == 0 {
+        for len(this.s1) > 0 {
+            this.s2 = append(this.s2, this.s1[len(this.s1)-1])
+            this.s1 = this.s1[:len(this.s1)-1]
+        }
+    }
+    res := this.s2[len(this.s2)-1]
+    this.s2 = this.s2[:len(this.s2)-1]
+    return res
+}
+
+func (this *MyQueue) Peek() int {
+    if len(this.s2) == 0 {
+        for len(this.s1) > 0 {
+            this.s2 = append(this.s2, this.s1[len(this.s1)-1])
+            this.s1 = this.s1[:len(this.s1)-1]
+        }
+    }
+    return this.s2[len(this.s2)-1]
+}
+
+func (this *MyQueue) Empty() bool {
+    return len(this.s1) == 0 && len(this.s2) == 0
+}
+```
+
+```kotlin
+class MyQueue() {
+    private val s1 = ArrayDeque<Int>()
+    private val s2 = ArrayDeque<Int>()
+
+    fun push(x: Int) {
+        s1.addLast(x)
+    }
+
+    fun pop(): Int {
+        if (s2.isEmpty()) {
+            while (s1.isNotEmpty()) {
+                s2.addLast(s1.removeLast())
+            }
+        }
+        return s2.removeLast()
+    }
+
+    fun peek(): Int {
+        if (s2.isEmpty()) {
+            while (s1.isNotEmpty()) {
+                s2.addLast(s1.removeLast())
+            }
+        }
+        return s2.last()
+    }
+
+    fun empty(): Boolean {
+        return s1.isEmpty() && s2.isEmpty()
+    }
+}
+```
+
+```swift
+class MyQueue {
+    private var s1: [Int]
+    private var s2: [Int]
+
+    init() {
+        s1 = []
+        s2 = []
+    }
+
+    func push(_ x: Int) {
+        s1.append(x)
+    }
+
+    func pop() -> Int {
+        if s2.isEmpty {
+            while !s1.isEmpty {
+                s2.append(s1.removeLast())
+            }
+        }
+        return s2.removeLast()
+    }
+
+    func peek() -> Int {
+        if s2.isEmpty {
+            while !s1.isEmpty {
+                s2.append(s1.removeLast())
+            }
+        }
+        return s2.last!
+    }
+
+    func empty() -> Bool {
+        return s1.isEmpty && s2.isEmpty
+    }
+}
+```
+
+```rust
+struct MyQueue {
+    s1: Vec<i32>,
+    s2: Vec<i32>,
+}
+
+impl MyQueue {
+    fn new() -> Self {
+        MyQueue {
+            s1: Vec::new(),
+            s2: Vec::new(),
+        }
+    }
+
+    fn push(&mut self, x: i32) {
+        self.s1.push(x);
+    }
+
+    fn pop(&mut self) -> i32 {
+        if self.s2.is_empty() {
+            while let Some(val) = self.s1.pop() {
+                self.s2.push(val);
+            }
+        }
+        self.s2.pop().unwrap()
+    }
+
+    fn peek(&mut self) -> i32 {
+        if self.s2.is_empty() {
+            while let Some(val) = self.s1.pop() {
+                self.s2.push(val);
+            }
+        }
+        *self.s2.last().unwrap()
+    }
+
+    fn empty(&self) -> bool {
+        self.s1.is_empty() && self.s2.is_empty()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -429,3 +800,15 @@ public class MyQueue {
     - $O(1)$ time for each $push()$ and $empty()$ function calls.
     - $O(1)$ amortized time for each $pop()$ and $peek()$ function calls.
 - Space complexity: $O(n)$
+
+---
+
+## Common Pitfalls
+
+### Checking Only One Stack for Empty
+
+In the optimized two-stack approach, the `empty()` method must check if both stacks are empty, not just one. A common mistake is returning `s1.isEmpty()` without considering `s2`. Elements may exist in `s2` ready to be popped even when `s1` is empty. The correct check is `s1.isEmpty() && s2.isEmpty()`.
+
+### Transferring Elements Back After Every Pop
+
+In the brute force approach, forgetting to transfer elements back from `stack2` to `stack1` after a pop operation breaks subsequent operations. However, in the optimized approach, the opposite mistake is problematic: unnecessarily transferring elements back defeats the amortized O(1) complexity. The key insight is that elements in `s2` are already in the correct order for popping and should remain there until exhausted.

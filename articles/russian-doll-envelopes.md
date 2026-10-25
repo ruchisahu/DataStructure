@@ -1,4 +1,28 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Sorting with custom comparators** - Sorting by multiple criteria (width ascending, height descending for equal widths)
+- **Longest Increasing Subsequence (LIS)** - The classic DP problem that this reduces to after sorting
+- **Dynamic Programming** - Both top-down (memoization) and bottom-up approaches for optimization problems
+- **Binary Search** - Used in the O(n log n) LIS solution to efficiently find insertion positions
+
+---
+
 ## 1. Dynamic Programming (Top-Down)
+
+### Intuition
+
+This problem is essentially finding the longest chain of envelopes where each envelope strictly contains the previous one. If we sort envelopes by width, we only need to find the longest increasing subsequence (`LIS`) of heights. The trick is to sort by width ascending, but when widths are equal, sort by height descending. This prevents envelopes with the same width from being part of the same chain, since we need strictly greater dimensions for both.
+
+### Algorithm
+
+1. Sort envelopes by width ascending. For equal widths, sort by height descending.
+2. Extract the heights into an array.
+3. Use memoized recursion to compute `LIS` on the heights:
+    - For each index `i`, recursively find the longest subsequence starting from `i`.
+    - Check all indices `j > i` where `heights[j] > heights[i]`, taking the maximum.
+4. Return the maximum `LIS` value across all starting positions.
 
 ::tabs-start
 
@@ -169,6 +193,160 @@ public class Solution {
 }
 ```
 
+```go
+func maxEnvelopes(envelopes [][]int) int {
+    n := len(envelopes)
+    if n == 0 {
+        return 0
+    }
+    sort.Slice(envelopes, func(i, j int) bool {
+        if envelopes[i][0] != envelopes[j][0] {
+            return envelopes[i][0] < envelopes[j][0]
+        }
+        return envelopes[i][1] > envelopes[j][1]
+    })
+
+    nums := make([]int, n)
+    for i := 0; i < n; i++ {
+        nums[i] = envelopes[i][1]
+    }
+    memo := make([]int, n)
+    for i := range memo {
+        memo[i] = -1
+    }
+
+    var dfs func(i int) int
+    dfs = func(i int) int {
+        if memo[i] != -1 {
+            return memo[i]
+        }
+        lis := 1
+        for j := i + 1; j < n; j++ {
+            if nums[i] < nums[j] {
+                lis = max(lis, 1+dfs(j))
+            }
+        }
+        memo[i] = lis
+        return lis
+    }
+
+    result := 0
+    for i := 0; i < n; i++ {
+        result = max(result, dfs(i))
+    }
+    return result
+}
+
+func max(a, b int) int {
+    if a > b {
+        return a
+    }
+    return b
+}
+```
+
+```kotlin
+class Solution {
+    fun maxEnvelopes(envelopes: Array<IntArray>): Int {
+        val n = envelopes.size
+        if (n == 0) return 0
+        envelopes.sortWith(compareBy({ it[0] }, { -it[1] }))
+
+        val nums = envelopes.map { it[1] }.toIntArray()
+        val memo = IntArray(n) { -1 }
+
+        fun dfs(i: Int): Int {
+            if (memo[i] != -1) return memo[i]
+            var lis = 1
+            for (j in i + 1 until n) {
+                if (nums[i] < nums[j]) {
+                    lis = maxOf(lis, 1 + dfs(j))
+                }
+            }
+            memo[i] = lis
+            return lis
+        }
+
+        var result = 0
+        for (i in 0 until n) {
+            result = maxOf(result, dfs(i))
+        }
+        return result
+    }
+}
+```
+
+```swift
+class Solution {
+    func maxEnvelopes(_ envelopes: [[Int]]) -> Int {
+        let n = envelopes.count
+        if n == 0 { return 0 }
+        let sorted = envelopes.sorted {
+            if $0[0] != $1[0] { return $0[0] < $1[0] }
+            return $0[1] > $1[1]
+        }
+
+        let nums = sorted.map { $0[1] }
+        var memo = [Int](repeating: -1, count: n)
+
+        func dfs(_ i: Int) -> Int {
+            if memo[i] != -1 { return memo[i] }
+            var lis = 1
+            for j in (i + 1)..<n {
+                if nums[i] < nums[j] {
+                    lis = max(lis, 1 + dfs(j))
+                }
+            }
+            memo[i] = lis
+            return lis
+        }
+
+        var result = 0
+        for i in 0..<n {
+            result = max(result, dfs(i))
+        }
+        return result
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn max_envelopes(mut envelopes: Vec<Vec<i32>>) -> i32 {
+        let n = envelopes.len();
+        if n == 0 {
+            return 0;
+        }
+        envelopes.sort_by(|a, b| {
+            if a[0] != b[0] { a[0].cmp(&b[0]) } else { b[1].cmp(&a[1]) }
+        });
+
+        let heights: Vec<i32> = envelopes.iter().map(|e| e[1]).collect();
+        let mut memo = vec![-1i32; n];
+
+        fn dfs(nums: &[i32], i: usize, memo: &mut Vec<i32>) -> i32 {
+            if memo[i] != -1 {
+                return memo[i];
+            }
+            let mut lis = 1;
+            for j in i + 1..nums.len() {
+                if nums[i] < nums[j] {
+                    lis = lis.max(1 + dfs(nums, j, memo));
+                }
+            }
+            memo[i] = lis;
+            lis
+        }
+
+        let mut result = 0;
+        for i in 0..n {
+            result = result.max(dfs(&heights, i, &mut memo));
+        }
+        result
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -179,6 +357,20 @@ public class Solution {
 ---
 
 ## 2. Dynamic Programming (Bottom-Up)
+
+### Intuition
+
+Instead of using recursion, we can build the solution iteratively from right to left. For each position, we compute the length of the longest increasing subsequence starting from that position by looking at all valid successors. This bottom-up approach avoids the overhead of recursion and explicitly fills a `DP` table.
+
+### Algorithm
+
+1. Sort envelopes by width ascending, height descending for equal widths.
+2. Extract heights into an array.
+3. Create a `DP` array where `LIS[i]` represents the longest increasing subsequence starting at index `i`.
+4. Iterate from right to left:
+    - For each index `i`, check all `j > i` where `heights[j] > heights[i]`.
+    - Update `LIS[i] = max(LIS[i], 1 + LIS[j])`.
+5. Return the maximum value in the `LIS` array.
 
 ::tabs-start
 
@@ -303,6 +495,112 @@ public class Solution {
 }
 ```
 
+```go
+func maxEnvelopes(envelopes [][]int) int {
+    n := len(envelopes)
+    sort.Slice(envelopes, func(i, j int) bool {
+        if envelopes[i][0] != envelopes[j][0] {
+            return envelopes[i][0] < envelopes[j][0]
+        }
+        return envelopes[i][1] > envelopes[j][1]
+    })
+
+    heights := make([]int, n)
+    for i := 0; i < n; i++ {
+        heights[i] = envelopes[i][1]
+    }
+    LIS := make([]int, n)
+    for i := range LIS {
+        LIS[i] = 1
+    }
+    ans := 0
+    for i := n - 1; i >= 0; i-- {
+        for j := i + 1; j < n; j++ {
+            if heights[i] < heights[j] {
+                if 1+LIS[j] > LIS[i] {
+                    LIS[i] = 1 + LIS[j]
+                }
+            }
+        }
+        if LIS[i] > ans {
+            ans = LIS[i]
+        }
+    }
+    return ans
+}
+```
+
+```kotlin
+class Solution {
+    fun maxEnvelopes(envelopes: Array<IntArray>): Int {
+        val n = envelopes.size
+        envelopes.sortWith(compareBy({ it[0] }, { -it[1] }))
+
+        val heights = IntArray(n) { envelopes[it][1] }
+        val LIS = IntArray(n) { 1 }
+        var ans = 0
+        for (i in n - 1 downTo 0) {
+            for (j in i + 1 until n) {
+                if (heights[i] < heights[j]) {
+                    LIS[i] = maxOf(LIS[i], 1 + LIS[j])
+                }
+            }
+            ans = maxOf(ans, LIS[i])
+        }
+        return ans
+    }
+}
+```
+
+```swift
+class Solution {
+    func maxEnvelopes(_ envelopes: [[Int]]) -> Int {
+        let n = envelopes.count
+        let sorted = envelopes.sorted {
+            if $0[0] != $1[0] { return $0[0] < $1[0] }
+            return $0[1] > $1[1]
+        }
+
+        let heights = sorted.map { $0[1] }
+        var LIS = [Int](repeating: 1, count: n)
+        var ans = 0
+        for i in stride(from: n - 1, through: 0, by: -1) {
+            for j in (i + 1)..<n {
+                if heights[i] < heights[j] {
+                    LIS[i] = max(LIS[i], 1 + LIS[j])
+                }
+            }
+            ans = max(ans, LIS[i])
+        }
+        return ans
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn max_envelopes(mut envelopes: Vec<Vec<i32>>) -> i32 {
+        let n = envelopes.len();
+        envelopes.sort_by(|a, b| {
+            if a[0] != b[0] { a[0].cmp(&b[0]) } else { b[1].cmp(&a[1]) }
+        });
+
+        let heights: Vec<i32> = envelopes.iter().map(|e| e[1]).collect();
+        let mut lis = vec![1i32; n];
+        let mut ans = 0;
+        for i in (0..n).rev() {
+            for j in i + 1..n {
+                if heights[i] < heights[j] {
+                    lis[i] = lis[i].max(1 + lis[j]);
+                }
+            }
+            ans = ans.max(lis[i]);
+        }
+        ans
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -313,6 +611,20 @@ public class Solution {
 ---
 
 ## 3. Dynamic Programming + Binary Search
+
+### Intuition
+
+The standard `LIS` problem can be solved in O(n log n) using binary search. We maintain a list where each position stores the smallest ending value of all increasing subsequences of that length. For each new element, we either extend the longest subsequence or replace an existing ending value to allow for potentially longer subsequences later. Binary search finds the correct position efficiently.
+
+### Algorithm
+
+1. Sort envelopes by width ascending, height descending for equal widths.
+2. Extract heights into an array.
+3. Initialize an empty list `dp` that will store the smallest tail values for subsequences of each length.
+4. For each height:
+    - If it's larger than the last element in `dp`, append it (extends the longest subsequence).
+    - Otherwise, use binary search to find the first element in `dp` that is greater than or equal to the current height, and replace it.
+5. The length of `dp` is the answer.
 
 ::tabs-start
 
@@ -479,6 +791,130 @@ public class Solution {
 }
 ```
 
+```go
+func maxEnvelopes(envelopes [][]int) int {
+    n := len(envelopes)
+    sort.Slice(envelopes, func(i, j int) bool {
+        if envelopes[i][0] != envelopes[j][0] {
+            return envelopes[i][0] < envelopes[j][0]
+        }
+        return envelopes[i][1] > envelopes[j][1]
+    })
+
+    nums := make([]int, n)
+    for i := 0; i < n; i++ {
+        nums[i] = envelopes[i][1]
+    }
+
+    dp := []int{nums[0]}
+    LIS := 1
+
+    for i := 1; i < n; i++ {
+        if dp[len(dp)-1] < nums[i] {
+            dp = append(dp, nums[i])
+            LIS++
+            continue
+        }
+
+        idx := sort.SearchInts(dp, nums[i])
+        dp[idx] = nums[i]
+    }
+
+    return LIS
+}
+```
+
+```kotlin
+class Solution {
+    fun maxEnvelopes(envelopes: Array<IntArray>): Int {
+        val n = envelopes.size
+        envelopes.sortWith(compareBy({ it[0] }, { -it[1] }))
+
+        val nums = envelopes.map { it[1] }
+        val dp = mutableListOf(nums[0])
+        var LIS = 1
+
+        for (i in 1 until n) {
+            if (dp.last() < nums[i]) {
+                dp.add(nums[i])
+                LIS++
+                continue
+            }
+
+            var idx = dp.binarySearch(nums[i])
+            if (idx < 0) idx = -(idx + 1)
+            dp[idx] = nums[i]
+        }
+
+        return LIS
+    }
+}
+```
+
+```swift
+class Solution {
+    func maxEnvelopes(_ envelopes: [[Int]]) -> Int {
+        let n = envelopes.count
+        let sorted = envelopes.sorted {
+            if $0[0] != $1[0] { return $0[0] < $1[0] }
+            return $0[1] > $1[1]
+        }
+
+        let nums = sorted.map { $0[1] }
+        var dp = [nums[0]]
+        var LIS = 1
+
+        for i in 1..<n {
+            if dp.last! < nums[i] {
+                dp.append(nums[i])
+                LIS += 1
+                continue
+            }
+
+            var left = 0, right = dp.count - 1
+            while left < right {
+                let mid = (left + right) / 2
+                if dp[mid] < nums[i] {
+                    left = mid + 1
+                } else {
+                    right = mid
+                }
+            }
+            dp[left] = nums[i]
+        }
+
+        return LIS
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn max_envelopes(mut envelopes: Vec<Vec<i32>>) -> i32 {
+        let n = envelopes.len();
+        envelopes.sort_by(|a, b| {
+            if a[0] != b[0] { a[0].cmp(&b[0]) } else { b[1].cmp(&a[1]) }
+        });
+
+        let nums: Vec<i32> = envelopes.iter().map(|e| e[1]).collect();
+        let mut dp = vec![nums[0]];
+        let mut lis = 1i32;
+
+        for i in 1..n {
+            if *dp.last().unwrap() < nums[i] {
+                dp.push(nums[i]);
+                lis += 1;
+                continue;
+            }
+            let idx = dp.partition_point(|&x| x < nums[i]);
+            dp[idx] = nums[i];
+        }
+
+        lis
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -489,6 +925,21 @@ public class Solution {
 ---
 
 ## 4. Segment Tree
+
+### Intuition
+
+A segment tree can efficiently answer range maximum queries, which helps compute `LIS`. For each height, we query the maximum `LIS` length among all smaller heights, add one, and update the tree with this new value. Coordinate compression reduces the height values to a manageable range. This approach achieves the same O(n log n) complexity as binary search but offers a different perspective using range queries.
+
+### Algorithm
+
+1. Sort envelopes by width ascending, height descending for equal widths.
+2. Extract and compress heights to consecutive integers starting from 0.
+3. Build a segment tree that supports range maximum queries and point updates.
+4. For each compressed height `h`:
+    - Query the maximum `LIS` value in the range `[0, h - 1]`.
+    - The current `LIS` ending at `h` is `query result + 1`.
+    - Update the segment tree at position `h` with this value.
+5. Return the maximum `LIS` value found.
 
 ::tabs-start
 
@@ -876,9 +1327,323 @@ public class Solution {
 }
 ```
 
+```go
+type SegmentTree struct {
+    n    int
+    tree []int
+}
+
+func NewSegmentTree(N int) *SegmentTree {
+    n := N
+    for n&(n-1) != 0 {
+        n++
+    }
+    return &SegmentTree{
+        n:    n,
+        tree: make([]int, 2*n),
+    }
+}
+
+func (st *SegmentTree) Update(i, val int) {
+    st.tree[st.n+i] = val
+    j := (st.n + i) >> 1
+    for j >= 1 {
+        st.tree[j] = max(st.tree[j<<1], st.tree[j<<1|1])
+        j >>= 1
+    }
+}
+
+func (st *SegmentTree) Query(l, r int) int {
+    if l > r {
+        return 0
+    }
+    res := math.MinInt32
+    l += st.n
+    r += st.n + 1
+    for l < r {
+        if l&1 == 1 {
+            res = max(res, st.tree[l])
+            l++
+        }
+        if r&1 == 1 {
+            r--
+            res = max(res, st.tree[r])
+        }
+        l >>= 1
+        r >>= 1
+    }
+    return res
+}
+
+func maxEnvelopes(envelopes [][]int) int {
+    n := len(envelopes)
+    sort.Slice(envelopes, func(i, j int) bool {
+        if envelopes[i][0] != envelopes[j][0] {
+            return envelopes[i][0] < envelopes[j][0]
+        }
+        return envelopes[i][1] > envelopes[j][1]
+    })
+
+    heights := make([]int, n)
+    for i := 0; i < n; i++ {
+        heights[i] = envelopes[i][1]
+    }
+
+    sortedSet := make(map[int]bool)
+    for _, h := range heights {
+        sortedSet[h] = true
+    }
+    sortedArr := make([]int, 0, len(sortedSet))
+    for h := range sortedSet {
+        sortedArr = append(sortedArr, h)
+    }
+    sort.Ints(sortedArr)
+
+    indexMap := make(map[int]int)
+    for i, h := range sortedArr {
+        indexMap[h] = i
+    }
+
+    segTree := NewSegmentTree(len(sortedArr))
+    LIS := 0
+    for _, h := range heights {
+        idx := indexMap[h]
+        curLIS := segTree.Query(0, idx-1) + 1
+        segTree.Update(idx, curLIS)
+        LIS = max(LIS, curLIS)
+    }
+    return LIS
+}
+
+func max(a, b int) int {
+    if a > b {
+        return a
+    }
+    return b
+}
+```
+
+```kotlin
+class SegmentTree(N: Int) {
+    private var n: Int = N
+    private val tree: IntArray
+
+    init {
+        while (n and (n - 1) != 0) n++
+        tree = IntArray(2 * n)
+    }
+
+    fun update(i: Int, value: Int) {
+        tree[n + i] = value
+        var j = (n + i) shr 1
+        while (j >= 1) {
+            tree[j] = maxOf(tree[j shl 1], tree[j shl 1 or 1])
+            j = j shr 1
+        }
+    }
+
+    fun query(l: Int, r: Int): Int {
+        if (l > r) return 0
+        var res = Int.MIN_VALUE
+        var left = l + n
+        var right = r + n + 1
+        while (left < right) {
+            if (left and 1 == 1) {
+                res = maxOf(res, tree[left])
+                left++
+            }
+            if (right and 1 == 1) {
+                right--
+                res = maxOf(res, tree[right])
+            }
+            left = left shr 1
+            right = right shr 1
+        }
+        return res
+    }
+}
+
+class Solution {
+    fun maxEnvelopes(envelopes: Array<IntArray>): Int {
+        val n = envelopes.size
+        envelopes.sortWith(compareBy({ it[0] }, { -it[1] }))
+
+        val heights = envelopes.map { it[1] }
+        val sortedArr = heights.toSet().sorted()
+        val indexMap = sortedArr.withIndex().associate { it.value to it.index }
+
+        val segTree = SegmentTree(sortedArr.size)
+        var LIS = 0
+        for (h in heights) {
+            val idx = indexMap[h]!!
+            val curLIS = segTree.query(0, idx - 1) + 1
+            segTree.update(idx, curLIS)
+            LIS = maxOf(LIS, curLIS)
+        }
+        return LIS
+    }
+}
+```
+
+```swift
+class SegmentTree {
+    private var n: Int
+    private var tree: [Int]
+
+    init(_ N: Int) {
+        n = N
+        while n & (n - 1) != 0 {
+            n += 1
+        }
+        tree = [Int](repeating: 0, count: 2 * n)
+    }
+
+    func update(_ i: Int, _ val: Int) {
+        tree[n + i] = val
+        var j = (n + i) >> 1
+        while j >= 1 {
+            tree[j] = max(tree[j << 1], tree[j << 1 | 1])
+            j >>= 1
+        }
+    }
+
+    func query(_ l: Int, _ r: Int) -> Int {
+        if l > r { return 0 }
+        var res = Int.min
+        var left = l + n
+        var right = r + n + 1
+        while left < right {
+            if left & 1 == 1 {
+                res = max(res, tree[left])
+                left += 1
+            }
+            if right & 1 == 1 {
+                right -= 1
+                res = max(res, tree[right])
+            }
+            left >>= 1
+            right >>= 1
+        }
+        return res
+    }
+}
+
+class Solution {
+    func maxEnvelopes(_ envelopes: [[Int]]) -> Int {
+        let n = envelopes.count
+        let sorted = envelopes.sorted {
+            if $0[0] != $1[0] { return $0[0] < $1[0] }
+            return $0[1] > $1[1]
+        }
+
+        let heights = sorted.map { $0[1] }
+        let sortedArr = Array(Set(heights)).sorted()
+        var indexMap = [Int: Int]()
+        for (i, h) in sortedArr.enumerated() {
+            indexMap[h] = i
+        }
+
+        let segTree = SegmentTree(sortedArr.count)
+        var LIS = 0
+        for h in heights {
+            let idx = indexMap[h]!
+            let curLIS = segTree.query(0, idx - 1) + 1
+            segTree.update(idx, curLIS)
+            LIS = max(LIS, curLIS)
+        }
+        return LIS
+    }
+}
+```
+
+```rust
+struct SegTree {
+    n: usize,
+    tree: Vec<i32>,
+}
+
+impl SegTree {
+    fn new(n: usize) -> Self {
+        let mut sz = n;
+        while sz & (sz - 1) != 0 {
+            sz += 1;
+        }
+        Self { n: sz, tree: vec![0; 2 * sz] }
+    }
+
+    fn update(&mut self, i: usize, val: i32) {
+        self.tree[self.n + i] = val;
+        let mut j = (self.n + i) >> 1;
+        while j >= 1 {
+            self.tree[j] = self.tree[j << 1].max(self.tree[j << 1 | 1]);
+            j >>= 1;
+        }
+    }
+
+    fn query(&self, l: usize, r: usize) -> i32 {
+        if l > r { return 0; }
+        let mut res = i32::MIN;
+        let mut lo = l + self.n;
+        let mut hi = r + self.n + 1;
+        while lo < hi {
+            if lo & 1 == 1 { res = res.max(self.tree[lo]); lo += 1; }
+            if hi & 1 == 1 { hi -= 1; res = res.max(self.tree[hi]); }
+            lo >>= 1;
+            hi >>= 1;
+        }
+        res
+    }
+}
+
+impl Solution {
+    pub fn max_envelopes(mut envelopes: Vec<Vec<i32>>) -> i32 {
+        let n = envelopes.len();
+        envelopes.sort_by(|a, b| {
+            if a[0] != b[0] { a[0].cmp(&b[0]) } else { b[1].cmp(&a[1]) }
+        });
+
+        let heights: Vec<i32> = envelopes.iter().map(|e| e[1]).collect();
+        let mut sorted_arr: Vec<i32> = heights.iter().copied().collect::<BTreeSet<_>>().into_iter().collect();
+
+        let index_map: HashMap<i32, usize> = sorted_arr.iter()
+            .enumerate()
+            .map(|(i, &v)| (v, i))
+            .collect();
+
+        let mut seg_tree = SegTree::new(sorted_arr.len());
+        let mut lis = 0;
+        for &h in &heights {
+            let idx = index_map[&h];
+            let cur_lis = if idx == 0 { 1 } else { seg_tree.query(0, idx - 1) + 1 };
+            seg_tree.update(idx, cur_lis);
+            lis = lis.max(cur_lis);
+        }
+        lis
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n \log n)$
 - Space complexity: $O(n)$
+
+## Common Pitfalls
+
+### Sorting Heights in Wrong Order for Equal Widths
+
+The most critical mistake is sorting by height ascending when widths are equal. This allows multiple envelopes with the same width to be included in the LIS, violating the strict containment requirement. When widths are equal, sort heights in descending order to ensure only one envelope per width can be selected.
+
+### Using Non-Strict Inequality for Containment
+
+Some solutions check `width1 <= width2` and `height1 <= height2` instead of strict inequality. Envelopes must strictly contain each other, meaning both dimensions must be strictly greater. Using `<=` incorrectly allows envelopes of equal size to be nested.
+
+### Applying Standard LIS Without Dimension Reduction
+
+Attempting to run LIS on both dimensions simultaneously leads to an incorrect or overly complex solution. The key insight is that after sorting by width, the problem reduces to finding LIS on heights alone. Failing to recognize this reduction results in unnecessary complexity or wrong answers.
+
+### Off-by-One Errors in Binary Search
+
+When implementing the O(n log n) LIS solution, using the wrong binary search variant causes errors. You need to find the first element greater than or equal to the current height (lower bound), not strictly greater. Using upper bound or incorrect comparisons leads to wrong LIS lengths.

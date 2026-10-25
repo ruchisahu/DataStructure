@@ -1,4 +1,30 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Binary Tree Traversal** - Understanding how to recursively navigate tree structures (DFS)
+- **Dynamic Programming on Trees** - Extending DP concepts to tree-based problems
+- **House Robber I** - The foundational problem that this extends to tree structures
+- **Memoization with Hash Maps** - Caching results using node references as keys
+
+---
+
 ## 1. Recursion
+
+### Intuition
+
+This is a tree version of the classic house robber problem.
+At each node, we have two choices: rob it or skip it.
+If we rob the current node, we cannot rob its immediate children, so we must skip to the grandchildren.
+If we skip the current node, we can consider robbing its children.
+We take the maximum of these two options.
+
+### Algorithm
+
+1. If the node is `null`, return `0`.
+2. Calculate the value if we rob the current node: add the node's value plus the result from its grandchildren (`left.left`, `left.right`, `right.left`, `right.right`).
+3. Calculate the value if we skip the current node: add the results from robbing the left and right children.
+4. Return the maximum of these two values.
 
 ::tabs-start
 
@@ -160,6 +186,132 @@ public class Solution {
 }
 ```
 
+```go
+/**
+ * Definition for a binary tree node.
+ * type TreeNode struct {
+ *     Val int
+ *     Left *TreeNode
+ *     Right *TreeNode
+ * }
+ */
+func rob(root *TreeNode) int {
+    if root == nil {
+        return 0
+    }
+
+    res := root.Val
+    if root.Left != nil {
+        res += rob(root.Left.Left) + rob(root.Left.Right)
+    }
+    if root.Right != nil {
+        res += rob(root.Right.Left) + rob(root.Right.Right)
+    }
+
+    return max(res, rob(root.Left)+rob(root.Right))
+}
+
+func max(a, b int) int {
+    if a > b {
+        return a
+    }
+    return b
+}
+```
+
+```kotlin
+/**
+ * Example:
+ * var ti = TreeNode(5)
+ * var v = ti.`val`
+ * Definition for a binary tree node.
+ * class TreeNode(var `val`: Int) {
+ *     var left: TreeNode? = null
+ *     var right: TreeNode? = null
+ * }
+ */
+class Solution {
+    fun rob(root: TreeNode?): Int {
+        if (root == null) return 0
+
+        var res = root.`val`
+        if (root.left != null) {
+            res += rob(root.left?.left) + rob(root.left?.right)
+        }
+        if (root.right != null) {
+            res += rob(root.right?.left) + rob(root.right?.right)
+        }
+
+        return maxOf(res, rob(root.left) + rob(root.right))
+    }
+}
+```
+
+```swift
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     public var val: Int
+ *     public var left: TreeNode?
+ *     public var right: TreeNode?
+ *     public init() { self.val = 0; self.left = nil; self.right = nil; }
+ *     public init(_ val: Int) { self.val = val; self.left = nil; self.right = nil; }
+ *     public init(_ val: Int, _ left: TreeNode?, _ right: TreeNode?) {
+ *         self.val = val
+ *         self.left = left
+ *         self.right = right
+ *     }
+ * }
+ */
+class Solution {
+    func rob(_ root: TreeNode?) -> Int {
+        guard let root = root else { return 0 }
+
+        var res = root.val
+        if let left = root.left {
+            res += rob(left.left) + rob(left.right)
+        }
+        if let right = root.right {
+            res += rob(right.left) + rob(right.right)
+        }
+
+        return max(res, rob(root.left) + rob(root.right))
+    }
+}
+```
+
+```rust
+// Definition for a binary tree node.
+// #[derive(Debug, PartialEq, Eq)]
+// pub struct TreeNode {
+//     pub val: i32,
+//     pub left: Option<Rc<RefCell<TreeNode>>>,
+//     pub right: Option<Rc<RefCell<TreeNode>>>,
+// }
+impl Solution {
+    pub fn rob(root: Option<Rc<RefCell<TreeNode>>>) -> i32 {
+        fn dfs(node: &Option<Rc<RefCell<TreeNode>>>) -> i32 {
+            if let Some(n) = node {
+                let n = n.borrow();
+                let mut res = n.val;
+                if let Some(ref left) = n.left {
+                    let left = left.borrow();
+                    res += dfs(&left.left) + dfs(&left.right);
+                }
+                if let Some(ref right) = n.right {
+                    let right = right.borrow();
+                    res += dfs(&right.left) + dfs(&right.right);
+                }
+                res.max(dfs(&n.left) + dfs(&n.right))
+            } else {
+                0
+            }
+        }
+        dfs(&root)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -170,6 +322,20 @@ public class Solution {
 ---
 
 ## 2. Dynamic Programming (Memoization)
+
+### Intuition
+
+The recursive solution recomputes results for the same nodes multiple times.
+By storing computed results in a cache (hash map), we avoid redundant work.
+Each node is processed at most once, significantly improving efficiency.
+
+### Algorithm
+
+1. Create a cache (hash map) to store computed results for each node.
+2. Define a recursive function that checks the cache before computing.
+3. If the node is in the cache, return the cached result.
+4. Otherwise, compute the result using the same logic as the basic recursion: max of robbing current node (plus grandchildren) vs skipping current node (plus children).
+5. Store the result in the cache and return it.
 
 ::tabs-start
 
@@ -371,6 +537,175 @@ public class Solution {
 }
 ```
 
+```go
+/**
+ * Definition for a binary tree node.
+ * type TreeNode struct {
+ *     Val int
+ *     Left *TreeNode
+ *     Right *TreeNode
+ * }
+ */
+func rob(root *TreeNode) int {
+    cache := make(map[*TreeNode]int)
+
+    var dfs func(node *TreeNode) int
+    dfs = func(node *TreeNode) int {
+        if node == nil {
+            return 0
+        }
+        if val, ok := cache[node]; ok {
+            return val
+        }
+
+        res := node.Val
+        if node.Left != nil {
+            res += dfs(node.Left.Left) + dfs(node.Left.Right)
+        }
+        if node.Right != nil {
+            res += dfs(node.Right.Left) + dfs(node.Right.Right)
+        }
+
+        res = max(res, dfs(node.Left)+dfs(node.Right))
+        cache[node] = res
+        return res
+    }
+
+    return dfs(root)
+}
+
+func max(a, b int) int {
+    if a > b {
+        return a
+    }
+    return b
+}
+```
+
+```kotlin
+/**
+ * Example:
+ * var ti = TreeNode(5)
+ * var v = ti.`val`
+ * Definition for a binary tree node.
+ * class TreeNode(var `val`: Int) {
+ *     var left: TreeNode? = null
+ *     var right: TreeNode? = null
+ * }
+ */
+class Solution {
+    private val cache = HashMap<TreeNode?, Int>()
+
+    fun rob(root: TreeNode?): Int {
+        return dfs(root)
+    }
+
+    private fun dfs(root: TreeNode?): Int {
+        if (root == null) return 0
+        if (cache.containsKey(root)) return cache[root]!!
+
+        var res = root.`val`
+        if (root.left != null) {
+            res += dfs(root.left?.left) + dfs(root.left?.right)
+        }
+        if (root.right != null) {
+            res += dfs(root.right?.left) + dfs(root.right?.right)
+        }
+
+        res = maxOf(res, dfs(root.left) + dfs(root.right))
+        cache[root] = res
+        return res
+    }
+}
+```
+
+```swift
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     public var val: Int
+ *     public var left: TreeNode?
+ *     public var right: TreeNode?
+ *     public init() { self.val = 0; self.left = nil; self.right = nil; }
+ *     public init(_ val: Int) { self.val = val; self.left = nil; self.right = nil; }
+ *     public init(_ val: Int, _ left: TreeNode?, _ right: TreeNode?) {
+ *         self.val = val
+ *         self.left = left
+ *         self.right = right
+ *     }
+ * }
+ */
+class Solution {
+    func rob(_ root: TreeNode?) -> Int {
+        var cache = [ObjectIdentifier: Int]()
+
+        func dfs(_ node: TreeNode?) -> Int {
+            guard let node = node else { return 0 }
+            let id = ObjectIdentifier(node)
+            if let cached = cache[id] {
+                return cached
+            }
+
+            var res = node.val
+            if let left = node.left {
+                res += dfs(left.left) + dfs(left.right)
+            }
+            if let right = node.right {
+                res += dfs(right.left) + dfs(right.right)
+            }
+
+            res = max(res, dfs(node.left) + dfs(node.right))
+            cache[id] = res
+            return res
+        }
+
+        return dfs(root)
+    }
+}
+```
+
+```rust
+// Definition for a binary tree node.
+// #[derive(Debug, PartialEq, Eq)]
+// pub struct TreeNode {
+//     pub val: i32,
+//     pub left: Option<Rc<RefCell<TreeNode>>>,
+//     pub right: Option<Rc<RefCell<TreeNode>>>,
+// }
+impl Solution {
+    pub fn rob(root: Option<Rc<RefCell<TreeNode>>>) -> i32 {
+        let mut cache = HashMap::new();
+        fn dfs(
+            node: &Option<Rc<RefCell<TreeNode>>>,
+            cache: &mut HashMap<*const RefCell<TreeNode>, i32>,
+        ) -> i32 {
+            if let Some(n) = node {
+                let key = Rc::as_ptr(n);
+                if let Some(&val) = cache.get(&key) {
+                    return val;
+                }
+                let nb = n.borrow();
+                let mut res = nb.val;
+                if let Some(ref left) = nb.left {
+                    let lb = left.borrow();
+                    res += dfs(&lb.left, cache) + dfs(&lb.right, cache);
+                }
+                if let Some(ref right) = nb.right {
+                    let rb = right.borrow();
+                    res += dfs(&rb.left, cache) + dfs(&rb.right, cache);
+                }
+                res = res.max(dfs(&nb.left, cache) + dfs(&nb.right, cache));
+                cache.insert(key, res);
+                res
+            } else {
+                0
+            }
+        }
+        dfs(&root, &mut cache)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -381,6 +716,23 @@ public class Solution {
 ---
 
 ## 3. Dynamic Programming (Optimal)
+
+### Intuition
+
+Instead of caching all nodes, we can return two values from each subtree: the maximum if we rob this node, and the maximum if we skip it.
+This eliminates the need for a hash map.
+For each node, "with root" equals the node value plus the "without" values of both children.
+"Without root" equals the sum of the maximum values (either with or without) from both children.
+
+### Algorithm
+
+1. Define a recursive function that returns a pair: `[maxWithNode, maxWithoutNode]`.
+2. For a `null` node, return `[0, 0]`.
+3. Recursively get the pairs for left and right children.
+4. Calculate `withRoot` as the node's value plus `leftPair[1]` plus `rightPair[1]` (children must be skipped).
+5. Calculate `withoutRoot` as `max(leftPair)` plus `max(rightPair)` (children can be robbed or skipped).
+6. Return `[withRoot, withoutRoot]`.
+7. The final answer is the maximum of the two values returned for the root.
 
 ::tabs-start
 
@@ -555,9 +907,161 @@ public class Solution {
 }
 ```
 
+```go
+/**
+ * Definition for a binary tree node.
+ * type TreeNode struct {
+ *     Val int
+ *     Left *TreeNode
+ *     Right *TreeNode
+ * }
+ */
+func rob(root *TreeNode) int {
+    result := dfs(root)
+    return max(result[0], result[1])
+}
+
+func dfs(root *TreeNode) [2]int {
+    if root == nil {
+        return [2]int{0, 0}
+    }
+
+    leftPair := dfs(root.Left)
+    rightPair := dfs(root.Right)
+
+    withRoot := root.Val + leftPair[1] + rightPair[1]
+    withoutRoot := max(leftPair[0], leftPair[1]) + max(rightPair[0], rightPair[1])
+
+    return [2]int{withRoot, withoutRoot}
+}
+
+func max(a, b int) int {
+    if a > b {
+        return a
+    }
+    return b
+}
+```
+
+```kotlin
+/**
+ * Example:
+ * var ti = TreeNode(5)
+ * var v = ti.`val`
+ * Definition for a binary tree node.
+ * class TreeNode(var `val`: Int) {
+ *     var left: TreeNode? = null
+ *     var right: TreeNode? = null
+ * }
+ */
+class Solution {
+    fun rob(root: TreeNode?): Int {
+        val result = dfs(root)
+        return maxOf(result[0], result[1])
+    }
+
+    private fun dfs(root: TreeNode?): IntArray {
+        if (root == null) {
+            return intArrayOf(0, 0)
+        }
+
+        val leftPair = dfs(root.left)
+        val rightPair = dfs(root.right)
+
+        val withRoot = root.`val` + leftPair[1] + rightPair[1]
+        val withoutRoot = maxOf(leftPair[0], leftPair[1]) + maxOf(rightPair[0], rightPair[1])
+
+        return intArrayOf(withRoot, withoutRoot)
+    }
+}
+```
+
+```swift
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     public var val: Int
+ *     public var left: TreeNode?
+ *     public var right: TreeNode?
+ *     public init() { self.val = 0; self.left = nil; self.right = nil; }
+ *     public init(_ val: Int) { self.val = val; self.left = nil; self.right = nil; }
+ *     public init(_ val: Int, _ left: TreeNode?, _ right: TreeNode?) {
+ *         self.val = val
+ *         self.left = left
+ *         self.right = right
+ *     }
+ * }
+ */
+class Solution {
+    func rob(_ root: TreeNode?) -> Int {
+        let result = dfs(root)
+        return max(result.0, result.1)
+    }
+
+    private func dfs(_ root: TreeNode?) -> (Int, Int) {
+        guard let root = root else {
+            return (0, 0)
+        }
+
+        let leftPair = dfs(root.left)
+        let rightPair = dfs(root.right)
+
+        let withRoot = root.val + leftPair.1 + rightPair.1
+        let withoutRoot = max(leftPair.0, leftPair.1) + max(rightPair.0, rightPair.1)
+
+        return (withRoot, withoutRoot)
+    }
+}
+```
+
+```rust
+// Definition for a binary tree node.
+// #[derive(Debug, PartialEq, Eq)]
+// pub struct TreeNode {
+//     pub val: i32,
+//     pub left: Option<Rc<RefCell<TreeNode>>>,
+//     pub right: Option<Rc<RefCell<TreeNode>>>,
+// }
+impl Solution {
+    pub fn rob(root: Option<Rc<RefCell<TreeNode>>>) -> i32 {
+        fn dfs(node: &Option<Rc<RefCell<TreeNode>>>) -> (i32, i32) {
+            if let Some(n) = node {
+                let n = n.borrow();
+                let left_pair = dfs(&n.left);
+                let right_pair = dfs(&n.right);
+                let with_root = n.val + left_pair.1 + right_pair.1;
+                let without_root =
+                    left_pair.0.max(left_pair.1) + right_pair.0.max(right_pair.1);
+                (with_root, without_root)
+            } else {
+                (0, 0)
+            }
+        }
+        let result = dfs(&root);
+        result.0.max(result.1)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(n)$ for recursion stack.
+
+---
+
+## Common Pitfalls
+
+### Confusing "Skip to Grandchildren" with "Must Rob Grandchildren"
+
+When robbing the current node, you cannot rob its immediate children, so you recursively consider the grandchildren. However, a common mistake is thinking you must rob the grandchildren. In reality, for each grandchild, you still have the choice to rob it or skip it. The recursive call on grandchildren will make this decision optimally. The constraint only prevents robbing adjacent nodes (parent-child), not skipping multiple levels.
+
+### Not Handling Null Children Properly
+
+When calculating the value of robbing the current node, you need to add values from grandchildren. If a child is null, accessing `child.left` or `child.right` will cause a null pointer error. Always check if the left or right child exists before attempting to access their children. A null child contributes 0 to the total, and its non-existent children also contribute 0.
+
+### Forgetting to Take Maximum in the Final Answer
+
+The optimal DFS solution returns a pair `[withRoot, withoutRoot]` representing the maximum money if we rob or skip the current node. At the root level, the final answer is the maximum of these two values, not just one of them. Forgetting to take this maximum and returning only `withRoot` or `withoutRoot` will give an incorrect result whenever the optimal strategy at the root differs from what you returned.

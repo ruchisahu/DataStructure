@@ -1,4 +1,37 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Binary Trees** - Understanding tree node structure with left and right children
+- **Depth First Search (DFS)** - Recursive traversal of tree structures
+- **Breadth First Search (BFS)** - Level-by-level traversal using a queue
+- **Queue Data Structure** - FIFO operations for processing nodes in order
+
+---
+
 ## 1. Depth First Search
+
+### Intuition
+
+Level order traversal means visiting the tree **level by level**, from top to bottom.  
+With DFS, instead of using a queue, we use **recursion** and pass the current depth.  
+Each time we reach a node:
+
+- If this is the first time visiting this depth, create a new list for that level.
+- Add the node's value to the list for that depth.
+- Recursively explore left and right children with `depth + 1`.
+
+### Algorithm
+
+1. Maintain an empty list `res` where `res[d]` stores all nodes at depth `d`.
+2. Define a recursive function `dfs(node, depth)`:
+    - If `node` is `null`, return.
+    - If `res` has no list for this depth, append a new empty list.
+    - Append the node's value to `res[depth]`.
+    - Recurse on `node.left` with `depth + 1`.
+    - Recurse on `node.right` with `depth + 1`.
+3. Call `dfs(root, 0)`.
+4. Return `res`.
 
 ::tabs-start
 
@@ -289,6 +322,29 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn level_order(root: Option<Rc<RefCell<TreeNode>>>) -> Vec<Vec<i32>> {
+        let mut res = Vec::new();
+
+        fn dfs(node: &Option<Rc<RefCell<TreeNode>>>, depth: usize, res: &mut Vec<Vec<i32>>) {
+            if let Some(n) = node {
+                let n = n.borrow();
+                if res.len() == depth {
+                    res.push(Vec::new());
+                }
+                res[depth].push(n.val);
+                dfs(&n.left, depth + 1, res);
+                dfs(&n.right, depth + 1, res);
+            }
+        }
+
+        dfs(&root, 0, &mut res);
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -299,6 +355,34 @@ class Solution {
 ---
 
 ## 2. Breadth First Search
+
+### Intuition
+
+Level order traversal visits a tree **level by level**, from left to right.  
+BFS naturally fits this because it processes nodes in the order they appear using a **queue**.
+
+The idea:
+
+- Push the root into the queue.
+- Repeatedly remove nodes from the queue, these form the current level.
+- Add their children into the queue, these will form the next level.
+- Continue until the queue is empty.
+
+This ensures every node is visited in perfect level-order.
+
+### Algorithm
+
+1. If the tree is empty, return an empty list.
+2. Create a queue and push the root.
+3. While the queue is not empty:
+    - Let `qLen` be the number of nodes currently in the queue (these nodes form one full level).
+    - Create an empty list `level`.
+    - Repeat `qLen` times:
+        - Pop a node from the queue.
+        - Add its value to `level`.
+        - Push its left and right children if they exist.
+    - Append `level` to the result list.
+4. Return the result list containing all levels.
 
 ::tabs-start
 
@@ -629,9 +713,51 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn level_order(root: Option<Rc<RefCell<TreeNode>>>) -> Vec<Vec<i32>> {
+        let mut res = Vec::new();
+        let mut q = VecDeque::new();
+        if let Some(r) = root {
+            q.push_back(r);
+        }
+
+        while !q.is_empty() {
+            let q_len = q.len();
+            let mut level = Vec::new();
+            for _ in 0..q_len {
+                let node = q.pop_front().unwrap();
+                let node = node.borrow();
+                level.push(node.val);
+                if let Some(ref left) = node.left {
+                    q.push_back(Rc::clone(left));
+                }
+                if let Some(ref right) = node.right {
+                    q.push_back(Rc::clone(right));
+                }
+            }
+            res.push(level);
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(n)$
+
+---
+
+## Common Pitfalls
+
+### Processing Nodes Individually Instead of by Level
+
+In BFS, you must process all nodes at the current level before moving to the next. A common mistake is to pop nodes one at a time without tracking how many belong to the current level. This causes nodes from different levels to be mixed together in the same output list.
+
+### Not Handling the Empty Tree Case
+
+When the root is `null`, the function should return an empty list. Forgetting this check can lead to null pointer exceptions when attempting to add the root to the queue or access its value.

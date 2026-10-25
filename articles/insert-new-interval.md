@@ -1,4 +1,47 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Arrays** - Basic iteration and manipulation of array elements
+- **Interval Problems** - Understanding how to represent and compare ranges (start, end)
+- **Merging Logic** - Detecting overlap between intervals and combining them into a single interval
+- **Binary Search** (for optimized solution) - Finding insertion points in sorted arrays
+
+---
+
 ## 1. Linear Search
+
+### Intuition
+
+We are given a list of **non-overlapping intervals sorted by start time**, and we need to insert `newInterval` into the list while keeping the result sorted and non-overlapping.
+
+Since the intervals are already sorted, we can process them in one pass and split the work into three simple parts:
+
+1. **Intervals completely before** `newInterval`
+    - These do not overlap, so we can add them directly to the result.
+
+2. **Intervals that overlap** with `newInterval`
+    - While there is overlap, we merge them by expanding `newInterval`:
+        - new start = minimum of starts
+        - new end = maximum of ends
+
+3. **Intervals completely after** the merged `newInterval`
+    - These also do not overlap, so we add them directly.
+
+This way, we only scan the list once and merge exactly when needed.
+
+### Algorithm
+
+1. Initialize an empty result list `res` and index `i = 0`.
+2. Add all intervals that end before `newInterval` starts:
+    - while `intervals[i].end < newInterval.start`, append `intervals[i]` to `res`
+3. Merge all intervals that overlap with `newInterval`:
+    - while `intervals[i].start <= newInterval.end`, update:
+        - `newInterval.start = min(newInterval.start, intervals[i].start)`
+        - `newInterval.end = max(newInterval.end, intervals[i].end)`
+4. Append the merged `newInterval` to `res`.
+5. Append all remaining intervals (which must come after) to `res`.
+6. Return `res`.
 
 ::tabs-start
 
@@ -247,6 +290,36 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn insert(intervals: Vec<Vec<i32>>, new_interval: Vec<i32>) -> Vec<Vec<i32>> {
+        let n = intervals.len();
+        let mut i = 0;
+        let mut res = Vec::new();
+        let mut new_interval = new_interval;
+
+        while i < n && intervals[i][1] < new_interval[0] {
+            res.push(intervals[i].clone());
+            i += 1;
+        }
+
+        while i < n && new_interval[1] >= intervals[i][0] {
+            new_interval[0] = new_interval[0].min(intervals[i][0]);
+            new_interval[1] = new_interval[1].max(intervals[i][1]);
+            i += 1;
+        }
+        res.push(new_interval);
+
+        while i < n {
+            res.push(intervals[i].clone());
+            i += 1;
+        }
+
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -259,6 +332,36 @@ class Solution {
 ---
 
 ## 2. Binary Search
+
+### Intuition
+
+We are given a list of **non-overlapping intervals sorted by start time**, and we want to insert `newInterval` while keeping the final list sorted and merged.
+
+A simple idea is:
+
+1. Use **binary search** to find the correct position where `newInterval` should be inserted based on its start time.
+2. After inserting, the list is still sorted by start time.
+3. Then we do a normal **merge intervals** pass:
+    - if the current interval does not overlap the last interval in the result, append it
+    - otherwise merge them by extending the end
+
+Binary search helps us avoid scanning from the beginning just to find the insertion position.
+
+### Algorithm
+
+1. If the list is empty, return `[newInterval]`.
+2. Use binary search to find the first index `left` where:
+    - `intervals[left].start >= newInterval.start`
+    - this is the position where `newInterval` should be inserted
+3. Insert `newInterval` into `intervals` at index `left`.
+4. Initialize an empty list `res`.
+5. Iterate through the (now sorted) `intervals`:
+    - If `res` is empty or the current interval starts after the last interval in `res` ends:
+        - append the current interval to `res`
+    - Otherwise (overlap exists):
+        - merge by updating the last interval’s end:
+            - `res[-1].end = max(res[-1].end, current.end)`
+6. Return `res`.
 
 ::tabs-start
 
@@ -577,6 +680,51 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn insert(intervals: Vec<Vec<i32>>, new_interval: Vec<i32>) -> Vec<Vec<i32>> {
+        if intervals.is_empty() {
+            return vec![new_interval];
+        }
+
+        let n = intervals.len();
+        let target = new_interval[0];
+        let (mut left, mut right) = (0i32, n as i32 - 1);
+
+        while left <= right {
+            let mid = (left + right) / 2;
+            if intervals[mid as usize][0] < target {
+                left = mid + 1;
+            } else {
+                right = mid - 1;
+            }
+        }
+
+        let left = left as usize;
+        let mut result = Vec::new();
+        for i in 0..left {
+            result.push(intervals[i].clone());
+        }
+        result.push(new_interval);
+        for i in left..n {
+            result.push(intervals[i].clone());
+        }
+
+        let mut merged: Vec<Vec<i32>> = Vec::new();
+        for interval in result {
+            if merged.is_empty() || merged.last().unwrap()[1] < interval[0] {
+                merged.push(interval);
+            } else {
+                let last = merged.last_mut().unwrap();
+                last[1] = last[1].max(interval[1]);
+            }
+        }
+
+        merged
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -589,6 +737,41 @@ class Solution {
 ---
 
 ## 3. Greedy
+
+### Intuition
+
+We are inserting `newInterval` into a list of **sorted, non-overlapping intervals** and want the final result to remain sorted and non-overlapping.
+
+A greedy approach works because as we scan from left to right, every interval falls into one of three cases relative to `newInterval`:
+
+1. **Completely after `newInterval`**
+    - If `newInterval` ends before the current interval starts, there will be no overlap with any later interval either.
+    - So we can safely place `newInterval` here and return the answer immediately.
+
+2. **Completely before `newInterval`**
+    - If the current interval ends before `newInterval` starts, it can be added to the result unchanged.
+
+3. **Overlapping with `newInterval`**
+    - If they overlap, we merge them by expanding `newInterval` to cover both ranges.
+
+By continuously merging when needed and stopping early when `newInterval` is placed, we solve it in one pass.
+
+### Algorithm
+
+1. Initialize an empty list `res`.
+2. Iterate through each interval in `intervals`:
+3. If `newInterval` ends before the current interval starts:
+    - Append `newInterval` to `res`
+    - Return `res` plus the remaining intervals (since everything after is already sorted and non-overlapping)
+4. Else if `newInterval` starts after the current interval ends:
+    - Append the current interval to `res` (it is safely before `newInterval`)
+5. Else (they overlap):
+    - Merge by updating `newInterval`:
+        - `newInterval.start = min(newInterval.start, interval.start)`
+        - `newInterval.end = max(newInterval.end, interval.end)`
+6. If the loop ends, it means `newInterval` belongs at the end:
+    - Append `newInterval` to `res`
+7. Return `res`
 
 ::tabs-start
 
@@ -797,6 +980,40 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn insert(intervals: Vec<Vec<i32>>, new_interval: Vec<i32>) -> Vec<Vec<i32>> {
+        let mut res: Vec<Vec<i32>> = Vec::new();
+        let mut new_interval = Some(new_interval);
+
+        for interval in &intervals {
+            if let Some(ref ni) = new_interval {
+                if interval[1] < ni[0] {
+                    res.push(interval.clone());
+                } else if interval[0] > ni[1] {
+                    res.push(ni.clone());
+                    res.push(interval.clone());
+                    new_interval = None;
+                } else {
+                    new_interval = Some(vec![
+                        ni[0].min(interval[0]),
+                        ni[1].max(interval[1]),
+                    ]);
+                }
+            } else {
+                res.push(interval.clone());
+            }
+        }
+
+        if let Some(ni) = new_interval {
+            res.push(ni);
+        }
+
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -805,3 +1022,19 @@ class Solution {
 - Space complexity:
     - $O(1)$ extra space.
     - $O(n)$ space for the output list.
+
+---
+
+## Common Pitfalls
+
+### Incorrect Overlap Detection
+
+Using the wrong condition to detect overlapping intervals leads to incorrect merging. Two intervals `[a, b]` and `[c, d]` overlap when `a <= d` AND `c <= b`. A common mistake is checking only one direction or using strict inequality (`<` instead of `<=`), which fails for adjacent intervals like `[1, 2]` and `[2, 3]` that should merge.
+
+### Forgetting to Add the New Interval at the End
+
+When the new interval belongs after all existing intervals (its start is greater than all existing ends), the merging loop never triggers and the new interval is never added. The algorithm must append the new interval to the result after the loop completes if it was not already inserted.
+
+### Mutating the Original Input Array
+
+Some solutions modify the `newInterval` array during merging, which can cause issues if the caller expects the original input to remain unchanged. In languages where arrays are passed by reference, this side effect may lead to unexpected behavior in the calling code.

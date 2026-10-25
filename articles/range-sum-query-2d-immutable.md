@@ -1,4 +1,28 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **2D Arrays (Matrices)** - Working with row and column indices to access and iterate over rectangular regions
+- **Prefix Sums** - Precomputing cumulative sums for constant-time range queries
+- **Inclusion-Exclusion Principle** - Computing 2D region sums by combining overlapping rectangular areas
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+The most straightforward approach is to iterate through every cell in the specified rectangular region and sum up all the values. For each query, we simply loop from the top-left corner to the bottom-right corner and accumulate the result. While this is easy to implement, it becomes slow when we have many queries or large regions to sum.
+
+### Algorithm
+
+1. Store the original matrix.
+2. For each `sumRegion(row1, col1, row2, col2)` query:
+    - Initialize `res = 0`.
+    - Iterate through all rows from `row1` to `row2`.
+    - For each row, iterate through all columns from `col1` to `col2`.
+    - Add each cell value to `res`.
+3. Return `res`.
 
 ::tabs-start
 
@@ -107,6 +131,83 @@ public class NumMatrix {
 }
 ```
 
+```go
+type NumMatrix struct {
+    matrix [][]int
+}
+
+func Constructor(matrix [][]int) NumMatrix {
+    return NumMatrix{matrix: matrix}
+}
+
+func (this *NumMatrix) SumRegion(row1 int, col1 int, row2 int, col2 int) int {
+    res := 0
+    for r := row1; r <= row2; r++ {
+        for c := col1; c <= col2; c++ {
+            res += this.matrix[r][c]
+        }
+    }
+    return res
+}
+```
+
+```kotlin
+class NumMatrix(private val matrix: Array<IntArray>) {
+
+    fun sumRegion(row1: Int, col1: Int, row2: Int, col2: Int): Int {
+        var res = 0
+        for (r in row1..row2) {
+            for (c in col1..col2) {
+                res += matrix[r][c]
+            }
+        }
+        return res
+    }
+}
+```
+
+```swift
+class NumMatrix {
+    private var matrix: [[Int]]
+
+    init(_ matrix: [[Int]]) {
+        self.matrix = matrix
+    }
+
+    func sumRegion(_ row1: Int, _ col1: Int, _ row2: Int, _ col2: Int) -> Int {
+        var res = 0
+        for r in row1...row2 {
+            for c in col1...col2 {
+                res += matrix[r][c]
+            }
+        }
+        return res
+    }
+}
+```
+
+```rust
+struct NumMatrix {
+    matrix: Vec<Vec<i32>>,
+}
+
+impl NumMatrix {
+    fn new(matrix: Vec<Vec<i32>>) -> Self {
+        NumMatrix { matrix }
+    }
+
+    fn sum_region(&self, row1: i32, col1: i32, row2: i32, col2: i32) -> i32 {
+        let mut res = 0;
+        for r in row1 as usize..=row2 as usize {
+            for c in col1 as usize..=col2 as usize {
+                res += self.matrix[r][c];
+            }
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -119,6 +220,20 @@ public class NumMatrix {
 ---
 
 ## 2. One Dimensional Prefix Sum
+
+### Intuition
+
+Instead of summing every cell for each query, we can precompute prefix sums for each row. Each `prefixSum[row][col]` stores the sum of all elements from `matrix[row][0]` to `matrix[row][col]`. This way, finding the sum of any range within a single row takes constant time. For a rectangular region spanning multiple rows, we sum each row's contribution using its prefix sum.
+
+### Algorithm
+
+1. Build a 2D prefix sum array where `prefixSum[row][col]` holds the cumulative sum of row `row` from column `0` to `col`.
+2. For each `sumRegion(row1, col1, row2, col2)` query:
+    - Initialize `res = 0`.
+    - For each row from `row1` to `row2`:
+        - Add `prefixSum[row][col2]` to `res`.
+        - If `col1 > 0`, subtract `prefixSum[row][col1 - 1]` from `res`.
+3. Return `res`.
 
 ::tabs-start
 
@@ -279,6 +394,137 @@ public class NumMatrix {
 }
 ```
 
+```go
+type NumMatrix struct {
+    prefixSum [][]int
+}
+
+func Constructor(matrix [][]int) NumMatrix {
+    rows, cols := len(matrix), len(matrix[0])
+    prefixSum := make([][]int, rows)
+
+    for row := 0; row < rows; row++ {
+        prefixSum[row] = make([]int, cols)
+        prefixSum[row][0] = matrix[row][0]
+        for col := 1; col < cols; col++ {
+            prefixSum[row][col] = prefixSum[row][col-1] + matrix[row][col]
+        }
+    }
+
+    return NumMatrix{prefixSum: prefixSum}
+}
+
+func (this *NumMatrix) SumRegion(row1 int, col1 int, row2 int, col2 int) int {
+    res := 0
+    for row := row1; row <= row2; row++ {
+        if col1 > 0 {
+            res += this.prefixSum[row][col2] - this.prefixSum[row][col1-1]
+        } else {
+            res += this.prefixSum[row][col2]
+        }
+    }
+    return res
+}
+```
+
+```kotlin
+class NumMatrix(matrix: Array<IntArray>) {
+    private val prefixSum: Array<IntArray>
+
+    init {
+        val rows = matrix.size
+        val cols = matrix[0].size
+        prefixSum = Array(rows) { IntArray(cols) }
+
+        for (row in 0 until rows) {
+            prefixSum[row][0] = matrix[row][0]
+            for (col in 1 until cols) {
+                prefixSum[row][col] = prefixSum[row][col - 1] + matrix[row][col]
+            }
+        }
+    }
+
+    fun sumRegion(row1: Int, col1: Int, row2: Int, col2: Int): Int {
+        var res = 0
+        for (row in row1..row2) {
+            res += if (col1 > 0) {
+                prefixSum[row][col2] - prefixSum[row][col1 - 1]
+            } else {
+                prefixSum[row][col2]
+            }
+        }
+        return res
+    }
+}
+```
+
+```swift
+class NumMatrix {
+    private var prefixSum: [[Int]]
+
+    init(_ matrix: [[Int]]) {
+        let rows = matrix.count
+        let cols = matrix[0].count
+        prefixSum = Array(repeating: Array(repeating: 0, count: cols), count: rows)
+
+        for row in 0..<rows {
+            prefixSum[row][0] = matrix[row][0]
+            for col in 1..<cols {
+                prefixSum[row][col] = prefixSum[row][col - 1] + matrix[row][col]
+            }
+        }
+    }
+
+    func sumRegion(_ row1: Int, _ col1: Int, _ row2: Int, _ col2: Int) -> Int {
+        var res = 0
+        for row in row1...row2 {
+            if col1 > 0 {
+                res += prefixSum[row][col2] - prefixSum[row][col1 - 1]
+            } else {
+                res += prefixSum[row][col2]
+            }
+        }
+        return res
+    }
+}
+```
+
+```rust
+struct NumMatrix {
+    prefix_sum: Vec<Vec<i32>>,
+}
+
+impl NumMatrix {
+    fn new(matrix: Vec<Vec<i32>>) -> Self {
+        let rows = matrix.len();
+        let cols = matrix[0].len();
+        let mut prefix_sum = vec![vec![0; cols]; rows];
+
+        for row in 0..rows {
+            prefix_sum[row][0] = matrix[row][0];
+            for col in 1..cols {
+                prefix_sum[row][col] = prefix_sum[row][col - 1] + matrix[row][col];
+            }
+        }
+
+        NumMatrix { prefix_sum }
+    }
+
+    fn sum_region(&self, row1: i32, col1: i32, row2: i32, col2: i32) -> i32 {
+        let (row1, col1, row2, col2) = (row1 as usize, col1 as usize, row2 as usize, col2 as usize);
+        let mut res = 0;
+        for row in row1..=row2 {
+            if col1 > 0 {
+                res += self.prefix_sum[row][col2] - self.prefix_sum[row][col1 - 1];
+            } else {
+                res += self.prefix_sum[row][col2];
+            }
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -291,6 +537,23 @@ public class NumMatrix {
 ---
 
 ## 3. Two Dimensional Prefix Sum
+
+### Intuition
+
+We can extend prefix sums to two dimensions. The idea is to precompute `sumMat[r][c]` as the sum of all elements in the rectangle from `(0, 0)` to `(r - 1, c - 1)`. To find the sum of any rectangular region, we use the inclusion-exclusion principle: take the sum up to the bottom-right corner, subtract the regions above and to the left, then add back the top-left corner (which was subtracted twice).
+
+### Algorithm
+
+1. Create a prefix sum matrix `sumMat` of size `(ROWS + 1) x (COLS + 1)` initialized to zero.
+2. Build the prefix sum matrix:
+    - For each row `r`, maintain a running `prefix` sum across columns.
+    - Set `sumMat[r + 1][c + 1] = prefix + sumMat[r][c + 1]`.
+3. For each `sumRegion(row1, col1, row2, col2)` query:
+    - Compute `bottomRight = sumMat[row2 + 1][col2 + 1]`.
+    - Subtract `above = sumMat[row1][col2 + 1]`.
+    - Subtract `left = sumMat[row2 + 1][col1]`.
+    - Add back `topLeft = sumMat[row1][col1]`.
+4. Return `bottomRight - above - left + topLeft`.
 
 ::tabs-start
 
@@ -451,6 +714,142 @@ public class NumMatrix {
 }
 ```
 
+```go
+type NumMatrix struct {
+    sumMat [][]int
+}
+
+func Constructor(matrix [][]int) NumMatrix {
+    rows, cols := len(matrix), len(matrix[0])
+    sumMat := make([][]int, rows+1)
+    for i := range sumMat {
+        sumMat[i] = make([]int, cols+1)
+    }
+
+    for r := 0; r < rows; r++ {
+        prefix := 0
+        for c := 0; c < cols; c++ {
+            prefix += matrix[r][c]
+            above := sumMat[r][c+1]
+            sumMat[r+1][c+1] = prefix + above
+        }
+    }
+
+    return NumMatrix{sumMat: sumMat}
+}
+
+func (this *NumMatrix) SumRegion(row1 int, col1 int, row2 int, col2 int) int {
+    row1++; col1++; row2++; col2++
+    bottomRight := this.sumMat[row2][col2]
+    above := this.sumMat[row1-1][col2]
+    left := this.sumMat[row2][col1-1]
+    topLeft := this.sumMat[row1-1][col1-1]
+    return bottomRight - above - left + topLeft
+}
+```
+
+```kotlin
+class NumMatrix(matrix: Array<IntArray>) {
+    private val sumMat: Array<IntArray>
+
+    init {
+        val rows = matrix.size
+        val cols = matrix[0].size
+        sumMat = Array(rows + 1) { IntArray(cols + 1) }
+
+        for (r in 0 until rows) {
+            var prefix = 0
+            for (c in 0 until cols) {
+                prefix += matrix[r][c]
+                val above = sumMat[r][c + 1]
+                sumMat[r + 1][c + 1] = prefix + above
+            }
+        }
+    }
+
+    fun sumRegion(row1: Int, col1: Int, row2: Int, col2: Int): Int {
+        val r1 = row1 + 1
+        val c1 = col1 + 1
+        val r2 = row2 + 1
+        val c2 = col2 + 1
+        val bottomRight = sumMat[r2][c2]
+        val above = sumMat[r1 - 1][c2]
+        val left = sumMat[r2][c1 - 1]
+        val topLeft = sumMat[r1 - 1][c1 - 1]
+        return bottomRight - above - left + topLeft
+    }
+}
+```
+
+```swift
+class NumMatrix {
+    private var sumMat: [[Int]]
+
+    init(_ matrix: [[Int]]) {
+        let rows = matrix.count
+        let cols = matrix[0].count
+        sumMat = Array(repeating: Array(repeating: 0, count: cols + 1), count: rows + 1)
+
+        for r in 0..<rows {
+            var prefix = 0
+            for c in 0..<cols {
+                prefix += matrix[r][c]
+                let above = sumMat[r][c + 1]
+                sumMat[r + 1][c + 1] = prefix + above
+            }
+        }
+    }
+
+    func sumRegion(_ row1: Int, _ col1: Int, _ row2: Int, _ col2: Int) -> Int {
+        let r1 = row1 + 1, c1 = col1 + 1, r2 = row2 + 1, c2 = col2 + 1
+        let bottomRight = sumMat[r2][c2]
+        let above = sumMat[r1 - 1][c2]
+        let left = sumMat[r2][c1 - 1]
+        let topLeft = sumMat[r1 - 1][c1 - 1]
+        return bottomRight - above - left + topLeft
+    }
+}
+```
+
+```rust
+struct NumMatrix {
+    sum_mat: Vec<Vec<i32>>,
+}
+
+impl NumMatrix {
+    fn new(matrix: Vec<Vec<i32>>) -> Self {
+        let rows = matrix.len();
+        let cols = matrix[0].len();
+        let mut sum_mat = vec![vec![0; cols + 1]; rows + 1];
+
+        for r in 0..rows {
+            let mut prefix = 0;
+            for c in 0..cols {
+                prefix += matrix[r][c];
+                let above = sum_mat[r][c + 1];
+                sum_mat[r + 1][c + 1] = prefix + above;
+            }
+        }
+
+        NumMatrix { sum_mat }
+    }
+
+    fn sum_region(&self, row1: i32, col1: i32, row2: i32, col2: i32) -> i32 {
+        let (r1, c1, r2, c2) = (
+            row1 as usize + 1,
+            col1 as usize + 1,
+            row2 as usize + 1,
+            col2 as usize + 1,
+        );
+        let bottom_right = self.sum_mat[r2][c2];
+        let above = self.sum_mat[r1 - 1][c2];
+        let left = self.sum_mat[r2][c1 - 1];
+        let top_left = self.sum_mat[r1 - 1][c1 - 1];
+        bottom_right - above - left + top_left
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -459,3 +858,19 @@ public class NumMatrix {
 - Space complexity: $O(m * n)$
 
 > Where $m$ is the number of rows and $n$ is the number of columns in the matrix.
+
+---
+
+## Common Pitfalls
+
+### Forgetting the Inclusion-Exclusion Principle
+
+When computing the sum of a rectangular region using 2D prefix sums, you must subtract the regions above and to the left, then add back the top-left corner that was subtracted twice. The formula is `bottomRight - above - left + topLeft`. Forgetting to add back the top-left corner results in under-counting, while forgetting to subtract either the above or left region causes over-counting.
+
+### Off-by-One Errors with Prefix Sum Indices
+
+The prefix sum matrix is typically sized `(rows + 1) x (cols + 1)` to handle edge cases where the query starts at row 0 or column 0. Mixing up whether indices are 0-based or 1-based leads to accessing wrong cells or out-of-bounds errors. When querying `sumRegion(row1, col1, row2, col2)`, remember to shift indices appropriately when accessing the prefix sum matrix.
+
+### Building Prefix Sum Matrix Incorrectly
+
+The 2D prefix sum at position `(r, c)` should represent the sum of all elements from `(0, 0)` to `(r-1, c-1)`. A common mistake is computing prefix sums row by row without properly incorporating the contribution from previous rows. The correct formula is `prefix[r+1][c+1] = matrix[r][c] + prefix[r][c+1] + prefix[r+1][c] - prefix[r][c]`, or equivalently, accumulate row prefix and add the cell directly above.

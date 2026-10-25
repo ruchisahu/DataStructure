@@ -1,4 +1,26 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **String Manipulation** - Checking prefixes and suffixes of strings using character comparison or built-in methods
+- **Nested Loops** - Iterating through all pairs of elements in an array with O(n^2) complexity
+- **Trie Data Structure** - Understanding how tries store strings and enable efficient prefix lookups (for optimal solution)
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+For each pair of indices `(i, j)` where `i < j`, we need to check if `words[i]` is both a prefix and suffix of `words[j]`. We compare characters at the beginning and end of `words[j]` with `words[i]`.
+
+### Algorithm
+
+1. Create a helper function that checks if `s1` is both a prefix and suffix of `s2`.
+2. First verify `s1` is not longer than `s2`.
+3. Compare `s1` character by character with the start of `s2` (prefix check).
+4. Compare `s1` character by character with the end of `s2` (suffix check).
+5. Iterate through all pairs `(i, j)` with `i < j` and count valid prefix-suffix pairs.
 
 ::tabs-start
 
@@ -161,105 +183,160 @@ public class Solution {
 }
 ```
 
-::tabs-end
+```go
+func countPrefixSuffixPairs(words []string) int {
+    isPrefixAndSuffix := func(s1, s2 string) bool {
+        if len(s1) > len(s2) {
+            return false
+        }
 
-### Time & Space Complexity
+        for i := 0; i < len(s1); i++ {
+            if s1[i] != s2[i] {
+                return false
+            }
+        }
 
-* Time complexity: $O(n ^ 2 * m)$
-* Space complexity: $O(1)$
+        j := 0
+        for i := len(s2) - len(s1); i < len(s2); i++ {
+            if s1[j] != s2[i] {
+                return false
+            }
+            j++
+        }
 
-> Where $n$ is the size of the input array $words$, and $m$ is the maximum length of a string.
+        return true
+    }
 
----
+    res := 0
+    for i := 0; i < len(words); i++ {
+        for j := i + 1; j < len(words); j++ {
+            if isPrefixAndSuffix(words[i], words[j]) {
+                res++
+            }
+        }
+    }
+    return res
+}
+```
 
-## 2. Brute Force (Using Built-In Function)
+```kotlin
+class Solution {
+    fun countPrefixSuffixPairs(words: Array<String>): Int {
+        fun isPrefixAndSuffix(s1: String, s2: String): Boolean {
+            if (s1.length > s2.length) return false
 
-::tabs-start
+            for (i in s1.indices) {
+                if (s1[i] != s2[i]) return false
+            }
 
-```python
-class Solution:
-    def countPrefixSuffixPairs(self, words: List[str]) -> int:
-        res = 0
+            var j = 0
+            for (i in s2.length - s1.length until s2.length) {
+                if (s1[j] != s2[i]) return false
+                j++
+            }
 
-        for i in range(len(words)):
-            for j in range(i + 1, len(words)):
-                w1, w2 = words[i], words[j]
-                if w2.startswith(w1) and w2.endswith(w1):
-                    res += 1
+            return true
+        }
 
+        var res = 0
+        for (i in words.indices) {
+            for (j in i + 1 until words.size) {
+                if (isPrefixAndSuffix(words[i], words[j])) {
+                    res++
+                }
+            }
+        }
         return res
-```
-
-```java
-public class Solution {
-    public int countPrefixSuffixPairs(String[] words) {
-        int res = 0;
-        for (int i = 0; i < words.length; i++) {
-            for (int j = i + 1; j < words.length; j++) {
-                String w1 = words[i], w2 = words[j];
-                if (w2.startsWith(w1) && w2.endsWith(w1)) {
-                    res++;
-                }
-            }
-        }
-        return res;
     }
 }
 ```
 
-```cpp
+```swift
 class Solution {
-public:
-    int countPrefixSuffixPairs(vector<string>& words) {
-        int res = 0;
-        for (int i = 0; i < words.size(); i++) {
-            for (int j = i + 1; j < words.size(); j++) {
-                string w1 = words[i], w2 = words[j];
-                if (w2.rfind(w1, 0) == 0 && 
-                    w2.compare(w2.size() - w1.size(), w1.size(), w1) == 0) {
-                    res++;
-                }
-            }
-        }
-        return res;
-    }
-};
-```
+    func countPrefixSuffixPairs(_ words: [String]) -> Int {
+        func isPrefixAndSuffix(_ s1: String, _ s2: String) -> Bool {
+            if s1.count > s2.count { return false }
 
-```javascript
-class Solution {
-    /**
-     * @param {string[]} words
-     * @return {number}
-     */
-    countPrefixSuffixPairs(words) {
-        let res = 0;
-        for (let i = 0; i < words.length; i++) {
-            for (let j = i + 1; j < words.length; j++) {
-                let w1 = words[i], w2 = words[j];
-                if (w2.startsWith(w1) && w2.endsWith(w1)) {
-                    res++;
+            let arr1 = Array(s1)
+            let arr2 = Array(s2)
+
+            for i in 0..<arr1.count {
+                if arr1[i] != arr2[i] { return false }
+            }
+
+            var j = 0
+            for i in (arr2.count - arr1.count)..<arr2.count {
+                if arr1[j] != arr2[i] { return false }
+                j += 1
+            }
+
+            return true
+        }
+
+        var res = 0
+        for i in 0..<words.count {
+            for j in (i + 1)..<words.count {
+                if isPrefixAndSuffix(words[i], words[j]) {
+                    res += 1
                 }
             }
         }
-        return res;
+        return res
     }
 }
 ```
 
-```csharp
-public class Solution {
-    public int CountPrefixSuffixPairs(string[] words) {
-        int res = 0;
-        for (int i = 0; i < words.Length; i++) {
-            for (int j = i + 1; j < words.Length; j++) {
-                string w1 = words[i], w2 = words[j];
-                if (w2.StartsWith(w1) && w2.EndsWith(w1)) {
-                    res++;
+```rust
+impl Solution {
+    pub fn count_prefix_suffix_pairs(words: Vec<String>) -> i32 {
+        let mut res = 0;
+        for i in 0..words.len() {
+            for j in (i + 1)..words.len() {
+                if Self::is_prefix_and_suffix(&words[i], &words[j]) {
+                    res += 1;
                 }
             }
         }
-        return res;
+        res
+    }
+
+    fn is_prefix_and_suffix(s1: &str, s2: &str) -> bool {
+        if s1.len() > s2.len() {
+            return false;
+        }
+        let s1 = s1.as_bytes();
+        let s2 = s2.as_bytes();
+        for i in 0..s1.len() {
+            if s1[i] != s2[i] {
+                return false;
+            }
+        }
+        let mut j = 0;
+        for i in (s2.len() - s1.len())..s2.len() {
+            if s1[j] != s2[i] {
+                return false;
+            }
+            j += 1;
+        }
+        true
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn count_prefix_suffix_pairs(words: Vec<String>) -> i32 {
+        let mut res = 0;
+        for i in 0..words.len() {
+            for j in (i + 1)..words.len() {
+                let w1 = &words[i];
+                let w2 = &words[j];
+                if w2.starts_with(w1.as_str()) && w2.ends_with(w1.as_str()) {
+                    res += 1;
+                }
+            }
+        }
+        res
     }
 }
 ```
@@ -268,14 +345,26 @@ public class Solution {
 
 ### Time & Space Complexity
 
-* Time complexity: $O(n ^ 2 * m)$
-* Space complexity: $O(1)$
+- Time complexity: $O(n ^ 2 * m)$
+- Space complexity: $O(1)$
 
 > Where $n$ is the size of the input array $words$, and $m$ is the maximum length of a string.
 
 ---
 
 ## 3. Trie
+
+### Intuition
+
+We can use a trie where each node is keyed by a pair of characters: one from the prefix and one from the suffix. By processing words in reverse order and storing them in this combined trie, when we look up a word, we find how many previously seen words have it as both prefix and suffix.
+
+### Algorithm
+
+1. Create a trie where each edge is labeled by a pair (prefix char, suffix char).
+2. Process words from the end of the array to the beginning.
+3. For each word, traverse the trie using pairs of (word[i], word[n-1-i]) and count matches.
+4. Then insert the word into the trie, incrementing counts at each node.
+5. Return the total count of matching pairs.
 
 ::tabs-start
 
@@ -525,11 +614,245 @@ public class Solution {
 }
 ```
 
+```go
+type TrieNode struct {
+    children map[string]*TrieNode
+    count    int
+}
+
+func newTrieNode() *TrieNode {
+    return &TrieNode{children: make(map[string]*TrieNode)}
+}
+
+type Trie struct {
+    root *TrieNode
+}
+
+func newTrie() *Trie {
+    return &Trie{root: newTrieNode()}
+}
+
+func (t *Trie) add(w string) {
+    cur := t.root
+    n := len(w)
+    for i := 0; i < n; i++ {
+        key := string(w[i]) + string(w[n-1-i])
+        if _, ok := cur.children[key]; !ok {
+            cur.children[key] = newTrieNode()
+        }
+        cur = cur.children[key]
+        cur.count++
+    }
+}
+
+func (t *Trie) getCount(w string) int {
+    cur := t.root
+    n := len(w)
+    for i := 0; i < n; i++ {
+        key := string(w[i]) + string(w[n-1-i])
+        if _, ok := cur.children[key]; !ok {
+            return 0
+        }
+        cur = cur.children[key]
+    }
+    return cur.count
+}
+
+func countPrefixSuffixPairs(words []string) int {
+    res := 0
+    trie := newTrie()
+    for i := len(words) - 1; i >= 0; i-- {
+        res += trie.getCount(words[i])
+        trie.add(words[i])
+    }
+    return res
+}
+```
+
+```kotlin
+class TrieNode {
+    val children = HashMap<String, TrieNode>()
+    var count = 0
+}
+
+class Trie {
+    val root = TrieNode()
+
+    fun add(w: String) {
+        var cur = root
+        val n = w.length
+        for (i in 0 until n) {
+            val key = "${w[i]}${w[n - 1 - i]}"
+            if (!cur.children.containsKey(key)) {
+                cur.children[key] = TrieNode()
+            }
+            cur = cur.children[key]!!
+            cur.count++
+        }
+    }
+
+    fun count(w: String): Int {
+        var cur = root
+        val n = w.length
+        for (i in 0 until n) {
+            val key = "${w[i]}${w[n - 1 - i]}"
+            if (!cur.children.containsKey(key)) return 0
+            cur = cur.children[key]!!
+        }
+        return cur.count
+    }
+}
+
+class Solution {
+    fun countPrefixSuffixPairs(words: Array<String>): Int {
+        var res = 0
+        val trie = Trie()
+        for (i in words.size - 1 downTo 0) {
+            res += trie.count(words[i])
+            trie.add(words[i])
+        }
+        return res
+    }
+}
+```
+
+```swift
+class TrieNode {
+    var children = [String: TrieNode]()
+    var count = 0
+}
+
+class Trie {
+    var root = TrieNode()
+
+    func add(_ w: String) {
+        var cur = root
+        let chars = Array(w)
+        let n = chars.count
+        for i in 0..<n {
+            let key = "\(chars[i])\(chars[n - 1 - i])"
+            if cur.children[key] == nil {
+                cur.children[key] = TrieNode()
+            }
+            cur = cur.children[key]!
+            cur.count += 1
+        }
+    }
+
+    func getCount(_ w: String) -> Int {
+        var cur = root
+        let chars = Array(w)
+        let n = chars.count
+        for i in 0..<n {
+            let key = "\(chars[i])\(chars[n - 1 - i])"
+            if cur.children[key] == nil { return 0 }
+            cur = cur.children[key]!
+        }
+        return cur.count
+    }
+}
+
+class Solution {
+    func countPrefixSuffixPairs(_ words: [String]) -> Int {
+        var res = 0
+        let trie = Trie()
+        for i in stride(from: words.count - 1, through: 0, by: -1) {
+            res += trie.getCount(words[i])
+            trie.add(words[i])
+        }
+        return res
+    }
+}
+```
+
+```rust
+struct TrieNode {
+    children: HashMap<(u8, u8), TrieNode>,
+    count: i32,
+}
+
+impl TrieNode {
+    fn new() -> Self {
+        TrieNode {
+            children: HashMap::new(),
+            count: 0,
+        }
+    }
+}
+
+struct Trie {
+    root: TrieNode,
+}
+
+impl Trie {
+    fn new() -> Self {
+        Trie { root: TrieNode::new() }
+    }
+
+    fn add(&mut self, w: &[u8]) {
+        let mut cur = &mut self.root;
+        let n = w.len();
+        for i in 0..n {
+            let key = (w[i], w[n - 1 - i]);
+            cur = cur.children.entry(key).or_insert_with(TrieNode::new);
+            cur.count += 1;
+        }
+    }
+
+    fn count(&self, w: &[u8]) -> i32 {
+        let mut cur = &self.root;
+        let n = w.len();
+        for i in 0..n {
+            let key = (w[i], w[n - 1 - i]);
+            match cur.children.get(&key) {
+                Some(node) => cur = node,
+                None => return 0,
+            }
+        }
+        cur.count
+    }
+}
+
+impl Solution {
+    pub fn count_prefix_suffix_pairs(words: Vec<String>) -> i32 {
+        let mut res = 0;
+        let mut trie = Trie::new();
+        for i in (0..words.len()).rev() {
+            let w = words[i].as_bytes();
+            res += trie.count(w);
+            trie.add(w);
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
-* Time complexity: $O(n * m)$
-* Space complexity: $O(n * m)$
+- Time complexity: $O(n * m)$
+- Space complexity: $O(n * m)$
 
 > Where $n$ is the size of the input array $words$, and $m$ is the maximum length of a string.
+
+---
+
+## Common Pitfalls
+
+### Checking Only Prefix or Only Suffix
+
+The condition requires `words[i]` to be BOTH a prefix AND a suffix of `words[j]`. Checking only one condition will give incorrect results.
+
+```python
+# Wrong: only checks prefix
+if w2.startswith(w1):
+    res += 1
+# Correct: checks both conditions
+if w2.startswith(w1) and w2.endswith(w1):
+    res += 1
+```
+
+### Forgetting the Length Constraint
+
+A string cannot be a prefix or suffix of a shorter string. Failing to check `len(s1) <= len(s2)` before comparing can lead to index out of bounds errors or false positives.

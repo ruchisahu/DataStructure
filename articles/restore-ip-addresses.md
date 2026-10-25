@@ -1,4 +1,28 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Backtracking** - Exploring all possible combinations by making choices and undoing them when they lead to invalid solutions
+- **Recursion** - Breaking down the problem into smaller subproblems (placing one IP segment at a time)
+- **String Manipulation** - Extracting and validating substrings for IP segment constraints
+
+---
+
 ## 1. Backtracking
+
+### Intuition
+
+A valid IP address has exactly four segments, each containing 1 to 3 digits with a value between 0 and 255. Leading zeros are not allowed except for the segment "0" itself. Backtracking lets us explore all possible ways to place three dots in the string. At each step, we try taking 1, 2, or 3 characters for the current segment, validate it, and recurse for the remaining segments.
+
+### Algorithm
+
+1. If the string length exceeds 12, return an empty list (maximum valid length is 12 digits).
+2. Define a recursive function that tracks the current position `i`, number of segments placed `dots`, and the IP being built `curIP`.
+3. Base case: if 4 segments are placed and we have consumed the entire string, add the IP to results.
+4. For each call, try segment lengths of 1, 2, and 3 characters starting at the current position.
+5. Skip segments with leading zeros (unless the segment is just "0") and values >= 256.
+6. Recurse with the next position, incremented segment count, and updated IP string.
+7. Return all valid IP addresses found.
 
 ::tabs-start
 
@@ -113,6 +137,173 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public List<string> RestoreIpAddresses(string s) {
+        List<string> res = new List<string>();
+        if (s.Length > 12) return res;
+
+        void Backtrack(int i, int dots, string curIP) {
+            if (dots == 4 && i == s.Length) {
+                res.Add(curIP.Substring(0, curIP.Length - 1));
+                return;
+            }
+            if (dots > 4) return;
+
+            for (int j = i; j < Math.Min(i + 3, s.Length); j++) {
+                if (i != j && s[i] == '0') continue;
+                string part = s.Substring(i, j - i + 1);
+                if (int.Parse(part) < 256) {
+                    Backtrack(j + 1, dots + 1, curIP + part + ".");
+                }
+            }
+        }
+
+        Backtrack(0, 0, "");
+        return res;
+    }
+}
+```
+
+```go
+func restoreIpAddresses(s string) []string {
+    res := []string{}
+    if len(s) > 12 {
+        return res
+    }
+
+    var backtrack func(i, dots int, curIP string)
+    backtrack = func(i, dots int, curIP string) {
+        if dots == 4 && i == len(s) {
+            res = append(res, curIP[:len(curIP)-1])
+            return
+        }
+        if dots > 4 {
+            return
+        }
+
+        for j := i; j < min(i+3, len(s)); j++ {
+            if i != j && s[i] == '0' {
+                continue
+            }
+            part := s[i : j+1]
+            num, _ := strconv.Atoi(part)
+            if num < 256 {
+                backtrack(j+1, dots+1, curIP+part+".")
+            }
+        }
+    }
+
+    backtrack(0, 0, "")
+    return res
+}
+
+func min(a, b int) int {
+    if a < b {
+        return a
+    }
+    return b
+}
+```
+
+```kotlin
+class Solution {
+    fun restoreIpAddresses(s: String): List<String> {
+        val res = mutableListOf<String>()
+        if (s.length > 12) return res
+
+        fun backtrack(i: Int, dots: Int, curIP: String) {
+            if (dots == 4 && i == s.length) {
+                res.add(curIP.dropLast(1))
+                return
+            }
+            if (dots > 4) return
+
+            for (j in i until minOf(i + 3, s.length)) {
+                if (i != j && s[i] == '0') continue
+                val part = s.substring(i, j + 1)
+                if (part.toInt() < 256) {
+                    backtrack(j + 1, dots + 1, curIP + part + ".")
+                }
+            }
+        }
+
+        backtrack(0, 0, "")
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func restoreIpAddresses(_ s: String) -> [String] {
+        var res = [String]()
+        if s.count > 12 { return res }
+        let chars = Array(s)
+
+        func backtrack(_ i: Int, _ dots: Int, _ curIP: String) {
+            if dots == 4 && i == chars.count {
+                res.append(String(curIP.dropLast()))
+                return
+            }
+            if dots > 4 { return }
+
+            for j in i..<min(i + 3, chars.count) {
+                if i != j && chars[i] == "0" { continue }
+                let part = String(chars[i...j])
+                if let num = Int(part), num < 256 {
+                    backtrack(j + 1, dots + 1, curIP + part + ".")
+                }
+            }
+        }
+
+        backtrack(0, 0, "")
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn restore_ip_addresses(s: String) -> Vec<String> {
+        let mut res = Vec::new();
+        if s.len() > 12 {
+            return res;
+        }
+
+        fn backtrack(s: &str, i: usize, dots: usize, cur_ip: &mut String, res: &mut Vec<String>) {
+            if dots == 4 && i == s.len() {
+                res.push(cur_ip[..cur_ip.len() - 1].to_string());
+                return;
+            }
+            if dots > 4 {
+                return;
+            }
+
+            for j in i..s.len().min(i + 3) {
+                if i != j && s.as_bytes()[i] == b'0' {
+                    continue;
+                }
+                let part = &s[i..=j];
+                if let Ok(num) = part.parse::<i32>() {
+                    if num < 256 {
+                        let prev_len = cur_ip.len();
+                        cur_ip.push_str(part);
+                        cur_ip.push('.');
+                        backtrack(s, j + 1, dots + 1, cur_ip, res);
+                        cur_ip.truncate(prev_len);
+                    }
+                }
+            }
+        }
+
+        let mut cur_ip = String::new();
+        backtrack(&s, 0, 0, &mut cur_ip, &mut res);
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -125,6 +316,20 @@ class Solution {
 ---
 
 ## 2. Iteration
+
+### Intuition
+
+Since there are exactly four segments and each can have 1, 2, or 3 characters, we can enumerate all 81 combinations (3^4) of segment lengths directly. For each combination, we check if the total length matches the input string and whether each resulting segment is valid. This avoids recursion overhead while still exploring all possibilities.
+
+### Algorithm
+
+1. If the string length exceeds 12, return an empty list.
+2. Use four nested loops, each iterating from 1 to 3 (representing segment lengths `seg1`, `seg2`, `seg3`, `seg4`).
+3. If the sum of all four segment lengths does not equal the string length, skip this combination.
+4. Extract the four substrings based on the current segment lengths.
+5. Validate each segment: no leading zeros (unless single digit) and value <= 255.
+6. If all segments are valid, join them with dots and add to `res`.
+7. Return all valid IP addresses found.
 
 ::tabs-start
 
@@ -276,6 +481,200 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public List<string> RestoreIpAddresses(string s) {
+        List<string> res = new List<string>();
+        if (s.Length > 12) return res;
+
+        bool Valid(string num) {
+            return num.Length == 1 || (int.Parse(num) < 256 && num[0] != '0');
+        }
+
+        void Add(int s1, int s2, int s3, int s4) {
+            if (s1 + s2 + s3 + s4 != s.Length) return;
+
+            string num1 = s.Substring(0, s1);
+            string num2 = s.Substring(s1, s2);
+            string num3 = s.Substring(s1 + s2, s3);
+            string num4 = s.Substring(s1 + s2 + s3);
+
+            if (Valid(num1) && Valid(num2) && Valid(num3) && Valid(num4)) {
+                res.Add(num1 + "." + num2 + "." + num3 + "." + num4);
+            }
+        }
+
+        for (int seg1 = 1; seg1 < 4; seg1++) {
+            for (int seg2 = 1; seg2 < 4; seg2++) {
+                for (int seg3 = 1; seg3 < 4; seg3++) {
+                    for (int seg4 = 1; seg4 < 4; seg4++) {
+                        Add(seg1, seg2, seg3, seg4);
+                    }
+                }
+            }
+        }
+
+        return res;
+    }
+}
+```
+
+```go
+func restoreIpAddresses(s string) []string {
+    res := []string{}
+    if len(s) > 12 {
+        return res
+    }
+
+    valid := func(num string) bool {
+        if len(num) > 1 && num[0] == '0' {
+            return false
+        }
+        val, _ := strconv.Atoi(num)
+        return val <= 255
+    }
+
+    for seg1 := 1; seg1 < 4; seg1++ {
+        for seg2 := 1; seg2 < 4; seg2++ {
+            for seg3 := 1; seg3 < 4; seg3++ {
+                for seg4 := 1; seg4 < 4; seg4++ {
+                    if seg1+seg2+seg3+seg4 != len(s) {
+                        continue
+                    }
+
+                    num1 := s[:seg1]
+                    num2 := s[seg1 : seg1+seg2]
+                    num3 := s[seg1+seg2 : seg1+seg2+seg3]
+                    num4 := s[seg1+seg2+seg3:]
+
+                    if valid(num1) && valid(num2) && valid(num3) && valid(num4) {
+                        res = append(res, num1+"."+num2+"."+num3+"."+num4)
+                    }
+                }
+            }
+        }
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun restoreIpAddresses(s: String): List<String> {
+        val res = mutableListOf<String>()
+        if (s.length > 12) return res
+
+        fun valid(num: String): Boolean {
+            if (num.length > 1 && num[0] == '0') return false
+            return num.toInt() <= 255
+        }
+
+        for (seg1 in 1 until 4) {
+            for (seg2 in 1 until 4) {
+                for (seg3 in 1 until 4) {
+                    for (seg4 in 1 until 4) {
+                        if (seg1 + seg2 + seg3 + seg4 != s.length) continue
+
+                        val num1 = s.substring(0, seg1)
+                        val num2 = s.substring(seg1, seg1 + seg2)
+                        val num3 = s.substring(seg1 + seg2, seg1 + seg2 + seg3)
+                        val num4 = s.substring(seg1 + seg2 + seg3)
+
+                        if (valid(num1) && valid(num2) && valid(num3) && valid(num4)) {
+                            res.add("$num1.$num2.$num3.$num4")
+                        }
+                    }
+                }
+            }
+        }
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func restoreIpAddresses(_ s: String) -> [String] {
+        var res = [String]()
+        if s.count > 12 { return res }
+        let chars = Array(s)
+
+        func valid(_ num: String) -> Bool {
+            if num.count > 1 && num.first == "0" { return false }
+            guard let val = Int(num) else { return false }
+            return val <= 255
+        }
+
+        for seg1 in 1..<4 {
+            for seg2 in 1..<4 {
+                for seg3 in 1..<4 {
+                    for seg4 in 1..<4 {
+                        if seg1 + seg2 + seg3 + seg4 != chars.count { continue }
+
+                        let num1 = String(chars[0..<seg1])
+                        let num2 = String(chars[seg1..<(seg1 + seg2)])
+                        let num3 = String(chars[(seg1 + seg2)..<(seg1 + seg2 + seg3)])
+                        let num4 = String(chars[(seg1 + seg2 + seg3)...])
+
+                        if valid(num1) && valid(num2) && valid(num3) && valid(num4) {
+                            res.append("\(num1).\(num2).\(num3).\(num4)")
+                        }
+                    }
+                }
+            }
+        }
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn restore_ip_addresses(s: String) -> Vec<String> {
+        let mut res = Vec::new();
+        if s.len() > 12 {
+            return res;
+        }
+
+        let is_valid = |num: &str| -> bool {
+            if num.len() > 1 && num.starts_with('0') {
+                return false;
+            }
+            num.parse::<i32>().map_or(false, |v| v <= 255)
+        };
+
+        for seg1 in 1..4 {
+            for seg2 in 1..4 {
+                for seg3 in 1..4 {
+                    for seg4 in 1..4 {
+                        if seg1 + seg2 + seg3 + seg4 != s.len() {
+                            continue;
+                        }
+
+                        let num1 = &s[0..seg1];
+                        let num2 = &s[seg1..seg1 + seg2];
+                        let num3 = &s[seg1 + seg2..seg1 + seg2 + seg3];
+                        let num4 = &s[seg1 + seg2 + seg3..];
+
+                        if is_valid(num1)
+                            && is_valid(num2)
+                            && is_valid(num3)
+                            && is_valid(num4)
+                        {
+                            res.push(format!(
+                                "{}.{}.{}.{}",
+                                num1, num2, num3, num4
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -284,3 +683,19 @@ class Solution {
 - Space complexity: $O(m * n)$
 
 > Where $m$ is equals to $3$ as there are at most three digits in a valid segment and $n$ is equals to $4$ as there are four segments in a valid IP.
+
+---
+
+## Common Pitfalls
+
+### Allowing Leading Zeros in Multi-Digit Segments
+
+Segments like "01" or "001" are invalid in IP addresses, but "0" alone is valid. The validation must specifically reject multi-digit segments that start with zero while accepting single-digit zeros.
+
+### Missing the Upper Bound Check for Segment Values
+
+Each segment must be at most 255. Forgetting to check this constraint or using `< 256` instead of `<= 255` can lead to subtle bugs, especially for three-digit segments like "256" which appear valid at first glance.
+
+### Not Validating Total String Length Early
+
+An IP address can have at most 12 digits (four segments of 3 digits each) and at least 4 digits (four segments of 1 digit each). Failing to check these bounds upfront leads to unnecessary computation on inputs that cannot possibly form valid IPs.

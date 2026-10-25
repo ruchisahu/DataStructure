@@ -1,4 +1,36 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Heap Data Structure** - Understanding min-heaps and how they maintain the smallest element at the root
+- **Priority Queues** - Using built-in heap implementations for efficient insertion and extraction
+- **Sorting Algorithms** - Understanding basic sorting as a baseline approach
+
+---
+
 ## 1. Sorting
+
+### Intuition
+
+We want the **k-th largest number** in a stream of values.
+The simplest approach:
+Every time a new value comes in, **insert it**, sort the list, and then pick the element at position `len(arr) - k`.
+
+Sorting keeps the numbers in increasing order, so the k-th largest element will always sit at the same index.  
+This method is easy to understand but slow because sorting happens every time `add()` is called.
+
+### Algorithm
+
+#### Initialization
+
+- Store `k`.
+- Store the initial numbers in an array.
+
+#### add(val)
+
+1. Append `val` to the array.
+2. Sort the array.
+3. Return the element at index `len(arr) - k` (the k-th largest).
 
 ::tabs-start
 
@@ -142,6 +174,25 @@ class KthLargest {
 }
 ```
 
+```rust
+struct KthLargest {
+    k: usize,
+    arr: Vec<i32>,
+}
+
+impl KthLargest {
+    fn new(k: i32, nums: Vec<i32>) -> Self {
+        KthLargest { k: k as usize, arr: nums }
+    }
+
+    fn add(&mut self, val: i32) -> i32 {
+        self.arr.push(val);
+        self.arr.sort();
+        self.arr[self.arr.len() - self.k]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -156,6 +207,37 @@ class KthLargest {
 ---
 
 ## 2. Min-Heap
+
+### Intuition
+
+To maintain the **k-th largest element** in a stream of numbers, we do **not** need to store all values.  
+Instead, we only need to keep track of the **k largest elements seen so far**.
+
+A **min-heap of size at most `k`** is perfect for this:
+
+- A min-heap always keeps the **smallest value at the top**.
+- If the heap contains the `k` largest elements,
+  then the **smallest among them** is exactly the **k-th largest overall**.
+- Whenever a new number arrives:
+    - If we add it and the heap grows beyond `k`,
+      we remove the smallest element - because it cannot be in the top `k` anymore.
+
+After trimming, the heap holds at most `k` elements. Once at least `k` values have arrived, it holds exactly the **top `k` elements**, and retrieving the k-th largest takes `O(1)`.
+
+### Algorithm
+
+#### Initialization
+
+1. Insert all initial numbers into a min-heap.
+2. If the heap size becomes greater than `k`, repeatedly remove the smallest element.
+    - After this, the heap contains at most `k` elements.
+
+#### add(value)
+
+1. Insert the new value into the min-heap.
+2. If heap size > `k`:
+    - Remove the smallest element (the heap root).
+3. Return the heap's smallest element (the root), which is now the **k-th largest**.
 
 ::tabs-start
 
@@ -294,29 +376,43 @@ public class KthLargest {
 ```
 
 ```go
+type MinHeap []int
+
+func (h MinHeap) Len() int            { return len(h) }
+func (h MinHeap) Less(i, j int) bool  { return h[i] < h[j] }
+func (h MinHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
+func (h *MinHeap) Push(x interface{}) { *h = append(*h, x.(int)) }
+func (h *MinHeap) Pop() interface{} {
+    old := *h
+    n := len(old)
+    x := old[n-1]
+    *h = old[:n-1]
+    return x
+}
+
 type KthLargest struct {
-    minHeap *priorityqueue.Queue
+    minHeap *MinHeap
     k       int
 }
 
 func Constructor(k int, nums []int) KthLargest {
-    minHeap := priorityqueue.NewWith(utils.IntComparator)
+    minHeap := &MinHeap{}
+    heap.Init(minHeap)
     for _, num := range nums {
-        minHeap.Enqueue(num)
+        heap.Push(minHeap, num)
     }
-    for minHeap.Size() > k {
-        minHeap.Dequeue()
+    for minHeap.Len() > k {
+        heap.Pop(minHeap)
     }
     return KthLargest{minHeap: minHeap, k: k}
 }
 
 func (this *KthLargest) Add(val int) int {
-    this.minHeap.Enqueue(val)
-    if this.minHeap.Size() > this.k {
-        this.minHeap.Dequeue()
+    heap.Push(this.minHeap, val)
+    if this.minHeap.Len() > this.k {
+        heap.Pop(this.minHeap)
     }
-    top, _ := this.minHeap.Peek()
-    return top.(int)
+    return (*this.minHeap)[0]
 }
 ```
 
@@ -370,11 +466,59 @@ class KthLargest {
 }
 ```
 
+```rust
+struct KthLargest {
+    min_heap: BinaryHeap<Reverse<i32>>,
+    k: usize,
+}
+
+impl KthLargest {
+    fn new(k: i32, nums: Vec<i32>) -> Self {
+        let k = k as usize;
+        let mut min_heap = BinaryHeap::new();
+        for num in nums {
+            min_heap.push(Reverse(num));
+            if min_heap.len() > k {
+                min_heap.pop();
+            }
+        }
+        KthLargest { min_heap, k }
+    }
+
+    fn add(&mut self, val: i32) -> i32 {
+        self.min_heap.push(Reverse(val));
+        if self.min_heap.len() > self.k {
+            self.min_heap.pop();
+        }
+        self.min_heap.peek().unwrap().0
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
-- Time complexity: $O(m * \log k)$
-- Space complexity: $O(k)$
+- Time complexity:
+    - Python: $O(n + (n-k) \log n + m \log(k + 1))$ when $n > k$, or $O(n + m \log(k + 1))$ otherwise. Heapifying takes $O(n)$, followed by $n-k$ heap removals when $n > k$.
+    - Java, C++, C#, Swift, Rust: $O((n + m) \log(k + 1))$. Trimming after each initial insertion keeps the heap at most $k+1$ elements during insertion and at most $k$ afterward.
+    - JavaScript, Go, Kotlin: $O(n \log(n + 1) + m \log(k + 1))$. These versions insert all $n$ initial values before trimming the heap, so initialization takes $O(n \log(n + 1))$.
+- Space complexity (peak heap storage):
+    - Java, C++, C#, Swift, Rust: $O(k)$, since the heap is trimmed after each initial insertion.
+    - Python, JavaScript, Go, Kotlin: $O(n + k)$, equivalently $O(\max(n, k))$, since the heap initially holds all $n$ values and can later grow to $k+1$ during an insertion. Python reuses the input list, so its peak heap storage includes that existing list rather than a separate $n$-element heap.
 
-> Where $m$ is the number of calls made to $add()$.
+Each $add()$ call takes $O(\log(k + 1))$ amortized time, accounting for occasional backing-array resizing. Using $\log(k + 1)$ also covers $k = 1$.
+
+> Where $n$ is the initial array length, $m$ is the number of calls made to $add()$, and $k$ is the rank being tracked.
+
+---
+
+## Common Pitfalls
+
+### Using a Max-Heap Instead of Min-Heap
+
+A common mistake is using a max-heap to find the k-th largest element. While it seems intuitive to keep the largest elements at the top, a max-heap would require storing all elements and repeatedly extracting the maximum k times for each query. A min-heap of size k is the correct choice because the root always holds the k-th largest element directly, allowing O(1) retrieval after each insertion.
+
+### Forgetting to Maintain Heap Size
+
+When using a min-heap, it is essential to remove the smallest element whenever the heap size exceeds k. Failing to do so means the heap grows unbounded, and the root no longer represents the k-th largest element. Always check and pop after each insertion to keep at most k elements in the heap.

@@ -1,4 +1,31 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Hash Maps/Dictionaries** - Grouping items by a common key and storing lists as values
+- **String Manipulation** - Iterating through characters and building new strings
+- **Sorting** - Understanding how sorting can normalize strings for comparison
+- **Character Frequency Counting** - Using arrays or maps to count occurrences of each character
+- **Hash Keys** - Creating immutable, hashable keys from mutable data (e.g., tuples from lists)
+
+---
+
 ## 1. Sorting
+
+### Intuition
+
+Anagrams become identical when their characters are sorted.  
+For example, `"eat"`, `"tea"`, and `"ate"` all become `"aet"` after sorting.  
+By using the sorted version of each string as a key, we can group all anagrams together.  
+Strings that share the same sorted form must be anagrams, so placing them in the same group is both natural and efficient.
+
+### Algorithm
+
+1. Create a hash map where each key is the sorted version of a string, and the value is a list of strings belonging to that anagram group.
+2. Iterate through each string in the input list:
+    - Sort the characters of the string to form a key.
+    - Append the original string to the list corresponding to this key.
+3. After processing all strings, return all values from the hash map, which represent the grouped anagrams.
 
 ::tabs-start
 
@@ -140,6 +167,21 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn group_anagrams(strs: Vec<String>) -> Vec<Vec<String>> {
+        let mut res: HashMap<String, Vec<String>> = HashMap::new();
+        for s in &strs {
+            let mut chars: Vec<char> = s.chars().collect();
+            chars.sort();
+            let sorted_s: String = chars.into_iter().collect();
+            res.entry(sorted_s).or_default().push(s.clone());
+        }
+        res.into_values().collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -152,6 +194,23 @@ class Solution {
 ---
 
 ## 2. Hash Table
+
+### Intuition
+
+Instead of sorting each string, we can represent every string by the frequency of its characters.
+Since the problem uses lowercase English letters, a fixed-size array of length `26` can capture how many times each character appears.
+Two strings are anagrams if and only if their frequency arrays are identical.
+By using this frequency array (converted to a tuple so it can be a dictionary key), we can group all strings that share the same character counts.
+
+### Algorithm
+
+1. Create a hash map where each key is a `26`-length tuple representing character frequencies, and each value is a list of strings belonging to that anagram group.
+2. For each string in the input:
+    - Initialize a `count` array of size `26` with all zeros.
+    - For each character `c` in the string, increment the count at the corresponding index.
+    - Convert the `count` array to a tuple and use it as the key.
+    - Append the string to the list associated with this key.
+3. After processing all strings, return all the lists stored in the hash map.
 
 ::tabs-start
 
@@ -310,13 +369,69 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn group_anagrams(strs: Vec<String>) -> Vec<Vec<String>> {
+        let mut res: HashMap<[u8; 26], Vec<String>> = HashMap::new();
+        for s in &strs {
+            let mut count = [0u8; 26];
+            for c in s.bytes() {
+                count[(c - b'a') as usize] += 1;
+            }
+            res.entry(count).or_default().push(s.clone());
+        }
+        res.into_values().collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(m * n)$
 - Space complexity:
-    - $O(m)$ extra space.
-    - $O(m * n)$ space for the output list.
+    - $O(m)$ auxiliary space, excluding the returned output.
+    - $O(m * n)$ total space if the output groups are counted.
 
 > Where $m$ is the number of strings and $n$ is the length of the longest string.
+
+---
+
+## Common Pitfalls
+
+### Using a Mutable Key Type for the Hash Map
+
+When using character frequency arrays as keys, you must convert them to an immutable type (like a tuple in Python or a string in other languages). Lists and arrays are mutable and cannot be used as dictionary keys directly.
+
+```python
+# Wrong: using list as key
+count = [0] * 26
+res[count].append(s)  # TypeError: unhashable type 'list'
+
+# Correct: convert to tuple
+res[tuple(count)].append(s)
+```
+
+### Assuming Input Contains Only Lowercase Letters
+
+The frequency array approach with size 26 only works for lowercase English letters. If the input could contain uppercase letters or other characters, the solution would fail or produce incorrect groupings.
+
+```python
+# Wrong: will crash on uppercase
+count[ord(c) - ord('a')] += 1  # Negative index for uppercase
+
+# Should validate or handle: ord('A') - ord('a') = -32
+```
+
+### Creating a New Key Format That Has Collisions
+
+When converting frequency counts to strings, using a naive format like concatenation without separators can cause collisions. For example, counts [1,11] and [11,1] could produce the same string "111".
+
+```python
+# Wrong: potential collisions
+key = ''.join(str(c) for c in count)  # "111" for both [1,11] and [11,1]
+
+# Correct: use separator
+key = ','.join(str(c) for c in count)  # "1,11" vs "11,1"
+```

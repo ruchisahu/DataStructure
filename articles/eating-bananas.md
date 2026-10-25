@@ -1,4 +1,28 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Binary Search** - The optimal solution uses binary search on the answer space to find the minimum valid eating speed
+- **Search Space Reduction** - Understanding how to identify monotonic properties that allow binary search on a range of possible answers
+- **Ceiling Division** - Calculating hours per pile requires rounding up, which is essential for correct time computation
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+We try every possible eating speed starting from `1`.
+For each speed, we simulate how many hours it would take to finish all piles.
+The first speed that finishes within `h` hours is the answer.
+
+### Algorithm
+
+1. Start with `speed = 1`.
+2. For each speed:
+    - Compute the total hours needed by summing `ceil(pile / speed)` for every pile.
+3. If the total hours is less than or equal to `h`, return the current speed.
+4. Otherwise, increase the speed and repeat.
 
 ::tabs-start
 
@@ -158,6 +182,25 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn min_eating_speed(piles: Vec<i32>, h: i32) -> i32 {
+        let mut speed = 1;
+        loop {
+            let mut total_time: i64 = 0;
+            for &pile in &piles {
+                total_time += (pile as i64 + speed as i64 - 1) / speed as i64;
+            }
+
+            if total_time <= h as i64 {
+                return speed;
+            }
+            speed += 1;
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -170,6 +213,28 @@ class Solution {
 ---
 
 ## 2. Binary Search
+
+### Intuition
+
+Instead of checking every speed one by one, we notice that the total time needed **decreases** as the eating speed increases.
+This means the answer lies in a **sorted search space** from `1` to `max(piles)`.
+
+Because the search space is ordered, we can use **binary search** to efficiently find the smallest speed that allows finishing the piles within `h` hours.
+
+### Algorithm
+
+1. Set the search range:
+    - `left = 1` (minimum possible speed)
+    - `right = max(piles)` (maximum needed speed)
+2. While `left <= right`:
+    - Let `mid` be the current speed to test.
+    - Compute the total hours needed using this speed.
+3. If the total hours is within the allowed time `h`:
+    - This speed works, so record it.
+    - Try to find a smaller working speed by searching the left half.
+4. Otherwise:
+    - Speed is too slow, so search in the right half.
+5. After the search ends, return the smallest valid speed found.
 
 ::tabs-start
 
@@ -385,6 +450,33 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn min_eating_speed(piles: Vec<i32>, h: i32) -> i32 {
+        let mut l = 1;
+        let mut r = *piles.iter().max().unwrap();
+        let mut res = r;
+
+        while l <= r {
+            let k = (l + r) / 2;
+
+            let mut total_time: i64 = 0;
+            for &p in &piles {
+                total_time += (p as i64 + k as i64 - 1) / k as i64;
+            }
+
+            if total_time <= h as i64 {
+                res = k;
+                r = k - 1;
+            } else {
+                l = k + 1;
+            }
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -393,3 +485,48 @@ class Solution {
 - Space complexity: $O(1)$
 
 > Where $n$ is the length of the input array $piles$ and $m$ is the maximum number of bananas in a pile.
+
+---
+
+## Common Pitfalls
+
+### Using Integer Division Instead of Ceiling
+
+When calculating hours needed per pile, you must round up since Koko spends a full hour even if fewer bananas remain. Using regular integer division gives wrong results.
+
+```python
+# Wrong: Integer division rounds down
+totalTime += pile // speed
+
+# Correct: Ceiling division
+totalTime += math.ceil(pile / speed)
+# Or without import:
+totalTime += (pile + speed - 1) // speed
+```
+
+### Setting Wrong Binary Search Bounds
+
+The minimum speed is 1 (not 0, which would cause division by zero). The maximum speed needed is `max(piles)` since eating faster than the largest pile provides no benefit.
+
+```python
+# Wrong: Starting from 0
+l = 0  # Division by zero!
+
+# Wrong: Arbitrary upper bound
+r = sum(piles)  # Unnecessarily large
+
+# Correct bounds
+l, r = 1, max(piles)
+```
+
+### Integer Overflow in Total Time
+
+When summing hours across all piles, the total can exceed 32-bit integer limits for large inputs. Use a long integer type in languages like Java/C++.
+
+```java
+// Wrong: May overflow
+int totalTime = 0;
+
+// Correct: Use long
+long totalTime = 0;
+```

@@ -1,4 +1,47 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Hash Maps** - Using frequency maps to count occurrences and track available elements
+- **Sorting** - Processing elements in sorted order to greedily form consecutive groups
+- **Greedy Algorithms** - Always starting groups from the smallest available element to ensure valid consecutive sequences
+- **Heaps (Priority Queues)** - Efficiently retrieving and removing the minimum element when forming groups
+
+---
+
 ## 1. Sorting
+
+### Intuition
+
+We are given a hand of cards and a group size. The goal is to check whether we can divide all cards into groups of size `groupSize` such that:
+
+- each group consists of **consecutive numbers**
+- every card is used **exactly once**
+
+A simple and intuitive way to approach this is:
+
+- always try to form groups starting from the **smallest available card**
+- once we start a group at a number `x`, we must also have `x + 1`, `x + 2`, ..., `x + groupSize - 1`
+
+Sorting the hand helps because it ensures we always process cards in increasing order, which naturally enforces the consecutive requirement.
+
+A frequency map `count` helps us track how many times each card is still available.
+
+### Algorithm
+
+1. If the total number of cards is not divisible by `groupSize`:
+    - return `false` immediately (grouping is impossible)
+2. Count the frequency of each card value using a map.
+3. Sort the hand in increasing order.
+4. Iterate through each card value in the sorted hand:
+    - If the current card is already used up (its count is `0`), skip it
+    - Otherwise, try to form a group starting from this card
+5. To form a group starting at `num`:
+    - For every value from `num` to `num + groupSize - 1`:
+        - If that value does not exist in the count map, return `false`
+        - Otherwise, decrement its count by `1`
+6. If all cards are successfully grouped without failure:
+    - return `true`
 
 ::tabs-start
 
@@ -203,6 +246,35 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn is_n_straight_hand(hand: Vec<i32>, group_size: i32) -> bool {
+        if hand.len() % group_size as usize != 0 {
+            return false;
+        }
+
+        let mut count: HashMap<i32, i32> = HashMap::new();
+        for &num in &hand {
+            *count.entry(num).or_insert(0) += 1;
+        }
+
+        let mut sorted_hand = hand.clone();
+        sorted_hand.sort();
+        for &num in &sorted_hand {
+            if *count.get(&num).unwrap_or(&0) > 0 {
+                for i in num..(num + group_size) {
+                    if *count.get(&i).unwrap_or(&0) == 0 {
+                        return false;
+                    }
+                    *count.get_mut(&i).unwrap() -= 1;
+                }
+            }
+        }
+        true
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -213,6 +285,42 @@ class Solution {
 ---
 
 ## 2. Heap
+
+### Intuition
+
+We need to split the cards into groups of size `groupSize`, where each group is made of **consecutive numbers**, and every card is used exactly once.
+
+A good strategy is to always start building a group from the **smallest card value that is still available**.  
+If we can always extend that smallest value into a full consecutive group, then the hand is valid.
+
+To do this efficiently:
+
+- we store frequencies of each card in a map `count`
+- we keep a **min-heap** of the available card values so we can always get the current smallest value quickly
+
+When we start a group from `first` (the smallest value in the heap), we must use:
+`first`, `first+1`, ..., `first+groupSize-1`
+
+If at any point a required value is missing, grouping is impossible.
+
+The heap also helps ensure we remove values in the correct order when their count reaches zero.
+
+### Algorithm
+
+1. If the total number of cards is not divisible by `groupSize`, return `false`.
+2. Build a frequency map `count` where `count[x]` is how many times card `x` appears.
+3. Put all distinct card values into a min-heap `minH`.
+4. While the heap is not empty:
+    - Let `first` be the smallest available value (`minH[0]`)
+    - Try to build one group starting at `first`
+5. For every value `i` from `first` to `first + groupSize - 1`:
+    - If `i` is not in `count`, return `false` (missing a needed card)
+    - Decrease `count[i]` by `1` because we use one card of value `i`
+    - If `count[i]` becomes `0`:
+        - it must be the smallest value currently in the heap
+        - otherwise, we are trying to remove numbers out of order, which means grouping breaks
+        - pop it from the heap
+6. If we process all groups successfully, return `true`
 
 ::tabs-start
 
@@ -387,6 +495,20 @@ public class Solution {
 ```
 
 ```go
+type MinHeap []int
+
+func (h MinHeap) Len() int            { return len(h) }
+func (h MinHeap) Less(i, j int) bool  { return h[i] < h[j] }
+func (h MinHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
+func (h *MinHeap) Push(x interface{}) { *h = append(*h, x.(int)) }
+func (h *MinHeap) Pop() interface{} {
+    old := *h
+    n := len(old)
+    x := old[n-1]
+    *h = old[:n-1]
+    return x
+}
+
 func isNStraightHand(hand []int, groupSize int) bool {
     if len(hand)%groupSize != 0 {
         return false
@@ -397,24 +519,24 @@ func isNStraightHand(hand []int, groupSize int) bool {
         count[n]++
     }
 
-    minH := priorityqueue.NewWith(utils.IntComparator)
+    minH := &MinHeap{}
     for k := range count {
-        minH.Enqueue(k)
+        *minH = append(*minH, k)
     }
+    heap.Init(minH)
 
-    for !minH.Empty() {
-        first, _ := minH.Peek()
-        firstKey := first.(int)
+    for minH.Len() > 0 {
+        firstKey := (*minH)[0]
         for i := firstKey; i < firstKey+groupSize; i++ {
             if count[i] == 0 {
                 return false
             }
             count[i]--
             if count[i] == 0 {
-                if val, _ := minH.Peek(); val.(int) != i {
+                if minH.Len() == 0 || (*minH)[0] != i {
                     return false
                 }
-                minH.Dequeue()
+                heap.Pop(minH)
             }
         }
     }
@@ -483,6 +605,42 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn is_n_straight_hand(hand: Vec<i32>, group_size: i32) -> bool {
+        if hand.len() % group_size as usize != 0 {
+            return false;
+        }
+
+        let mut count: HashMap<i32, i32> = HashMap::new();
+        for &n in &hand {
+            *count.entry(n).or_insert(0) += 1;
+        }
+
+        let mut min_h: BinaryHeap<Reverse<i32>> = count.keys()
+            .map(|&k| Reverse(k))
+            .collect();
+
+        while let Some(&Reverse(first)) = min_h.peek() {
+            for i in first..(first + group_size) {
+                match count.get(&i) {
+                    Some(&c) if c > 0 => {}
+                    _ => return false,
+                }
+                *count.get_mut(&i).unwrap() -= 1;
+                if count[&i] == 0 {
+                    if i != min_h.peek().unwrap().0 {
+                        return false;
+                    }
+                    min_h.pop();
+                }
+            }
+        }
+        true
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -493,6 +651,51 @@ class Solution {
 ---
 
 ## 3. Ordered Map
+
+### Intuition
+
+We want to check if the cards can be divided into groups of size `groupSize`, where **each group consists of consecutive numbers** and **every card is used exactly once**.
+
+Instead of explicitly forming each group, we can think in terms of **how many groups are currently “open”** and waiting to be extended.
+
+As we process card values in increasing order:
+
+- some groups may already be open and **expect the current number next**
+- the current number can either:
+    - extend existing open groups
+    - or start new groups
+
+The key idea is:
+
+- if there are `open_groups` waiting for the current number, we must have **at least that many cards** of the current value
+- any extra cards beyond extending existing groups will start **new groups**
+- each group must close exactly after `groupSize` consecutive numbers
+
+A queue is used to remember **how many new groups were started at each step**, so we can close them after `groupSize` steps.
+
+### Algorithm
+
+1. If the total number of cards is not divisible by `groupSize`, return `false`.
+2. Count the frequency of each card using a map.
+3. Iterate over the card values in **sorted order**.
+4. Maintain:
+    - `open_groups`: number of groups currently waiting to be extended
+    - `last_num`: previous card value processed
+    - a queue `q` to track how many groups were started at each value
+5. For each card value `num`:
+    - If there are open groups and `num` is not consecutive to `last_num`, return `false`
+    - If `open_groups > count[num]`, return `false` (not enough cards to extend groups)
+6. Calculate how many **new groups** start at `num`:
+    - `new_groups = count[num] - open_groups`
+    - Push `new_groups` into the queue
+7. Update:
+    - `last_num = num`
+    - `open_groups = count[num]`
+8. If the queue size reaches `groupSize`:
+    - pop from the queue and subtract that value from `open_groups`
+    - this closes groups that have reached length `groupSize`
+9. After processing all numbers:
+    - return `true` only if `open_groups == 0`
 
 ::tabs-start
 
@@ -767,6 +970,40 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn is_n_straight_hand(hand: Vec<i32>, group_size: i32) -> bool {
+        if hand.len() % group_size as usize != 0 {
+            return false;
+        }
+
+        let mut count: BTreeMap<i32, i32> = BTreeMap::new();
+        for &num in &hand {
+            *count.entry(num).or_insert(0) += 1;
+        }
+
+        let mut q: VecDeque<i32> = VecDeque::new();
+        let mut last_num = -1;
+        let mut open_groups = 0;
+
+        for (&num, &num_count) in &count {
+            if (open_groups > 0 && num > last_num + 1) || open_groups > num_count {
+                return false;
+            }
+
+            q.push_back(num_count - open_groups);
+            last_num = num;
+            open_groups = num_count;
+
+            if q.len() == group_size as usize {
+                open_groups -= q.pop_front().unwrap();
+            }
+        }
+        open_groups == 0
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -777,6 +1014,39 @@ class Solution {
 ---
 
 ## 4. Hash Map
+
+### Intuition
+
+We need to split the hand into groups of size `groupSize`, where each group is made of **consecutive numbers** and every card is used exactly once.
+
+This approach uses only a frequency map and a simple rule:
+
+- Any valid group must start at the **beginning of a consecutive run**
+- So for a given number `num`, we first walk left to find the earliest possible start of its run
+  (we keep moving left while `start - 1` still exists in the hand)
+- Once we know a possible start, we try to repeatedly form consecutive groups starting from that start:
+    - while there are still cards at `start`, we build a group:
+      `start`, `start+1`, ..., `start+groupSize-1`
+    - decrement counts as we use cards
+
+By always forming groups from the earliest start in a run, we avoid skipping needed smaller cards and ensure groups remain consecutive.
+
+### Algorithm
+
+1. If `len(hand)` is not divisible by `groupSize`, return `false`.
+2. Build a frequency map `count` for all card values.
+3. For each card value `num` in the hand:
+    - Find the earliest start of the consecutive run containing `num`:
+        - set `start = num`
+        - while `count[start - 1] > 0`, decrement `start`
+4. For every possible `start` up to `num`:
+    - While `count[start] > 0`:
+        - Try to create one full group starting at `start`
+        - For each `i` from `start` to `start + groupSize - 1`:
+            - If `count[i] == 0`, return `false` (missing a needed card)
+            - Otherwise decrement `count[i]`
+    - Move `start` forward by `1` and continue
+5. If all groups are formed successfully, return `true`.
 
 ::tabs-start
 
@@ -1019,9 +1289,59 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn is_n_straight_hand(hand: Vec<i32>, group_size: i32) -> bool {
+        if hand.len() % group_size as usize != 0 {
+            return false;
+        }
+
+        let mut count: HashMap<i32, i32> = HashMap::new();
+        for &num in &hand {
+            *count.entry(num).or_insert(0) += 1;
+        }
+
+        for &num in &hand {
+            let mut start = num;
+            while *count.get(&(start - 1)).unwrap_or(&0) > 0 {
+                start -= 1;
+            }
+            while start <= num {
+                while *count.get(&start).unwrap_or(&0) > 0 {
+                    for i in start..(start + group_size) {
+                        if *count.get(&i).unwrap_or(&0) == 0 {
+                            return false;
+                        }
+                        *count.get_mut(&i).unwrap() -= 1;
+                    }
+                }
+                start += 1;
+            }
+        }
+        true
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(n)$
+
+---
+
+## Common Pitfalls
+
+### Forgetting to Check Divisibility First
+
+If the total number of cards is not divisible by `groupSize`, it is impossible to form complete groups. Skipping this initial check wastes time processing the array and may lead to subtle bugs where the algorithm appears to succeed but produces an invalid grouping.
+
+### Not Starting Groups from the Smallest Available Card
+
+Groups must be formed starting from the smallest available card value to ensure consecutive sequences work correctly. Starting from an arbitrary card can leave smaller cards stranded without enough consecutive neighbors to form a valid group. Always process cards in sorted order or use a min-heap to find the smallest available value.
+
+### Failing to Decrement Counts Properly
+
+When forming a group, each card in the consecutive sequence must have its count decremented. A common bug is forgetting to decrement or decrementing the wrong key, which causes cards to be reused or leaves cards unused. Additionally, when a card's count reaches zero, it must be handled correctly to avoid checking for cards that no longer exist.

@@ -1,4 +1,28 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Tree Data Structure** - Understanding parent-child relationships and traversing trees represented as edge lists
+- **Depth First Search (DFS) on Trees** - Recursively exploring tree nodes while tracking the parent to avoid revisiting
+- **Topological Sort (Kahn's Algorithm)** - Processing nodes from leaves to root using indegree tracking and a queue
+
+---
+
 ## 1. Depth First Search
+
+### Intuition
+
+We start at node `0` and need to visit all nodes that have apples. The key observation is that if a subtree contains any apple (either at the child node itself or deeper in the subtree), we must traverse the edge to that child and back, costing `2` seconds. We use DFS to compute the time needed for each subtree. If a child has an apple or its subtree requires time (meaning there's an apple deeper), we add `2` plus the child's subtree time to our current total.
+
+### Algorithm
+
+1. Build an adjacency list from the edges (undirected tree).
+2. Run DFS from node `0` with parent tracking to avoid revisiting:
+    - For each child (excluding parent):
+        - Recursively compute `childTime` for that subtree.
+        - If `childTime > 0` or the child has an apple, add `2 + childTime` to the current time.
+    - Return the accumulated time for this subtree.
+3. Return the result of `dfs(0, -1)`.
 
 ::tabs-start
 
@@ -112,6 +136,143 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int MinTime(int n, int[][] edges, List<bool> hasApple) {
+        var adj = new Dictionary<int, List<int>>();
+        for (int i = 0; i < n; i++) adj[i] = new List<int>();
+        foreach (var e in edges) {
+            adj[e[0]].Add(e[1]);
+            adj[e[1]].Add(e[0]);
+        }
+
+        int Dfs(int cur, int par) {
+            int time = 0;
+            foreach (var child in adj[cur]) {
+                if (child == par) continue;
+                int childTime = Dfs(child, cur);
+                if (childTime > 0 || hasApple[child]) {
+                    time += 2 + childTime;
+                }
+            }
+            return time;
+        }
+
+        return Dfs(0, -1);
+    }
+}
+```
+
+```go
+func minTime(n int, edges [][]int, hasApple []bool) int {
+    adj := make([][]int, n)
+    for i := range adj {
+        adj[i] = []int{}
+    }
+    for _, edge := range edges {
+        adj[edge[0]] = append(adj[edge[0]], edge[1])
+        adj[edge[1]] = append(adj[edge[1]], edge[0])
+    }
+
+    var dfs func(cur, parent int) int
+    dfs = func(cur, parent int) int {
+        time := 0
+        for _, child := range adj[cur] {
+            if child == parent {
+                continue
+            }
+            childTime := dfs(child, cur)
+            if childTime > 0 || hasApple[child] {
+                time += 2 + childTime
+            }
+        }
+        return time
+    }
+
+    return dfs(0, -1)
+}
+```
+
+```kotlin
+class Solution {
+    fun minTime(n: Int, edges: Array<IntArray>, hasApple: List<Boolean>): Int {
+        val adj = Array(n) { mutableListOf<Int>() }
+        for (edge in edges) {
+            adj[edge[0]].add(edge[1])
+            adj[edge[1]].add(edge[0])
+        }
+
+        fun dfs(cur: Int, parent: Int): Int {
+            var time = 0
+            for (child in adj[cur]) {
+                if (child == parent) continue
+                val childTime = dfs(child, cur)
+                if (childTime > 0 || hasApple[child]) {
+                    time += 2 + childTime
+                }
+            }
+            return time
+        }
+
+        return dfs(0, -1)
+    }
+}
+```
+
+```swift
+class Solution {
+    func minTime(_ n: Int, _ edges: [[Int]], _ hasApple: [Bool]) -> Int {
+        var adj = [[Int]](repeating: [], count: n)
+        for edge in edges {
+            adj[edge[0]].append(edge[1])
+            adj[edge[1]].append(edge[0])
+        }
+
+        func dfs(_ cur: Int, _ parent: Int) -> Int {
+            var time = 0
+            for child in adj[cur] {
+                if child == parent { continue }
+                let childTime = dfs(child, cur)
+                if childTime > 0 || hasApple[child] {
+                    time += 2 + childTime
+                }
+            }
+            return time
+        }
+
+        return dfs(0, -1)
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn min_time(n: i32, edges: Vec<Vec<i32>>, has_apple: Vec<bool>) -> i32 {
+        let n = n as usize;
+        let mut adj = vec![vec![]; n];
+        for edge in &edges {
+            let (u, v) = (edge[0] as usize, edge[1] as usize);
+            adj[u].push(v);
+            adj[v].push(u);
+        }
+
+        Self::dfs(0, usize::MAX, &adj, &has_apple)
+    }
+
+    fn dfs(cur: usize, parent: usize, adj: &Vec<Vec<usize>>, has_apple: &Vec<bool>) -> i32 {
+        let mut time = 0;
+        for &child in &adj[cur] {
+            if child == parent { continue; }
+            let child_time = Self::dfs(child, cur, adj, has_apple);
+            if child_time > 0 || has_apple[child] {
+                time += 2 + child_time;
+            }
+        }
+        time
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -124,6 +285,21 @@ class Solution {
 ---
 
 ## 2. Topological Sort (Kahn's Algorithm)
+
+### Intuition
+
+Instead of top-down DFS, we can process the tree from leaves to root. Starting from leaf nodes (nodes with only one connection, excluding the root), we propagate the time upward. If a leaf has an apple or already accumulated time from its subtree, we add `2` seconds to its parent. This bottom-up approach naturally handles the aggregation of times from multiple subtrees.
+
+### Algorithm
+
+1. Build an adjacency list and track the degree (number of connections) for each node.
+2. Initialize a queue with all leaf nodes (degree `1`, excluding node `0`).
+3. Process nodes in the queue:
+    - For each neighbor of the current node with positive degree:
+        - Decrement the neighbor's degree.
+        - If the current node has an apple or has accumulated time, add `time[node] + 2` to `time[neighbor]`.
+        - If the neighbor becomes a leaf (degree `1`) and isn't the root, add it to the queue.
+4. Return `time[0]`.
 
 ::tabs-start
 
@@ -302,6 +478,215 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int MinTime(int n, int[][] edges, List<bool> hasApple) {
+        var adj = new Dictionary<int, List<int>>();
+        for (int i = 0; i < n; i++) adj[i] = new List<int>();
+
+        int[] indegree = new int[n];
+        foreach (var e in edges) {
+            adj[e[0]].Add(e[1]);
+            adj[e[1]].Add(e[0]);
+            indegree[e[0]]++;
+            indegree[e[1]]++;
+        }
+
+        var queue = new Queue<int>();
+        for (int i = 1; i < n; i++) {
+            if (indegree[i] == 1) {
+                queue.Enqueue(i);
+                indegree[i] = 0;
+            }
+        }
+
+        int[] time = new int[n];
+        while (queue.Count > 0) {
+            int node = queue.Dequeue();
+            foreach (var nei in adj[node]) {
+                if (indegree[nei] <= 0) continue;
+
+                indegree[nei]--;
+                if (hasApple[node] || time[node] > 0)
+                    time[nei] += time[node] + 2;
+                if (indegree[nei] == 1 && nei != 0)
+                    queue.Enqueue(nei);
+            }
+        }
+
+        return time[0];
+    }
+}
+```
+
+```go
+func minTime(n int, edges [][]int, hasApple []bool) int {
+    adj := make([][]int, n)
+    for i := range adj {
+        adj[i] = []int{}
+    }
+    indegree := make([]int, n)
+    for _, edge := range edges {
+        adj[edge[0]] = append(adj[edge[0]], edge[1])
+        adj[edge[1]] = append(adj[edge[1]], edge[0])
+        indegree[edge[0]]++
+        indegree[edge[1]]++
+    }
+
+    queue := []int{}
+    for i := 1; i < n; i++ {
+        if indegree[i] == 1 {
+            queue = append(queue, i)
+            indegree[i] = 0
+        }
+    }
+
+    time := make([]int, n)
+    for len(queue) > 0 {
+        node := queue[0]
+        queue = queue[1:]
+        for _, nei := range adj[node] {
+            if indegree[nei] <= 0 {
+                continue
+            }
+            indegree[nei]--
+            if hasApple[node] || time[node] > 0 {
+                time[nei] += time[node] + 2
+            }
+            if indegree[nei] == 1 && nei != 0 {
+                queue = append(queue, nei)
+            }
+        }
+    }
+
+    return time[0]
+}
+```
+
+```kotlin
+class Solution {
+    fun minTime(n: Int, edges: Array<IntArray>, hasApple: List<Boolean>): Int {
+        val adj = Array(n) { mutableListOf<Int>() }
+        val indegree = IntArray(n)
+        for (edge in edges) {
+            adj[edge[0]].add(edge[1])
+            adj[edge[1]].add(edge[0])
+            indegree[edge[0]]++
+            indegree[edge[1]]++
+        }
+
+        val queue = ArrayDeque<Int>()
+        for (i in 1 until n) {
+            if (indegree[i] == 1) {
+                queue.add(i)
+                indegree[i] = 0
+            }
+        }
+
+        val time = IntArray(n)
+        while (queue.isNotEmpty()) {
+            val node = queue.removeFirst()
+            for (nei in adj[node]) {
+                if (indegree[nei] <= 0) continue
+                indegree[nei]--
+                if (hasApple[node] || time[node] > 0) {
+                    time[nei] += time[node] + 2
+                }
+                if (indegree[nei] == 1 && nei != 0) {
+                    queue.add(nei)
+                }
+            }
+        }
+
+        return time[0]
+    }
+}
+```
+
+```swift
+class Solution {
+    func minTime(_ n: Int, _ edges: [[Int]], _ hasApple: [Bool]) -> Int {
+        var adj = [[Int]](repeating: [], count: n)
+        var indegree = [Int](repeating: 0, count: n)
+        for edge in edges {
+            adj[edge[0]].append(edge[1])
+            adj[edge[1]].append(edge[0])
+            indegree[edge[0]] += 1
+            indegree[edge[1]] += 1
+        }
+
+        var queue = [Int]()
+        for i in 1..<n {
+            if indegree[i] == 1 {
+                queue.append(i)
+                indegree[i] = 0
+            }
+        }
+
+        var time = [Int](repeating: 0, count: n)
+        var idx = 0
+        while idx < queue.count {
+            let node = queue[idx]
+            idx += 1
+            for nei in adj[node] {
+                if indegree[nei] <= 0 { continue }
+                indegree[nei] -= 1
+                if hasApple[node] || time[node] > 0 {
+                    time[nei] += time[node] + 2
+                }
+                if indegree[nei] == 1 && nei != 0 {
+                    queue.append(nei)
+                }
+            }
+        }
+
+        return time[0]
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn min_time(n: i32, edges: Vec<Vec<i32>>, has_apple: Vec<bool>) -> i32 {
+        let n = n as usize;
+        let mut adj = vec![vec![]; n];
+        let mut indegree = vec![0i32; n];
+
+        for edge in &edges {
+            let (u, v) = (edge[0] as usize, edge[1] as usize);
+            adj[u].push(v);
+            adj[v].push(u);
+            indegree[u] += 1;
+            indegree[v] += 1;
+        }
+
+        let mut queue = VecDeque::new();
+        for i in 1..n {
+            if indegree[i] == 1 {
+                queue.push_back(i);
+                indegree[i] = 0;
+            }
+        }
+
+        let mut time = vec![0i32; n];
+        while let Some(node) = queue.pop_front() {
+            for &nei in &adj[node] {
+                if indegree[nei] <= 0 { continue; }
+                indegree[nei] -= 1;
+                if has_apple[node] || time[node] > 0 {
+                    time[nei] += time[node] + 2;
+                }
+                if indegree[nei] == 1 && nei != 0 {
+                    queue.push_back(nei);
+                }
+            }
+        }
+
+        time[0]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -310,3 +695,19 @@ class Solution {
 - Space complexity: $O(V + E)$
 
 > Where $V$ is the number of vertices and $E$ is the number of edges.
+
+---
+
+## Common Pitfalls
+
+### Not Tracking Parent Nodes
+
+Since the tree is given as an undirected edge list, each edge appears in both directions in the adjacency list. Without tracking the parent node during DFS, you will revisit the parent as if it were a child, causing infinite recursion or incorrect double-counting of edges. Always pass the parent node to recursive calls and skip it when iterating through neighbors.
+
+### Counting Edges Instead of Round Trips
+
+Each edge must be traversed twice (once going down to collect apples, once coming back up). A common mistake is adding 1 instead of 2 to the time when an edge needs to be traversed. This results in answers that are exactly half of the correct value.
+
+### Ignoring Apples in Subtrees
+
+Some solutions only check if the current child node has an apple, forgetting that we also need to traverse to a child if its subtree contains apples deeper down. The correct condition is: traverse to a child if `hasApple[child]` is true OR if `childTime > 0` (meaning the subtree required time, indicating apples exist deeper).

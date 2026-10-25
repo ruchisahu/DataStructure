@@ -1,4 +1,27 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Greedy Algorithms** - Making locally optimal choices (using the most frequent valid character) to build a global solution
+- **Heaps (Priority Queues)** - Using a max-heap to efficiently retrieve the character with the highest remaining count
+- **Recursion** - Breaking down the problem into smaller subproblems with reduced character counts
+
+---
+
 ## 1. Greedy
+
+### Intuition
+
+A "happy" string has no three consecutive identical characters. To maximize length, we should greedily use the most abundant character whenever possible. However, if we just used the same character twice in a row, we must switch to a different one to avoid three in a row. By always picking the character with the highest remaining count (that we're allowed to use), we maximize our chances of using all characters.
+
+### Algorithm
+
+1. Track the remaining count of each character (`a`, `b`, `c`).
+2. Track which character was just repeated (to avoid using it a third time).
+3. In each iteration, find the character with the maximum count that is not the repeated one.
+4. Append that character to the result and decrement its count.
+5. If the last two characters are the same, mark that character as repeated; otherwise, reset.
+6. Stop when no valid character can be added.
 
 ::tabs-start
 
@@ -205,6 +228,169 @@ public class Solution {
 }
 ```
 
+```go
+func longestDiverseString(a int, b int, c int) string {
+    count := []int{a, b, c}
+    res := []byte{}
+
+    getMax := func(repeated int) int {
+        idx := -1
+        maxCnt := 0
+        for i := 0; i < 3; i++ {
+            if i == repeated || count[i] == 0 {
+                continue
+            }
+            if maxCnt < count[i] {
+                maxCnt = count[i]
+                idx = i
+            }
+        }
+        return idx
+    }
+
+    repeated := -1
+    for {
+        maxChar := getMax(repeated)
+        if maxChar == -1 {
+            break
+        }
+        res = append(res, byte(maxChar+'a'))
+        count[maxChar]--
+
+        if len(res) > 1 && res[len(res)-1] == res[len(res)-2] {
+            repeated = maxChar
+        } else {
+            repeated = -1
+        }
+    }
+
+    return string(res)
+}
+```
+
+```kotlin
+class Solution {
+    fun longestDiverseString(a: Int, b: Int, c: Int): String {
+        val count = intArrayOf(a, b, c)
+        val res = StringBuilder()
+
+        fun getMax(repeated: Int): Int {
+            var idx = -1
+            var maxCnt = 0
+            for (i in 0 until 3) {
+                if (i == repeated || count[i] == 0) continue
+                if (maxCnt < count[i]) {
+                    maxCnt = count[i]
+                    idx = i
+                }
+            }
+            return idx
+        }
+
+        var repeated = -1
+        while (true) {
+            val maxChar = getMax(repeated)
+            if (maxChar == -1) break
+
+            res.append(('a' + maxChar))
+            count[maxChar]--
+
+            repeated = if (res.length > 1 && res[res.length - 1] == res[res.length - 2]) {
+                maxChar
+            } else {
+                -1
+            }
+        }
+
+        return res.toString()
+    }
+}
+```
+
+```swift
+class Solution {
+    func longestDiverseString(_ a: Int, _ b: Int, _ c: Int) -> String {
+        var count = [a, b, c]
+        var res = [Character]()
+
+        func getMax(_ repeated: Int) -> Int {
+            var idx = -1
+            var maxCnt = 0
+            for i in 0..<3 {
+                if i == repeated || count[i] == 0 {
+                    continue
+                }
+                if maxCnt < count[i] {
+                    maxCnt = count[i]
+                    idx = i
+                }
+            }
+            return idx
+        }
+
+        var repeated = -1
+        while true {
+            let maxChar = getMax(repeated)
+            if maxChar == -1 {
+                break
+            }
+            res.append(Character(UnicodeScalar(maxChar + Int(("a" as Character).asciiValue!))!))
+            count[maxChar] -= 1
+
+            if res.count > 1 && res[res.count - 1] == res[res.count - 2] {
+                repeated = maxChar
+            } else {
+                repeated = -1
+            }
+        }
+
+        return String(res)
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn longest_diverse_string(a: i32, b: i32, c: i32) -> String {
+        let mut count = [a, b, c];
+        let mut res = Vec::new();
+
+        let get_max = |count: &[i32; 3], repeated: i32| -> i32 {
+            let mut idx = -1i32;
+            let mut max_cnt = 0;
+            for i in 0..3 {
+                if i as i32 == repeated || count[i] == 0 {
+                    continue;
+                }
+                if max_cnt < count[i] {
+                    max_cnt = count[i];
+                    idx = i as i32;
+                }
+            }
+            idx
+        };
+
+        let mut repeated = -1i32;
+        loop {
+            let max_char = get_max(&count, repeated);
+            if max_char == -1 {
+                break;
+            }
+            res.push((max_char as u8 + b'a') as char);
+            count[max_char as usize] -= 1;
+            let n = res.len();
+            if n > 1 && res[n - 1] == res[n - 2] {
+                repeated = max_char;
+            } else {
+                repeated = -1;
+            }
+        }
+
+        res.into_iter().collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -217,6 +403,20 @@ public class Solution {
 ---
 
 ## 2. Greedy (Max-Heap)
+
+### Intuition
+
+Using a max-heap streamlines finding the character with the highest count. We pop the top character and try to use it. If doing so would create three in a row, we instead use the second-highest character (if available), then push the first one back. This ensures we always make progress while respecting the constraint.
+
+### Algorithm
+
+1. Push all characters with non-zero counts into a max-heap as `(count, char)` pairs.
+2. While the heap is not empty:
+    - Pop the character with the highest count.
+    - If the last two characters in the result match this character, try using the second-highest instead.
+    - If no second option exists, stop.
+    - Append the chosen character, decrement its count, and push it back if count remains positive.
+3. Return the constructed string.
 
 ::tabs-start
 
@@ -393,6 +593,220 @@ public class Solution {
 }
 ```
 
+```go
+type MaxHeap [][]int
+
+func (h MaxHeap) Len() int           { return len(h) }
+func (h MaxHeap) Less(i, j int) bool { return h[i][0] > h[j][0] }
+func (h MaxHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+
+func (h *MaxHeap) Push(x interface{}) {
+    *h = append(*h, x.([]int))
+}
+
+func (h *MaxHeap) Pop() interface{} {
+    old := *h
+    n := len(old)
+    x := old[n-1]
+    *h = old[0 : n-1]
+    return x
+}
+
+func longestDiverseString(a int, b int, c int) string {
+    res := []byte{}
+    maxHeap := &MaxHeap{}
+    heap.Init(maxHeap)
+
+    if a > 0 {
+        heap.Push(maxHeap, []int{a, 'a'})
+    }
+    if b > 0 {
+        heap.Push(maxHeap, []int{b, 'b'})
+    }
+    if c > 0 {
+        heap.Push(maxHeap, []int{c, 'c'})
+    }
+
+    for maxHeap.Len() > 0 {
+        first := heap.Pop(maxHeap).([]int)
+        count, ch := first[0], byte(first[1])
+
+        if len(res) > 1 && res[len(res)-1] == ch && res[len(res)-2] == ch {
+            if maxHeap.Len() == 0 {
+                break
+            }
+            second := heap.Pop(maxHeap).([]int)
+            count2, ch2 := second[0], byte(second[1])
+            res = append(res, ch2)
+            count2--
+            if count2 > 0 {
+                heap.Push(maxHeap, []int{count2, int(ch2)})
+            }
+            heap.Push(maxHeap, []int{count, int(ch)})
+        } else {
+            res = append(res, ch)
+            count--
+            if count > 0 {
+                heap.Push(maxHeap, []int{count, int(ch)})
+            }
+        }
+    }
+
+    return string(res)
+}
+```
+
+```kotlin
+import java.util.PriorityQueue
+
+class Solution {
+    fun longestDiverseString(a: Int, b: Int, c: Int): String {
+        val res = StringBuilder()
+        val maxHeap = PriorityQueue<IntArray> { x, y -> y[0] - x[0] }
+
+        if (a > 0) maxHeap.offer(intArrayOf(a, 'a'.code))
+        if (b > 0) maxHeap.offer(intArrayOf(b, 'b'.code))
+        if (c > 0) maxHeap.offer(intArrayOf(c, 'c'.code))
+
+        while (maxHeap.isNotEmpty()) {
+            val first = maxHeap.poll()
+            val ch = first[1].toChar()
+
+            if (res.length > 1 && res[res.length - 1] == ch && res[res.length - 2] == ch) {
+                if (maxHeap.isEmpty()) break
+                val second = maxHeap.poll()
+                res.append(second[1].toChar())
+                second[0]--
+                if (second[0] > 0) maxHeap.offer(second)
+                maxHeap.offer(first)
+            } else {
+                res.append(ch)
+                first[0]--
+                if (first[0] > 0) maxHeap.offer(first)
+            }
+        }
+
+        return res.toString()
+    }
+}
+```
+
+```swift
+class Solution {
+    func longestDiverseString(_ a: Int, _ b: Int, _ c: Int) -> String {
+        var res = [Character]()
+        var heap = [(Int, Character)]()
+
+        func heapifyUp(_ index: Int) {
+            var i = index
+            while i > 0 {
+                let parent = (i - 1) / 2
+                if heap[i].0 > heap[parent].0 {
+                    heap.swapAt(i, parent)
+                    i = parent
+                } else {
+                    break
+                }
+            }
+        }
+
+        func heapifyDown(_ index: Int) {
+            var i = index
+            while true {
+                let left = 2 * i + 1
+                let right = 2 * i + 2
+                var largest = i
+                if left < heap.count && heap[left].0 > heap[largest].0 {
+                    largest = left
+                }
+                if right < heap.count && heap[right].0 > heap[largest].0 {
+                    largest = right
+                }
+                if largest != i {
+                    heap.swapAt(i, largest)
+                    i = largest
+                } else {
+                    break
+                }
+            }
+        }
+
+        func push(_ item: (Int, Character)) {
+            heap.append(item)
+            heapifyUp(heap.count - 1)
+        }
+
+        func pop() -> (Int, Character) {
+            let result = heap[0]
+            heap[0] = heap[heap.count - 1]
+            heap.removeLast()
+            if !heap.isEmpty {
+                heapifyDown(0)
+            }
+            return result
+        }
+
+        if a > 0 { push((a, "a")) }
+        if b > 0 { push((b, "b")) }
+        if c > 0 { push((c, "c")) }
+
+        while !heap.isEmpty {
+            var (count, ch) = pop()
+
+            if res.count > 1 && res[res.count - 1] == ch && res[res.count - 2] == ch {
+                if heap.isEmpty { break }
+                var (count2, ch2) = pop()
+                res.append(ch2)
+                count2 -= 1
+                if count2 > 0 { push((count2, ch2)) }
+                push((count, ch))
+            } else {
+                res.append(ch)
+                count -= 1
+                if count > 0 { push((count, ch)) }
+            }
+        }
+
+        return String(res)
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn longest_diverse_string(a: i32, b: i32, c: i32) -> String {
+        let mut res = Vec::new();
+        let mut max_heap = BinaryHeap::new();
+
+        if a > 0 { max_heap.push((a, b'a')); }
+        if b > 0 { max_heap.push((b, b'b')); }
+        if c > 0 { max_heap.push((c, b'c')); }
+
+        while let Some((count, ch)) = max_heap.pop() {
+            let n = res.len();
+            if n > 1 && res[n - 1] == ch && res[n - 2] == ch {
+                if let Some((count2, ch2)) = max_heap.pop() {
+                    res.push(ch2);
+                    if count2 - 1 > 0 {
+                        max_heap.push((count2 - 1, ch2));
+                    }
+                    max_heap.push((count, ch));
+                } else {
+                    break;
+                }
+            } else {
+                res.push(ch);
+                if count - 1 > 0 {
+                    max_heap.push((count - 1, ch));
+                }
+            }
+        }
+
+        String::from_utf8(res).unwrap()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -405,6 +819,18 @@ public class Solution {
 ---
 
 ## 3. Greedy (Recursion)
+
+### Intuition
+
+We can express the greedy logic recursively. At each step, we sort the characters by count (keeping the largest first) and decide how many of the most frequent character to use. If the most frequent character still dominates after using two of it, we insert one of the second character to break it up. Then we recurse on the reduced counts.
+
+### Algorithm
+
+1. Define a recursive function that takes counts and characters for all three options.
+2. Reorder parameters so the first character has the highest count.
+3. Base case: If the second count is zero, return up to two of the first character.
+4. Use up to two of the first character. If the remaining count still exceeds the second, use one of the second character.
+5. Recurse with updated counts and concatenate the results.
 
 ::tabs-start
 
@@ -563,6 +989,140 @@ public class Solution {
 }
 ```
 
+```go
+func longestDiverseString(a int, b int, c int) string {
+    var rec func(max1, max2, max3 int, char1, char2, char3 byte) []byte
+    rec = func(max1, max2, max3 int, char1, char2, char3 byte) []byte {
+        if max1 < max2 {
+            return rec(max2, max1, max3, char2, char1, char3)
+        }
+        if max2 < max3 {
+            return rec(max1, max3, max2, char1, char3, char2)
+        }
+        if max2 == 0 {
+            use := min(2, max1)
+            res := make([]byte, use)
+            for i := 0; i < use; i++ {
+                res[i] = char1
+            }
+            return res
+        }
+
+        use1 := min(2, max1)
+        use2 := 0
+        if max1-use1 >= max2 {
+            use2 = 1
+        }
+
+        res := make([]byte, use1+use2)
+        for i := 0; i < use1; i++ {
+            res[i] = char1
+        }
+        for i := 0; i < use2; i++ {
+            res[use1+i] = char2
+        }
+
+        return append(res, rec(max1-use1, max2-use2, max3, char1, char2, char3)...)
+    }
+
+    return string(rec(a, b, c, 'a', 'b', 'c'))
+}
+
+func min(a, b int) int {
+    if a < b {
+        return a
+    }
+    return b
+}
+```
+
+```kotlin
+class Solution {
+    fun longestDiverseString(a: Int, b: Int, c: Int): String {
+        fun rec(max1: Int, max2: Int, max3: Int, char1: Char, char2: Char, char3: Char): List<Char> {
+            if (max1 < max2) {
+                return rec(max2, max1, max3, char2, char1, char3)
+            }
+            if (max2 < max3) {
+                return rec(max1, max3, max2, char1, char3, char2)
+            }
+            if (max2 == 0) {
+                val use = minOf(2, max1)
+                return List(use) { char1 }
+            }
+
+            val use1 = minOf(2, max1)
+            val use2 = if (max1 - use1 >= max2) 1 else 0
+
+            val res = mutableListOf<Char>()
+            repeat(use1) { res.add(char1) }
+            repeat(use2) { res.add(char2) }
+
+            res.addAll(rec(max1 - use1, max2 - use2, max3, char1, char2, char3))
+            return res
+        }
+
+        return rec(a, b, c, 'a', 'b', 'c').joinToString("")
+    }
+}
+```
+
+```swift
+class Solution {
+    func longestDiverseString(_ a: Int, _ b: Int, _ c: Int) -> String {
+        func rec(_ max1: Int, _ max2: Int, _ max3: Int,
+                 _ char1: Character, _ char2: Character, _ char3: Character) -> [Character] {
+            if max1 < max2 {
+                return rec(max2, max1, max3, char2, char1, char3)
+            }
+            if max2 < max3 {
+                return rec(max1, max3, max2, char1, char3, char2)
+            }
+            if max2 == 0 {
+                return Array(repeating: char1, count: min(2, max1))
+            }
+
+            let use1 = min(2, max1)
+            let use2 = (max1 - use1 >= max2) ? 1 : 0
+
+            var res = Array(repeating: char1, count: use1) + Array(repeating: char2, count: use2)
+            res.append(contentsOf: rec(max1 - use1, max2 - use2, max3, char1, char2, char3))
+            return res
+        }
+
+        return String(rec(a, b, c, "a", "b", "c"))
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn longest_diverse_string(a: i32, b: i32, c: i32) -> String {
+        fn rec(max1: i32, max2: i32, max3: i32,
+               char1: u8, char2: u8, char3: u8) -> Vec<u8> {
+            if max1 < max2 {
+                return rec(max2, max1, max3, char2, char1, char3);
+            }
+            if max2 < max3 {
+                return rec(max1, max3, max2, char1, char3, char2);
+            }
+            if max2 == 0 {
+                return vec![char1; max1.min(2) as usize];
+            }
+            let use1 = max1.min(2);
+            let use2 = if max1 - use1 >= max2 { 1 } else { 0 };
+            let mut res = vec![char1; use1 as usize];
+            res.extend(vec![char2; use2 as usize]);
+            res.extend(rec(max1 - use1, max2 - use2, max3,
+                           char1, char2, char3));
+            res
+        }
+
+        String::from_utf8(rec(a, b, c, b'a', b'b', b'c')).unwrap()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -571,3 +1131,19 @@ public class Solution {
 - Space complexity:
     - $O(n)$ for recursion stack.
     - $O(n)$ space for the output string.
+
+---
+
+## Common Pitfalls
+
+### Forgetting to Track Consecutive Characters
+
+A common mistake is only checking whether the last character matches the current one. The problem requires preventing three consecutive identical characters, not just two. You must track whether the last two characters are the same before deciding if you can add another of the same character.
+
+### Greedily Using the Same Character Without Switching
+
+Always picking the most frequent character without considering when to switch leads to suboptimal or invalid results. When you have used the most frequent character twice in a row, you must use a different character next, even if the most frequent one still has remaining count. Failing to switch results in either an invalid string or a shorter result than possible.
+
+### Not Handling the Case When No Valid Character Exists
+
+The algorithm must correctly terminate when no valid character can be added. This happens when all remaining characters would create three consecutive identical characters. Forgetting to handle this edge case can lead to infinite loops or incorrect outputs.

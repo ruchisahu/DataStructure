@@ -1,4 +1,63 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Hash Maps** - Using dictionaries to store and retrieve point counts in O(1) time
+- **Coordinate Geometry** - Understanding axis-aligned squares and diagonal relationships between corners
+- **Nested Hash Maps** - Using two-level hash maps to efficiently query points by x-coordinate then y-coordinate
+
+---
+
 ## 1. Hash Map - I
+
+### Intuition
+
+We are asked to count how many **axis-aligned squares** can be formed using a given point as one corner and previously added points as the other three corners.
+
+Key observations about an axis-aligned square:
+
+- All sides are parallel to the x-axis and y-axis
+- If `(px, py)` is one corner and `(x, y)` is the **diagonal opposite corner**, then:
+    - `|px - x| == |py - y|` (equal side lengths)
+    - `x != px` and `y != py` (otherwise it would not form a square)
+- The other two required corners must be:
+    - `(x, py)`
+    - `(px, y)`
+
+So the idea is:
+
+- Fix the query point `(px, py)`
+- Try every previously added point `(x, y)` as a **possible diagonal**
+- If it forms a valid square diagonal, multiply how many times the other two required points exist
+
+A hash map lets us quickly check how many times a specific point was added.
+
+### Algorithm
+
+**Data Structures**
+
+- `ptsCount`: a hash map storing how many times each point appears
+- `pts`: a list of all added points (including duplicates)
+
+**`add(point)`**
+
+1. Increment the count of `point` in `ptsCount`
+2. Append `point` to the list `pts`
+
+**`count(point)`**
+
+1. Initialize `res = 0`
+2. Let `(px, py)` be the query point
+3. For every stored point `(x, y)` in `pts`:
+    - Check if `(x, y)` can be the **diagonal opposite corner**:
+        - `|px - x| == |py - y|`
+        - `x != px` and `y != py`
+    - If not valid, skip
+4. If valid:
+    - The other two corners must be `(x, py)` and `(px, y)`
+    - Add to the result:
+        - `ptsCount[(x, py)] * ptsCount[(px, y)]`
+5. Return `res`
 
 ::tabs-start
 
@@ -18,7 +77,7 @@ class CountSquares:
         for x, y in self.pts:
             if (abs(py - y) != abs(px - x)) or x == px or y == py:
                 continue
-            res += self.ptsCount[(x, py)] * self.ptsCount[(px, y)]
+            res += self.ptsCount.get((x, py), 0) * self.ptsCount.get((px, y), 0)
         return res
 ```
 
@@ -60,7 +119,7 @@ private:
     unordered_map<long, int> ptsCount;
     vector<vector<int>> pts;
 
-    long getKey(int x, int y) {
+    long getKey(int x, int y) const {
         return (static_cast<long>(x) << 32) | static_cast<long>(y);
     }
 
@@ -74,14 +133,18 @@ public:
         pts.push_back(point);
     }
 
-    int count(vector<int> point) {
+    int count(vector<int> point) const {
         int res = 0;
         int px = point[0], py = point[1];
 
         for (const auto& pt : pts) {
             int x = pt[0], y = pt[1];
             if (abs(py - y) != abs(px - x) || x == px || y == py) continue;
-            res += ptsCount[getKey(x, py)] * ptsCount[getKey(px, y)];
+            auto p1 = ptsCount.find(getKey(x, py));
+            auto p2 = ptsCount.find(getKey(px, y));
+            if (p1 != ptsCount.end() && p2 != ptsCount.end()) {
+                res += p1->second * p2->second;
+            }
         }
         return res;
     }
@@ -274,6 +337,41 @@ class CountSquares {
 }
 ```
 
+```rust
+struct CountSquares {
+    pts_count: HashMap<(i32, i32), i32>,
+    pts: Vec<(i32, i32)>,
+}
+
+impl CountSquares {
+    fn new() -> Self {
+        CountSquares {
+            pts_count: HashMap::new(),
+            pts: Vec::new(),
+        }
+    }
+
+    fn add(&mut self, point: Vec<i32>) {
+        let p = (point[0], point[1]);
+        *self.pts_count.entry(p).or_insert(0) += 1;
+        self.pts.push(p);
+    }
+
+    fn count(&self, point: Vec<i32>) -> i32 {
+        let mut res = 0;
+        let (px, py) = (point[0], point[1]);
+        for &(x, y) in &self.pts {
+            if (py - y).abs() != (px - x).abs() || x == px || y == py {
+                continue;
+            }
+            res += self.pts_count.get(&(x, py)).unwrap_or(&0)
+                 * self.pts_count.get(&(px, y)).unwrap_or(&0);
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -284,6 +382,64 @@ class CountSquares {
 ---
 
 ## 2. Hash Map - II
+
+### Intuition
+
+We want to count how many **axis-aligned squares** can be formed using the given query point `(x1, y1)` as one corner.
+
+For an axis-aligned square:
+
+- One side is vertical and one side is horizontal
+- If we pick another point `(x1, y2)` on the **same vertical line** (same `x1`), then:
+    - the side length is `side = y2 - y1`
+    - this determines where the square’s other x-coordinates must be:
+        - `x3 = x1 + side` (square to the right)
+        - `x4 = x1 - side` (square to the left)
+
+So for each possible vertical partner `(x1, y2)`, we can form up to **two squares**:
+
+1. Square to the **right** needs points:
+    - `(x3, y1)` and `(x3, y2)`
+2. Square to the **left** needs points:
+    - `(x4, y1)` and `(x4, y2)`
+
+Because points can be added multiple times, the total number of squares is the product of the counts of the required points.
+
+This version uses a nested hash map:
+
+- `ptsCount[x][y]` = how many times point `(x, y)` was added
+  which makes counting fast and avoids storing a list of all points.
+
+### Algorithm
+
+**Data Structure**
+
+- `ptsCount`: nested hash map
+    - outer key: x-coordinate
+    - inner key: y-coordinate
+    - value: count of that point
+
+**`add(point)`**
+
+1. Let the point be `(x, y)`.
+2. Increment `ptsCount[x][y]`.
+
+**`count(point)`**
+
+1. Initialize `res = 0`.
+2. Let the query point be `(x1, y1)`.
+3. Iterate over all `y2` such that a point `(x1, y2)` exists (same x-coordinate):
+4. Compute the side length:
+    - `side = y2 - y1`
+    - If `side == 0`, skip (same point, no square)
+5. Compute possible horizontal positions:
+    - `x3 = x1 + side` (right square)
+    - `x4 = x1 - side` (left square)
+6. Add squares formed to the **right**:
+    - `ptsCount[x1][y2] * ptsCount[x3][y1] * ptsCount[x3][y2]`
+7. Add squares formed to the **left**:
+    - `ptsCount[x1][y2] * ptsCount[x4][y1] * ptsCount[x4][y2]`
+8. Return `res`.
 
 ::tabs-start
 
@@ -299,17 +455,16 @@ class CountSquares:
     def count(self, point: List[int]) -> int:
         res = 0
         x1, y1 = point
-        for y2 in self.ptsCount[x1]:
+        column = self.ptsCount.get(x1, {})
+        for y2, cnt in column.items():
             side = y2 - y1
             if side == 0:
                 continue
 
             x3, x4 = x1 + side, x1 - side
-            res += (self.ptsCount[x1][y2] * self.ptsCount[x3][y1] *
-                    self.ptsCount[x3][y2])
-
-            res += (self.ptsCount[x1][y2] * self.ptsCount[x4][y1] *
-                    self.ptsCount[x4][y2])
+            for x in (x3, x4):
+                counts = self.ptsCount.get(x, {})
+                res += cnt * counts.get(y1, 0) * counts.get(y2, 0)
         return res
 ```
 
@@ -362,17 +517,28 @@ public:
         ptsCount[point[0]][point[1]]++;
     }
 
-    int count(vector<int> point) {
+    int count(vector<int> point) const {
         int res = 0;
         int x1 = point[0], y1 = point[1];
 
-        for (auto &[y2, cnt] : ptsCount[x1]) {
+        auto column = ptsCount.find(x1);
+        if (column == ptsCount.end()) return 0;
+
+        for (const auto& [y2, cnt] : column->second) {
             int side = y2 - y1;
             if (side == 0) continue;
 
             int x3 = x1 + side, x4 = x1 - side;
-            res += cnt * ptsCount[x3][y1] * ptsCount[x3][y2];
-            res += cnt * ptsCount[x4][y1] * ptsCount[x4][y2];
+            for (int x : {x3, x4}) {
+                auto other = ptsCount.find(x);
+                if (other == ptsCount.end()) continue;
+
+                const auto& counts = other->second;
+                auto p1 = counts.find(y1), p2 = counts.find(y2);
+                if (p1 != counts.end() && p2 != counts.end()) {
+                    res += cnt * p1->second * p2->second;
+                }
+            }
         }
 
         return res;
@@ -600,9 +766,84 @@ class CountSquares {
 }
 ```
 
+```rust
+struct CountSquares {
+    pts_count: HashMap<i32, HashMap<i32, i32>>,
+}
+
+impl CountSquares {
+    fn new() -> Self {
+        CountSquares {
+            pts_count: HashMap::new(),
+        }
+    }
+
+    fn add(&mut self, point: Vec<i32>) {
+        let x = point[0];
+        let y = point[1];
+        *self.pts_count.entry(x).or_default().entry(y).or_insert(0) += 1;
+    }
+
+    fn count(&self, point: Vec<i32>) -> i32 {
+        let mut res = 0;
+        let x1 = point[0];
+        let y1 = point[1];
+
+        if let Some(y_map) = self.pts_count.get(&x1) {
+            for (&y2, &cnt) in y_map {
+                let side = y2 - y1;
+                if side == 0 {
+                    continue;
+                }
+                let x3 = x1 + side;
+                let x4 = x1 - side;
+
+                let get = |x: i32, y: i32| -> i32 {
+                    *self.pts_count.get(&x).and_then(|m| m.get(&y)).unwrap_or(&0)
+                };
+
+                res += cnt * get(x3, y1) * get(x3, y2);
+                res += cnt * get(x4, y1) * get(x4, y2);
+            }
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(1)$ for $add()$, $O(n)$ for $count()$.
 - Space complexity: $O(n)$
+
+---
+
+## Common Pitfalls
+
+### Inserting Missing Points During Queries
+
+C++ `operator[]` and Python `defaultdict[key]` insert missing entries. Use non-inserting lookups in `count()` so storage grows only when `add()` is called and later queries scan only points that were actually added.
+
+### Forgetting to Check Both Diagonal Conditions
+
+A common mistake is only checking that the side lengths are equal (`|px - x| == |py - y|`) without also verifying that the points are not on the same horizontal or vertical line. Both conditions are necessary for a valid square diagonal.
+
+```python
+# Wrong: Missing the x != px and y != py checks
+if abs(py - y) == abs(px - x):  # Accepts invalid diagonals
+    ...
+
+# Correct: Must also ensure points form a true diagonal
+if abs(py - y) == abs(px - x) and x != px and y != py:
+    ...
+```
+
+### Not Handling Duplicate Points
+
+The problem allows adding the same point multiple times. Using a set instead of a counter for point tracking will lose count information, causing incorrect results when the same point appears multiple times. The number of squares should multiply by the count of each required corner point.
+
+### Confusing Diagonal vs Adjacent Corners
+
+When iterating through stored points to find potential squares, some solutions incorrectly look for adjacent corners instead of diagonal corners. Given the query point `(px, py)` and a candidate diagonal `(x, y)`, the other two corners must be `(x, py)` and `(px, y)`, not `(px + side, py)` and `(px, py + side)`.

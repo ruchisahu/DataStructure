@@ -1,4 +1,46 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Linked Lists** - Understanding node structure, traversal, and pointer manipulation
+- **Recursion** - Breaking problems into subproblems and handling base cases
+- **Linked List Reversal** - Reversing a linked list using pointer manipulation
+- **Dummy Nodes** - Using sentinel nodes to simplify edge cases at the head of a list
+
+---
+
 ## 1. Recursion
+
+### Intuition
+
+To reverse nodes in groups of **k**, we first check whether the current segment contains at least **k** nodes.
+
+- If **fewer than k**, we leave the nodes as they are.
+- If we **do** have k nodes, then:
+    1. **Recursively** reverse the rest of the list starting from the node after these k nodes.
+    2. Then reverse the current group of k nodes.
+    3. Attach the reversed group to the already-processed remainder.
+
+This gives a clean top-down approach:
+**solve the rest of the list first, then fix the current group.**
+
+### Algorithm
+
+1. Start at the given `head` and try to move forward `k` nodes.
+    - Count how many nodes are available using counter `group`.
+    - If fewer than `k`, return the current `head` unchanged.
+
+2. If exactly `k` nodes exist:
+    - Recursively call the function on the node after these `k` nodes (`cur`).
+        - This returns the head of the reversed remainder.
+    - Reverse the current group of `k` nodes:
+        - For each of the `k` nodes:
+            - Temporarily store `head.next` in `tmp`
+            - Point `head.next` to the result of the recursive call
+            - Move forward
+    - After reversing all `k` nodes, return the new head of this group.
+
+3. The recursion ensures each segment is reversed and correctly connected to the next processed segment.
 
 ::tabs-start
 
@@ -292,6 +334,45 @@ class Solution {
 }
 ```
 
+```rust
+// Definition for singly-linked list.
+// #[derive(PartialEq, Eq, Clone, Debug)]
+// pub struct ListNode {
+//   pub val: i32,
+//   pub next: Option<Box<ListNode>>
+// }
+
+impl Solution {
+    pub fn reverse_k_group(head: Option<Box<ListNode>>, k: i32) -> Option<Box<ListNode>> {
+        let mut cur = &head;
+        let mut group = 0;
+        while cur.is_some() && group < k {
+            cur = &cur.as_ref().unwrap().next;
+            group += 1;
+        }
+
+        if group == k {
+            // Split off after k nodes
+            let mut node = head;
+            let mut stack = Vec::new();
+            for _ in 0..k {
+                let mut n = node.unwrap();
+                node = n.next.take();
+                stack.push(n);
+            }
+            let mut cur = Self::reverse_k_group(node, k);
+            for mut n in stack {
+                n.next = cur;
+                cur = Some(n);
+            }
+            cur
+        } else {
+            head
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -302,6 +383,53 @@ class Solution {
 ---
 
 ## 2. Iteration
+
+### Intuition
+
+We reverse the list **one k-sized group at a time** using pointers, without recursion.
+
+Key ideas:
+
+- Use a **dummy node** before the head to simplify edge cases.
+- For each step, we:
+    1. Find the **k-th node** from the current group's previous node.
+        - If there aren't `k` nodes left, we stop (leave the rest as-is).
+    2. Reverse the nodes in this k-sized segment.
+    3. Re-connect the reversed segment back into the list.
+    4. Move forward to the next group.
+
+By repeating this process, we reverse every full group of `k` nodes while keeping the rest of the list intact.
+
+### Algorithm
+
+1. Create a `dummy` node pointing to `head`.
+   Set `groupPrev = dummy` (the node just before the current group).
+
+2. Loop:
+    - Use a helper `getKth(groupPrev, k)` to find the k-th node from `groupPrev`.
+    - If `kth` is `null`, there are fewer than k nodes left → break.
+
+3. Let:
+    - `groupNext = kth.next` (first node after the current group).
+    - `prev = groupNext`
+    - `curr = groupPrev.next` (first node in the current group)
+
+4. Reverse the current group:
+    - While `curr != groupNext`:
+        - Store `curr.next` in `tmp`.
+        - Point `curr.next` to `prev`.
+        - Move `prev` to `curr`.
+        - Move `curr` to `tmp`.
+
+5. After reversing:
+    - `groupPrev.next` is now the **start** of the reversed group (`kth` node).
+    - Store the original first node of this group (`tmp = groupPrev.next` before rewiring).
+    - Set `groupPrev.next = kth`.
+    - Move `groupPrev = tmp` (now the end of the reversed group).
+
+6. Repeat steps 2–5 until no more full k-groups remain.
+
+7. Return `dummy.next` as the new head of the list.
 
 ::tabs-start
 
@@ -695,9 +823,76 @@ class Solution {
 }
 ```
 
+```rust
+// Definition for singly-linked list.
+// #[derive(PartialEq, Eq, Clone, Debug)]
+// pub struct ListNode {
+//   pub val: i32,
+//   pub next: Option<Box<ListNode>>
+// }
+
+impl Solution {
+    pub fn reverse_k_group(head: Option<Box<ListNode>>, k: i32) -> Option<Box<ListNode>> {
+        let mut head = head;
+        // Check if there are at least k nodes
+        let mut count = 0;
+        let mut cur = &head;
+        while cur.is_some() && count < k {
+            cur = &cur.as_ref().unwrap().next;
+            count += 1;
+        }
+        if count < k {
+            return head;
+        }
+
+        // Collect k nodes into a stack
+        let mut stack = Vec::new();
+        for _ in 0..k {
+            let mut node = head.unwrap();
+            head = node.next.take();
+            stack.push(node);
+        }
+
+        // Recursively process the rest
+        let mut tail = Self::reverse_k_group(head, k);
+
+        // Rebuild reversed group
+        for mut node in stack {
+            node.next = tail;
+            tail = Some(node);
+        }
+        tail
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(1)$
+
+---
+
+## Common Pitfalls
+
+### Forgetting to Handle Remaining Nodes
+
+When there are fewer than `k` nodes remaining at the end of the list, they should be left as-is. A common mistake is attempting to reverse these remaining nodes anyway, which violates the problem requirements.
+
+### Incorrect Pointer Rewiring After Reversal
+
+After reversing a k-group, you must correctly connect the reversed segment back to the rest of the list. Failing to update `groupPrev.next` to point to the new head of the reversed segment (which was the k-th node) results in a broken list.
+
+### Losing Track of the Original First Node
+
+The original first node of each k-group becomes the last node after reversal. You need to save a reference to it before rewiring pointers, as it becomes the new `groupPrev` for the next iteration.
+
+### Off-by-One Errors When Counting k Nodes
+
+When checking if there are at least `k` nodes available, ensure your counting logic is correct. Starting the count at 0 vs 1, or using `<` vs `<=` incorrectly, can cause you to reverse groups of the wrong size.
+
+### Not Using a Dummy Node
+
+Without a dummy node before the head, handling the first k-group requires special case logic since there is no `groupPrev` node. Using a dummy simplifies the code and eliminates edge cases for updating the head of the list.

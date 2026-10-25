@@ -1,4 +1,22 @@
+## Prerequisites
+Before attempting this problem, you should be comfortable with:
+- **Hash Functions** - Understanding how keys map to bucket indices via modulo operations
+- **Linked Lists** - Implementing node-based structures for collision handling (separate chaining)
+- **Binary Search Trees** - Understanding BST operations for an optimized collision resolution approach
+- **Bit Manipulation** - Using bitwise operations (OR, AND, XOR) for space-efficient storage
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+The simplest implementation uses a dynamic array to store all keys. For each operation, we search through the array linearly. This works correctly but is inefficient since every operation requires scanning potentially all stored elements.
+
+### Algorithm
+1. Initialize an empty array `data`.
+2. For `add(key)`: If the key is not already in the array, append it.
+3. For `remove(key)`: If the key exists in the array, remove it.
+4. For `contains(key)`: Return `true` if the key exists in the array.
 
 ::tabs-start
 
@@ -133,6 +151,115 @@ public class MyHashSet {
 }
 ```
 
+```go
+type MyHashSet struct {
+    data []int
+}
+
+func Constructor() MyHashSet {
+    return MyHashSet{data: []int{}}
+}
+
+func (this *MyHashSet) Add(key int) {
+    if !this.Contains(key) {
+        this.data = append(this.data, key)
+    }
+}
+
+func (this *MyHashSet) Remove(key int) {
+    for i, v := range this.data {
+        if v == key {
+            this.data = append(this.data[:i], this.data[i+1:]...)
+            return
+        }
+    }
+}
+
+func (this *MyHashSet) Contains(key int) bool {
+    for _, v := range this.data {
+        if v == key {
+            return true
+        }
+    }
+    return false
+}
+```
+
+```kotlin
+class MyHashSet() {
+    private val data = mutableListOf<Int>()
+
+    fun add(key: Int) {
+        if (!contains(key)) {
+            data.add(key)
+        }
+    }
+
+    fun remove(key: Int) {
+        data.remove(key)
+    }
+
+    fun contains(key: Int): Boolean {
+        return data.contains(key)
+    }
+}
+```
+
+```swift
+class MyHashSet {
+    private var data: [Int]
+
+    init() {
+        data = []
+    }
+
+    func add(_ key: Int) {
+        if !contains(key) {
+            data.append(key)
+        }
+    }
+
+    func remove(_ key: Int) {
+        if let index = data.firstIndex(of: key) {
+            data.remove(at: index)
+        }
+    }
+
+    func contains(_ key: Int) -> Bool {
+        return data.contains(key)
+    }
+}
+```
+
+
+```rust
+struct MyHashSet {
+    data: Vec<i32>,
+}
+
+impl MyHashSet {
+    fn new() -> Self {
+        Self { data: Vec::new() }
+    }
+
+    fn add(&mut self, key: i32) {
+        if !self.contains(key) {
+            self.data.push(key);
+        }
+    }
+
+    fn remove(&mut self, key: i32) {
+        if let Some(pos) = self.data.iter().position(|&x| x == key) {
+            self.data.remove(pos);
+        }
+    }
+
+    fn contains(&self, key: i32) -> bool {
+        self.data.contains(&key)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -143,6 +270,15 @@ public class MyHashSet {
 ---
 
 ## 2. Boolean Array
+
+### Intuition
+Since keys are constrained to [0, 1000000], we can use direct addressing with a boolean array. The index represents the key, and the boolean value indicates presence. This provides O(1) operations but uses fixed memory regardless of how many keys are stored.
+
+### Algorithm
+1. Initialize a boolean array of size `1000001`, all set to `false`.
+2. For `add(key)`: Set `data[key] = true`.
+3. For `remove(key)`: Set `data[key] = false`.
+4. For `contains(key)`: Return `data[key]`.
 
 ::tabs-start
 
@@ -259,6 +395,93 @@ public class MyHashSet {
 }
 ```
 
+```go
+type MyHashSet struct {
+    data []bool
+}
+
+func Constructor() MyHashSet {
+    return MyHashSet{data: make([]bool, 1000001)}
+}
+
+func (this *MyHashSet) Add(key int) {
+    this.data[key] = true
+}
+
+func (this *MyHashSet) Remove(key int) {
+    this.data[key] = false
+}
+
+func (this *MyHashSet) Contains(key int) bool {
+    return this.data[key]
+}
+```
+
+```kotlin
+class MyHashSet() {
+    private val data = BooleanArray(1000001)
+
+    fun add(key: Int) {
+        data[key] = true
+    }
+
+    fun remove(key: Int) {
+        data[key] = false
+    }
+
+    fun contains(key: Int): Boolean {
+        return data[key]
+    }
+}
+```
+
+```swift
+class MyHashSet {
+    private var data: [Bool]
+
+    init() {
+        data = [Bool](repeating: false, count: 1000001)
+    }
+
+    func add(_ key: Int) {
+        data[key] = true
+    }
+
+    func remove(_ key: Int) {
+        data[key] = false
+    }
+
+    func contains(_ key: Int) -> Bool {
+        return data[key]
+    }
+}
+```
+
+
+```rust
+struct MyHashSet {
+    data: Vec<bool>,
+}
+
+impl MyHashSet {
+    fn new() -> Self {
+        Self { data: vec![false; 1_000_001] }
+    }
+
+    fn add(&mut self, key: i32) {
+        self.data[key as usize] = true;
+    }
+
+    fn remove(&mut self, key: i32) {
+        self.data[key as usize] = false;
+    }
+
+    fn contains(&self, key: i32) -> bool {
+        self.data[key as usize]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -269,6 +492,16 @@ public class MyHashSet {
 ---
 
 ## 3. Linked List
+
+### Intuition
+To reduce memory while handling collisions, we use separate chaining. An array of buckets stores linked lists, and keys are assigned to buckets using a hash function. Each operation traverses only the linked list in the relevant bucket, making average-case operations faster than the brute force approach.
+
+### Algorithm
+1. Initialize an array of `10000` buckets, each with a dummy head node.
+2. Define `hash(key)` as `key % 10000`.
+3. For `add(key)`: Traverse the list at `hash(key)`. If the key already exists, return. Otherwise, append a new node with the key.
+4. For `remove(key)`: Traverse the list at `hash(key)`. If a node with the matching key is found, remove it by updating the previous node's `next` pointer.
+5. For `contains(key)`: Traverse the list at `hash(key)`. Return `true` if the key is found, `false` otherwise.
 
 ::tabs-start
 
@@ -547,6 +780,196 @@ public class MyHashSet {
 }
 ```
 
+```go
+type ListNode struct {
+    key  int
+    next *ListNode
+}
+
+type MyHashSet struct {
+    set []*ListNode
+}
+
+func Constructor() MyHashSet {
+    set := make([]*ListNode, 10000)
+    for i := range set {
+        set[i] = &ListNode{key: 0}
+    }
+    return MyHashSet{set: set}
+}
+
+func (this *MyHashSet) hash(key int) int {
+    return key % len(this.set)
+}
+
+func (this *MyHashSet) Add(key int) {
+    cur := this.set[this.hash(key)]
+    for cur.next != nil {
+        if cur.next.key == key {
+            return
+        }
+        cur = cur.next
+    }
+    cur.next = &ListNode{key: key}
+}
+
+func (this *MyHashSet) Remove(key int) {
+    cur := this.set[this.hash(key)]
+    for cur.next != nil {
+        if cur.next.key == key {
+            cur.next = cur.next.next
+            return
+        }
+        cur = cur.next
+    }
+}
+
+func (this *MyHashSet) Contains(key int) bool {
+    cur := this.set[this.hash(key)]
+    for cur.next != nil {
+        if cur.next.key == key {
+            return true
+        }
+        cur = cur.next
+    }
+    return false
+}
+```
+
+```kotlin
+class ListNode(var key: Int, var next: ListNode? = null)
+
+class MyHashSet() {
+    private val set = Array(10000) { ListNode(0) }
+
+    private fun hash(key: Int): Int = key % set.size
+
+    fun add(key: Int) {
+        var cur = set[hash(key)]
+        while (cur.next != null) {
+            if (cur.next!!.key == key) return
+            cur = cur.next!!
+        }
+        cur.next = ListNode(key)
+    }
+
+    fun remove(key: Int) {
+        var cur = set[hash(key)]
+        while (cur.next != null) {
+            if (cur.next!!.key == key) {
+                cur.next = cur.next!!.next
+                return
+            }
+            cur = cur.next!!
+        }
+    }
+
+    fun contains(key: Int): Boolean {
+        var cur = set[hash(key)]
+        while (cur.next != null) {
+            if (cur.next!!.key == key) return true
+            cur = cur.next!!
+        }
+        return false
+    }
+}
+```
+
+```swift
+class ListNode {
+    var key: Int
+    var next: ListNode?
+
+    init(_ key: Int) {
+        self.key = key
+        self.next = nil
+    }
+}
+
+class MyHashSet {
+    private var set: [ListNode]
+
+    init() {
+        set = (0..<10000).map { _ in ListNode(0) }
+    }
+
+    private func hash(_ key: Int) -> Int {
+        return key % set.count
+    }
+
+    func add(_ key: Int) {
+        var cur = set[hash(key)]
+        while cur.next != nil {
+            if cur.next!.key == key {
+                return
+            }
+            cur = cur.next!
+        }
+        cur.next = ListNode(key)
+    }
+
+    func remove(_ key: Int) {
+        var cur = set[hash(key)]
+        while cur.next != nil {
+            if cur.next!.key == key {
+                cur.next = cur.next!.next
+                return
+            }
+            cur = cur.next!
+        }
+    }
+
+    func contains(_ key: Int) -> Bool {
+        var cur = set[hash(key)]
+        while cur.next != nil {
+            if cur.next!.key == key {
+                return true
+            }
+            cur = cur.next!
+        }
+        return false
+    }
+}
+```
+
+
+```rust
+struct MyHashSet {
+    buckets: Vec<Vec<i32>>,
+}
+
+impl MyHashSet {
+    fn new() -> Self {
+        Self {
+            buckets: vec![Vec::new(); 10_000],
+        }
+    }
+
+    fn hash(key: i32) -> usize {
+        key as usize % 10_000
+    }
+
+    fn add(&mut self, key: i32) {
+        let idx = Self::hash(key);
+        if !self.buckets[idx].contains(&key) {
+            self.buckets[idx].push(key);
+        }
+    }
+
+    fn remove(&mut self, key: i32) {
+        let idx = Self::hash(key);
+        if let Some(pos) = self.buckets[idx].iter().position(|&x| x == key) {
+            self.buckets[idx].remove(pos);
+        }
+    }
+
+    fn contains(&self, key: i32) -> bool {
+        let idx = Self::hash(key);
+        self.buckets[idx].contains(&key)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -559,6 +982,16 @@ public class MyHashSet {
 ---
 
 ## 4. Binary Search Tree
+
+### Intuition
+Instead of linked lists for collision handling, we can use binary search trees (BSTs) in each bucket. This improves the worst-case time complexity from O(n/k) to O(log(n/k)) for each bucket, since BST operations are logarithmic in the number of nodes. The tradeoff is slightly more complex implementation.
+
+### Algorithm
+1. Initialize an array of `10000` buckets, each containing an empty BST.
+2. Define `hash(key)` as `key % 10000`.
+3. For `add(key)`: If the key is not already in the BST at `hash(key)`, insert it using standard BST insertion.
+4. For `remove(key)`: Delete the key from the BST at `hash(key)` using standard BST deletion (finding in-order successor when needed).
+5. For `contains(key)`: Search the BST at `hash(key)` and return `true` if the key is found.
 
 ::tabs-start
 
@@ -1076,6 +1509,297 @@ public class MyHashSet {
 }
 ```
 
+```go
+type TreeNode struct {
+    key   int
+    left  *TreeNode
+    right *TreeNode
+}
+
+type BST struct {
+    root *TreeNode
+}
+
+func (b *BST) insert(node *TreeNode, key int) *TreeNode {
+    if node == nil {
+        return &TreeNode{key: key}
+    }
+    if key < node.key {
+        node.left = b.insert(node.left, key)
+    } else if key > node.key {
+        node.right = b.insert(node.right, key)
+    }
+    return node
+}
+
+func (b *BST) deleteNode(node *TreeNode, key int) *TreeNode {
+    if node == nil {
+        return nil
+    }
+    if key < node.key {
+        node.left = b.deleteNode(node.left, key)
+    } else if key > node.key {
+        node.right = b.deleteNode(node.right, key)
+    } else {
+        if node.left == nil {
+            return node.right
+        }
+        if node.right == nil {
+            return node.left
+        }
+        minNode := b.minValueNode(node.right)
+        node.key = minNode.key
+        node.right = b.deleteNode(node.right, minNode.key)
+    }
+    return node
+}
+
+func (b *BST) minValueNode(node *TreeNode) *TreeNode {
+    for node.left != nil {
+        node = node.left
+    }
+    return node
+}
+
+func (b *BST) search(node *TreeNode, key int) bool {
+    if node == nil {
+        return false
+    }
+    if key == node.key {
+        return true
+    }
+    if key < node.key {
+        return b.search(node.left, key)
+    }
+    return b.search(node.right, key)
+}
+
+func (b *BST) Add(key int) {
+    b.root = b.insert(b.root, key)
+}
+
+func (b *BST) Remove(key int) {
+    b.root = b.deleteNode(b.root, key)
+}
+
+func (b *BST) Contains(key int) bool {
+    return b.search(b.root, key)
+}
+
+type MyHashSet struct {
+    size    int
+    buckets []*BST
+}
+
+func Constructor() MyHashSet {
+    size := 10000
+    buckets := make([]*BST, size)
+    for i := range buckets {
+        buckets[i] = &BST{}
+    }
+    return MyHashSet{size: size, buckets: buckets}
+}
+
+func (this *MyHashSet) hash(key int) int {
+    return key % this.size
+}
+
+func (this *MyHashSet) Add(key int) {
+    idx := this.hash(key)
+    if !this.Contains(key) {
+        this.buckets[idx].Add(key)
+    }
+}
+
+func (this *MyHashSet) Remove(key int) {
+    idx := this.hash(key)
+    this.buckets[idx].Remove(key)
+}
+
+func (this *MyHashSet) Contains(key int) bool {
+    idx := this.hash(key)
+    return this.buckets[idx].Contains(key)
+}
+```
+
+```kotlin
+class TreeNode(var key: Int) {
+    var left: TreeNode? = null
+    var right: TreeNode? = null
+}
+
+class BST {
+    var root: TreeNode? = null
+
+    private fun insert(node: TreeNode?, key: Int): TreeNode {
+        if (node == null) return TreeNode(key)
+        if (key < node.key) node.left = insert(node.left, key)
+        else if (key > node.key) node.right = insert(node.right, key)
+        return node
+    }
+
+    private fun delete(node: TreeNode?, key: Int): TreeNode? {
+        if (node == null) return null
+        if (key < node.key) node.left = delete(node.left, key)
+        else if (key > node.key) node.right = delete(node.right, key)
+        else {
+            if (node.left == null) return node.right
+            if (node.right == null) return node.left
+            val minNode = minValueNode(node.right!!)
+            node.key = minNode.key
+            node.right = delete(node.right, minNode.key)
+        }
+        return node
+    }
+
+    private fun minValueNode(node: TreeNode): TreeNode {
+        var cur = node
+        while (cur.left != null) cur = cur.left!!
+        return cur
+    }
+
+    private fun search(node: TreeNode?, key: Int): Boolean {
+        if (node == null) return false
+        if (key == node.key) return true
+        return if (key < node.key) search(node.left, key) else search(node.right, key)
+    }
+
+    fun add(key: Int) { root = insert(root, key) }
+    fun remove(key: Int) { root = delete(root, key) }
+    fun contains(key: Int): Boolean = search(root, key)
+}
+
+class MyHashSet() {
+    private val size = 10000
+    private val buckets = Array(size) { BST() }
+
+    private fun hash(key: Int): Int = key % size
+
+    fun add(key: Int) {
+        val idx = hash(key)
+        if (!contains(key)) buckets[idx].add(key)
+    }
+
+    fun remove(key: Int) {
+        buckets[hash(key)].remove(key)
+    }
+
+    fun contains(key: Int): Boolean {
+        return buckets[hash(key)].contains(key)
+    }
+}
+```
+
+```swift
+class TreeNode {
+    var key: Int
+    var left: TreeNode?
+    var right: TreeNode?
+    init(_ key: Int) { self.key = key }
+}
+
+class BST {
+    var root: TreeNode?
+
+    func insert(_ node: TreeNode?, _ key: Int) -> TreeNode {
+        guard let node = node else { return TreeNode(key) }
+        if key < node.key { node.left = insert(node.left, key) }
+        else if key > node.key { node.right = insert(node.right, key) }
+        return node
+    }
+
+    func delete(_ node: TreeNode?, _ key: Int) -> TreeNode? {
+        guard let node = node else { return nil }
+        if key < node.key { node.left = delete(node.left, key) }
+        else if key > node.key { node.right = delete(node.right, key) }
+        else {
+            if node.left == nil { return node.right }
+            if node.right == nil { return node.left }
+            let minNode = minValueNode(node.right!)
+            node.key = minNode.key
+            node.right = delete(node.right, minNode.key)
+        }
+        return node
+    }
+
+    func minValueNode(_ node: TreeNode) -> TreeNode {
+        var cur = node
+        while cur.left != nil { cur = cur.left! }
+        return cur
+    }
+
+    func search(_ node: TreeNode?, _ key: Int) -> Bool {
+        guard let node = node else { return false }
+        if key == node.key { return true }
+        return key < node.key ? search(node.left, key) : search(node.right, key)
+    }
+
+    func add(_ key: Int) { root = insert(root, key) }
+    func remove(_ key: Int) { root = delete(root, key) }
+    func contains(_ key: Int) -> Bool { return search(root, key) }
+}
+
+class MyHashSet {
+    private let size = 10000
+    private var buckets: [BST]
+
+    init() {
+        buckets = (0..<size).map { _ in BST() }
+    }
+
+    private func hash(_ key: Int) -> Int { return key % size }
+
+    func add(_ key: Int) {
+        let idx = hash(key)
+        if !contains(key) { buckets[idx].add(key) }
+    }
+
+    func remove(_ key: Int) {
+        buckets[hash(key)].remove(key)
+    }
+
+    func contains(_ key: Int) -> Bool {
+        return buckets[hash(key)].contains(key)
+    }
+}
+```
+
+
+```rust
+struct MyHashSet {
+    buckets: Vec<BTreeSet<i32>>,
+    size: usize,
+}
+
+impl MyHashSet {
+    fn new() -> Self {
+        Self {
+            buckets: (0..10_000).map(|_| BTreeSet::new()).collect(),
+            size: 10_000,
+        }
+    }
+
+    fn hash(&self, key: i32) -> usize {
+        key as usize % self.size
+    }
+
+    fn add(&mut self, key: i32) {
+        let idx = self.hash(key);
+        self.buckets[idx].insert(key);
+    }
+
+    fn remove(&mut self, key: i32) {
+        let idx = self.hash(key);
+        self.buckets[idx].remove(&key);
+    }
+
+    fn contains(&self, key: i32) -> bool {
+        let idx = self.hash(key);
+        self.buckets[idx].contains(&key)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1089,13 +1813,23 @@ public class MyHashSet {
 
 ## 5. Bit Manipulation
 
+### Intuition
+We can compress the boolean array approach by using individual bits instead of booleans. Each integer stores 32 bits, so we need only about 31251 integers to cover 1000000+ keys. We use bit operations to set, clear, and check individual bits. This reduces memory usage by a factor of 32 compared to a boolean array.
+
+### Algorithm
+1. Initialize an integer array of size `31251` (since `31251 * 32 = 1000032` covers all keys).
+2. Define `getMask(key)` as `1 << (key % 32)` to create a bitmask for the key's position within its integer.
+3. For `add(key)`: Set the bit using `set[key / 32] |= getMask(key)`.
+4. For `remove(key)`: If the key exists, toggle the bit using `set[key / 32] ^= getMask(key)`.
+5. For `contains(key)`: Return `true` if `set[key / 32] & getMask(key)` is non-zero.
+
 ::tabs-start
 
 ```python
 class MyHashSet:
 
     def __init__(self):
-        # key is in the range [1, 1000000]
+        # key is in the range [0, 1000000]
         # 31251 * 32 = 1000032
         self.set = [0] * 31251
 
@@ -1118,7 +1852,7 @@ public class MyHashSet {
     private int[] set;
 
     public MyHashSet() {
-        // key is in the range [1, 1000000]
+        // key is in the range [0, 1000000]
         // 31251 * 32 = 1000032
         set = new int[31251];
     }
@@ -1154,7 +1888,7 @@ private:
 
 public:
     MyHashSet() {
-        // key is in the range [1, 1000000]
+        // key is in the range [0, 1000000]
         // 31251 * 32 = 1000032
         memset(set, 0, sizeof(set));
     }
@@ -1178,7 +1912,7 @@ public:
 ```javascript
 class MyHashSet {
     constructor() {
-        // key is in the range [1, 1000000]
+        // key is in the range [0, 1000000]
         // 31251 * 32 = 1000032
         this.set = new Array(31251).fill(0);
     }
@@ -1224,7 +1958,7 @@ public class MyHashSet {
     private int[] set;
 
     public MyHashSet() {
-        // key is in the range [1, 1000000]
+        // key is in the range [0, 1000000]
         // 31251 * 32 = 1000032
         set = new int[31251];
     }
@@ -1249,6 +1983,121 @@ public class MyHashSet {
 }
 ```
 
+```go
+type MyHashSet struct {
+    set []int
+}
+
+func Constructor() MyHashSet {
+    // key is in the range [0, 1000000]
+    // 31251 * 32 = 1000032
+    return MyHashSet{set: make([]int, 31251)}
+}
+
+func (this *MyHashSet) getMask(key int) int {
+    return 1 << (key % 32)
+}
+
+func (this *MyHashSet) Add(key int) {
+    this.set[key/32] |= this.getMask(key)
+}
+
+func (this *MyHashSet) Remove(key int) {
+    if this.Contains(key) {
+        this.set[key/32] ^= this.getMask(key)
+    }
+}
+
+func (this *MyHashSet) Contains(key int) bool {
+    return (this.set[key/32] & this.getMask(key)) != 0
+}
+```
+
+```kotlin
+class MyHashSet() {
+    // key is in the range [0, 1000000]
+    // 31251 * 32 = 1000032
+    private val set = IntArray(31251)
+
+    private fun getMask(key: Int): Int = 1 shl (key % 32)
+
+    fun add(key: Int) {
+        set[key / 32] = set[key / 32] or getMask(key)
+    }
+
+    fun remove(key: Int) {
+        if (contains(key)) {
+            set[key / 32] = set[key / 32] xor getMask(key)
+        }
+    }
+
+    fun contains(key: Int): Boolean {
+        return (set[key / 32] and getMask(key)) != 0
+    }
+}
+```
+
+```swift
+class MyHashSet {
+    // key is in the range [0, 1000000]
+    // 31251 * 32 = 1000032
+    private var set: [Int]
+
+    init() {
+        set = [Int](repeating: 0, count: 31251)
+    }
+
+    private func getMask(_ key: Int) -> Int {
+        return 1 << (key % 32)
+    }
+
+    func add(_ key: Int) {
+        set[key / 32] |= getMask(key)
+    }
+
+    func remove(_ key: Int) {
+        if contains(key) {
+            set[key / 32] ^= getMask(key)
+        }
+    }
+
+    func contains(_ key: Int) -> Bool {
+        return (set[key / 32] & getMask(key)) != 0
+    }
+}
+```
+
+
+```rust
+struct MyHashSet {
+    set: Vec<u32>,
+}
+
+impl MyHashSet {
+    fn new() -> Self {
+        Self { set: vec![0; 31251] }
+    }
+
+    fn get_mask(key: i32) -> u32 {
+        1 << (key % 32)
+    }
+
+    fn add(&mut self, key: i32) {
+        self.set[key as usize / 32] |= Self::get_mask(key);
+    }
+
+    fn remove(&mut self, key: i32) {
+        if self.contains(key) {
+            self.set[key as usize / 32] ^= Self::get_mask(key);
+        }
+    }
+
+    fn contains(&self, key: i32) -> bool {
+        (self.set[key as usize / 32] & Self::get_mask(key)) != 0
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1257,3 +2106,44 @@ public class MyHashSet {
 - Space complexity: $O(k)$
 
 > Where $k$ is the size of the set $(31251)$.
+
+---
+
+## Common Pitfalls
+
+### Adding Duplicate Keys
+
+The `add()` operation should be idempotent - adding an existing key should have no effect. A common mistake is not checking for duplicates before insertion.
+
+```python
+# Wrong - allows duplicates
+def add(self, key: int) -> None:
+    cur = self.set[key % len(self.set)]
+    while cur.next:
+        cur = cur.next
+    cur.next = ListNode(key)  # Always adds, even if exists!
+
+# Correct - check for existence first
+def add(self, key: int) -> None:
+    cur = self.set[key % len(self.set)]
+    while cur.next:
+        if cur.next.key == key:
+            return  # Already exists
+        cur = cur.next
+    cur.next = ListNode(key)
+```
+
+### Using XOR for Remove Without Checking Existence
+
+In the bit manipulation approach, using XOR to remove a key that doesn't exist will incorrectly add it instead.
+
+```python
+# Wrong - XOR toggles the bit regardless
+def remove(self, key: int) -> None:
+    self.set[key // 32] ^= self.getMask(key)  # Adds if not present!
+
+# Correct - only toggle if present
+def remove(self, key: int) -> None:
+    if self.contains(key):
+        self.set[key // 32] ^= self.getMask(key)
+```

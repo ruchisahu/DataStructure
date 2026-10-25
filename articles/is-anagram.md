@@ -1,4 +1,28 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Hash Maps** - Using dictionaries or hash tables to count character frequencies
+- **Sorting** - Sorting strings or arrays to compare elements in a consistent order
+- **Arrays** - Using fixed-size arrays as an efficient alternative to hash maps for limited character sets
+
+---
+
 ## 1. Sorting
+
+### Intuition
+
+If two strings are anagrams, they must contain exactly the same characters with the same frequencies.  
+By sorting both strings, all characters will be arranged in a consistent order.  
+If the two sorted strings are identical, then every character and its count match, which means the strings are anagrams.
+
+### Algorithm
+
+1. If the lengths of the two strings differ, return `false` immediately because they cannot be anagrams.
+2. Sort both strings.
+3. Compare the sorted versions of the strings:
+    - If they are equal, return `true`.
+    - Otherwise, return `false`.
 
 ::tabs-start
 
@@ -120,6 +144,21 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn is_anagram(s: String, t: String) -> bool {
+        if s.len() != t.len() {
+            return false;
+        }
+        let mut s_sort: Vec<u8> = s.into_bytes();
+        let mut t_sort: Vec<u8> = t.into_bytes();
+        s_sort.sort_unstable();
+        t_sort.sort_unstable();
+        s_sort == t_sort
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -132,6 +171,24 @@ class Solution {
 ---
 
 ## 2. Hash Map
+
+### Intuition
+
+If two strings are anagrams, they must use the same characters with the same frequencies.  
+Instead of sorting, we can count how many times each character appears in both strings.  
+By using two hash maps (or dictionaries), we track the frequency of every character in each string.  
+If both frequency maps match exactly, then the strings contain the same characters with same frequencies, meaning they are anagrams.
+
+### Algorithm
+
+1. If the two strings have different lengths, return `false` immediately.
+2. Create two hash maps to store character frequencies for each string.
+3. Iterate through both strings at the same time:
+    - Increase the character count for `s[i]` in the first map.
+    - Increase the character count for `t[i]` in the second map.
+4. After building both maps, compare them:
+    - If the maps are equal, return `true`.
+    - Otherwise, return `false`.
 
 ::tabs-start
 
@@ -297,6 +354,23 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn is_anagram(s: String, t: String) -> bool {
+        if s.len() != t.len() {
+            return false;
+        }
+        let mut count_s: HashMap<u8, i32> = HashMap::new();
+        let mut count_t: HashMap<u8, i32> = HashMap::new();
+        for (a, b) in s.bytes().zip(t.bytes()) {
+            *count_s.entry(a).or_insert(0) += 1;
+            *count_t.entry(b).or_insert(0) += 1;
+        }
+        count_s == count_t
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -309,6 +383,24 @@ class Solution {
 ---
 
 ## 3. Hash Table (Using Array)
+
+### Intuition
+
+Since the problem guarantees lowercase English letters, we can use a fixed-size array of length `26` to count character frequencies instead of a hash map.
+As we iterate through both strings simultaneously, we increment the count for each character in `s` and decrement the count for each character in `t`.
+If the strings are anagrams, every increment will be matched by a corresponding decrement, and all values in the array will end at `0`.
+This approach is efficient because it avoids hashing and uses constant space.
+
+### Algorithm
+
+1. If the lengths of the strings differ, return `false` immediately.
+2. Create a frequency array `count` of size `26` initialized to `0`.
+3. Iterate through both strings:
+    - Increment the count at the index corresponding to `s[i]`.
+    - Decrement the count at the index corresponding to `t[i]`.
+4. After processing both strings, scan through the `count` array:
+    - If any value is not `0`, return `false` because the frequencies differ.
+5. If all values are `0`, return `true` since the strings are anagrams.
 
 ::tabs-start
 
@@ -491,6 +583,22 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn is_anagram(s: String, t: String) -> bool {
+        if s.len() != t.len() {
+            return false;
+        }
+        let mut count = [0i32; 26];
+        for (a, b) in s.bytes().zip(t.bytes()) {
+            count[(a - b'a') as usize] += 1;
+            count[(b - b'a') as usize] -= 1;
+        }
+        count.iter().all(|&v| v == 0)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -499,3 +607,15 @@ class Solution {
 - Space complexity: $O(1)$ since we have at most $26$ different characters.
 
 > Where $n$ is the length of string $s$ and $m$ is the length of string $t$.
+
+---
+
+## Common Pitfalls
+
+### Forgetting to Check Length First
+
+If two strings have different lengths, they cannot be anagrams. Skipping this early check means wasting time processing strings that could never match. Always compare lengths first and return `false` immediately if they differ.
+
+### Case Sensitivity Issues
+
+When the problem specifies lowercase letters only (as in this problem), case sensitivity is not an issue. However, if the problem allows mixed case, forgetting to normalize to the same case (e.g., converting both strings to lowercase) will cause incorrect results where "Listen" and "Silent" would wrongly be considered non-anagrams.

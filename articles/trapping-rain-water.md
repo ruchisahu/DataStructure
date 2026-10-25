@@ -1,4 +1,37 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Arrays** - Basic array traversal and element access
+- **Prefix and Suffix Arrays** - Precomputing running maximums from both directions
+- **Two Pointers** - Using left and right pointers that move toward each other based on conditions
+- **Stack** - Using a monotonic stack to track indices and compute bounded regions
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+For each position, the water trapped above it depends on the **tallest bar to its left** and the **tallest bar to its right**.
+If we know these two values, the water at index `i` is:
+
+`min(leftMax, rightMax) - height[i]`
+
+The brute-force method recomputes the left maximum and right maximum for every index by scanning the array each time.
+
+### Algorithm
+
+1. If the input list is empty, return `0`.
+2. Let `n` be the length of the array and initialize `res = 0`.
+3. For each index `i`:
+    - Compute `leftMax` by scanning from index `0` to `i`.
+    - Compute `rightMax` by scanning from index `i + 1` to the end.
+    - Add `min(leftMax, rightMax) - height[i]` to `res`.
+4. After processing all positions, return `res`.
+
+
+<br>
 
 ::tabs-start
 
@@ -224,6 +257,33 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn trap(height: Vec<i32>) -> i32 {
+        if height.is_empty() {
+            return 0;
+        }
+        let n = height.len();
+        let mut res = 0;
+
+        for i in 0..n {
+            let mut left_max = height[i];
+            let mut right_max = height[i];
+
+            for j in 0..i {
+                left_max = left_max.max(height[j]);
+            }
+            for j in (i + 1)..n {
+                right_max = right_max.max(height[j]);
+            }
+
+            res += left_max.min(right_max) - height[i];
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -234,6 +294,41 @@ class Solution {
 ---
 
 ## 2. Prefix & Suffix Arrays
+
+### Intuition
+
+Instead of recomputing the tallest bar to the left and right for every index, we can precompute these values once.
+We build two arrays:
+
+- `leftMax[i]` = tallest bar from the start up to index `i`
+- `rightMax[i]` = tallest bar from the end up to index `i`
+
+Once we have these, the trapped water at position `i` is simply:
+
+`min(leftMax[i], rightMax[i]) - height[i]`
+
+This removes the repeated work from the brute-force approach and makes the solution more efficient and easier to understand.
+
+### Algorithm
+
+1. If the array is empty, return `0`.
+2. Create two arrays:
+    - `leftMax` of size `n`
+    - `rightMax` of size `n`
+3. Fill `leftMax`:
+    - `leftMax[0] = height[0]`
+    - For each `i` from `1` to `n - 1`,
+      `leftMax[i] = max(leftMax[i - 1], height[i])`
+4. Fill `rightMax`:
+    - `rightMax[n - 1] = height[n - 1]`
+    - For each `i` from `n - 2` down to `0`,
+      `rightMax[i] = max(rightMax[i + 1], height[i])`
+5. Compute trapped water:
+    - For each index `i`, add `min(leftMax[i], rightMax[i]) - height[i]` to the result.
+6. Return the total trapped water.
+
+
+<br>
 
 ::tabs-start
 
@@ -486,6 +581,36 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn trap(height: Vec<i32>) -> i32 {
+        let n = height.len();
+        if n == 0 {
+            return 0;
+        }
+
+        let mut left_max = vec![0; n];
+        let mut right_max = vec![0; n];
+
+        left_max[0] = height[0];
+        for i in 1..n {
+            left_max[i] = left_max[i - 1].max(height[i]);
+        }
+
+        right_max[n - 1] = height[n - 1];
+        for i in (0..n - 1).rev() {
+            right_max[i] = right_max[i + 1].max(height[i]);
+        }
+
+        let mut res = 0;
+        for i in 0..n {
+            res += left_max[i].min(right_max[i]) - height[i];
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -496,6 +621,29 @@ class Solution {
 ---
 
 ## 3. Stack
+
+### Intuition
+
+The stack helps us find places where water can collect.
+When we see a bar that is taller than the bar on top of the stack, it means we've found a **right wall** for a container.
+The bar we pop is the **bottom**, and the new top of the stack becomes the **left wall**.
+With a left wall, bottom, and right wall, we can calculate how much water fits in between.
+We keep doing this as long as the current bar keeps forming valid containers.
+
+### Algorithm
+
+1. Create an empty stack and set `res = 0`.
+2. Loop through each index `i`:
+    - While the stack is not empty and `height[i]` is taller than the bar at the stack's top:
+        - Pop the top index — that's the **bottom**.
+        - If the stack is not empty:
+            - Compute the trapped water between the new top (left wall) and the current bar (right wall).
+            - Add it to `res`.
+    - Push the current index onto the stack.
+3. Return `res` after the loop finishes.
+
+
+<br>
 
 ::tabs-start
 
@@ -648,28 +796,28 @@ func trap(height []int) int {
         return 0
     }
 
-    stack := linkedliststack.New()
+    stack := []int{}
     res := 0
 
     for i := 0; i < len(height); i++ {
-        for !stack.Empty() {
-            topIndex, _ := stack.Peek()
-            if height[i] >= height[topIndex.(int)] {
-                midIndex, _ := stack.Pop()
-                mid := height[midIndex.(int)]
-                if !stack.Empty() {
-                    topIndex, _ := stack.Peek()
+        for len(stack) > 0 {
+            topIndex := stack[len(stack)-1]
+            if height[i] >= height[topIndex] {
+                stack = stack[:len(stack)-1]
+                mid := height[topIndex]
+                if len(stack) > 0 {
+                    topIndex = stack[len(stack)-1]
                     right := height[i]
-                    left := height[topIndex.(int)]
+                    left := height[topIndex]
                     h := min(right, left) - mid
-                    w := i - topIndex.(int) - 1
+                    w := i - topIndex - 1
                     res += h * w
                 }
             } else {
                 break
             }
         }
-        stack.Push(i)
+        stack = append(stack, i)
     }
     return res
 }
@@ -735,6 +883,38 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn trap(height: Vec<i32>) -> i32 {
+        if height.is_empty() {
+            return 0;
+        }
+
+        let mut stack: Vec<usize> = Vec::new();
+        let mut res = 0;
+
+        for i in 0..height.len() {
+            while let Some(&top) = stack.last() {
+                if height[i] >= height[top] {
+                    let mid = height[stack.pop().unwrap()];
+                    if let Some(&left_idx) = stack.last() {
+                        let right = height[i];
+                        let left = height[left_idx];
+                        let h = right.min(left) - mid;
+                        let w = (i - left_idx - 1) as i32;
+                        res += h * w;
+                    }
+                } else {
+                    break;
+                }
+            }
+            stack.push(i);
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -745,6 +925,38 @@ class Solution {
 ---
 
 ## 4. Two Pointers
+
+### Intuition
+
+Water at any position depends on the **shorter** wall between the left and right sides.
+So if the left wall is shorter, the right wall can't help us—water is limited by the left side.
+That means we safely move the **left pointer** inward and calculate how much water can be trapped there.
+Similarly, if the right wall is shorter, we move the **right pointer** left.
+
+As we move the pointers, we keep track of the highest wall seen so far on each side (`leftMax` and `rightMax`).
+The water at each position is simply:
+
+`max wall on that side – height at that position`
+
+### Algorithm
+
+1. Set two pointers:
+    - `l` at the start
+    - `r` at the end
+      Track `leftMax` and `rightMax` as the tallest walls seen.
+2. While `l < r`:
+    - If `leftMax < rightMax`:
+        - Move `l` right.
+        - Update `leftMax`.
+        - Add `leftMax - height[l]` to the result.
+    - Else:
+        - Move `r` left.
+        - Update `rightMax`.
+        - Add `rightMax - height[r]` to the result.
+3. Return the total trapped water.
+
+
+<br>
 
 ::tabs-start
 
@@ -966,9 +1178,72 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn trap(height: Vec<i32>) -> i32 {
+        if height.is_empty() {
+            return 0;
+        }
+
+        let mut l = 0;
+        let mut r = height.len() - 1;
+        let mut left_max = height[l];
+        let mut right_max = height[r];
+        let mut res = 0;
+
+        while l < r {
+            if left_max < right_max {
+                l += 1;
+                left_max = left_max.max(height[l]);
+                res += left_max - height[l];
+            } else {
+                r -= 1;
+                right_max = right_max.max(height[r]);
+                res += right_max - height[r];
+            }
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(1)$
+
+---
+
+## Common Pitfalls
+
+### Calculating Water at Boundary Bars
+
+The leftmost and rightmost bars can never hold water above them since there's no wall on one side to contain it. Including them in water calculations gives wrong results.
+
+### Using Current Bar Height Instead of Max Heights
+
+Water at each position depends on the minimum of the maximum heights to its left and right, minus the current height. Using the current bar's height in the max comparison instead of tracking running maximums is incorrect.
+
+```python
+# Wrong: comparing current height directly
+water = min(height[l], height[r]) - height[i]
+# Correct: use maximum heights seen so far
+water = min(leftMax, rightMax) - height[i]
+```
+
+### Negative Water Values
+
+When the current bar is taller than the limiting wall, the water calculation yields a negative value. This happens at peaks and should contribute zero water, not negative.
+
+```python
+# Wrong: can add negative water
+res += leftMax - height[i]
+# Correct: ensure non-negative
+res += max(0, min(leftMax, rightMax) - height[i])
+```
+
+### Wrong Pointer Movement in Two Pointers
+
+In the two-pointer approach, always move the pointer on the side with the smaller max height. Moving the wrong pointer breaks the invariant that the smaller side determines the water level.

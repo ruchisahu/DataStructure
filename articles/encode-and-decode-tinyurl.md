@@ -1,4 +1,28 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Hash Maps** - Used to store bidirectional mappings between long and short URLs for O(1) lookup
+- **String Manipulation** - Required for parsing URLs, extracting indices, and constructing short URL codes
+- **System Design Basics** - Understanding trade-offs between different encoding strategies (sequential IDs vs random codes)
+
+---
+
 ## 1. List
+
+### Intuition
+
+The simplest way to create a URL shortener is to assign each long URL a unique integer ID based on its position in a list. The short URL is just the base URL plus this index. When decoding, we extract the index from the short URL and retrieve the original URL from the list. This approach is straightforward but the short URL length grows with the number of stored URLs.
+
+### Algorithm
+
+1. Maintain a list `urls` to store all encoded long URLs.
+2. `encode(longUrl)`:
+    - Append `longUrl` to the list.
+    - Return `"http://tinyurl.com/"` followed by the index (list length - 1).
+3. `decode(shortUrl)`:
+    - Extract the index from the end of the short URL.
+    - Return `urls[index]`.
 
 ::tabs-start
 
@@ -83,6 +107,97 @@ class Codec {
 }
 ```
 
+```csharp
+public class Codec {
+    private List<string> urls = new List<string>();
+
+    public string encode(string longUrl) {
+        urls.Add(longUrl);
+        return "http://tinyurl.com/" + (urls.Count - 1);
+    }
+
+    public string decode(string shortUrl) {
+        int index = int.Parse(shortUrl.Substring(shortUrl.LastIndexOf('/') + 1));
+        return urls[index];
+    }
+}
+```
+
+```go
+type Codec struct {
+    urls []string
+}
+
+func Constructor() Codec {
+    return Codec{urls: []string{}}
+}
+
+func (this *Codec) encode(longUrl string) string {
+    this.urls = append(this.urls, longUrl)
+    return "http://tinyurl.com/" + strconv.Itoa(len(this.urls)-1)
+}
+
+func (this *Codec) decode(shortUrl string) string {
+    parts := strings.Split(shortUrl, "/")
+    index, _ := strconv.Atoi(parts[len(parts)-1])
+    return this.urls[index]
+}
+```
+
+```kotlin
+class Codec {
+    private val urls = mutableListOf<String>()
+
+    fun encode(longUrl: String): String {
+        urls.add(longUrl)
+        return "http://tinyurl.com/${urls.size - 1}"
+    }
+
+    fun decode(shortUrl: String): String {
+        val index = shortUrl.substringAfterLast('/').toInt()
+        return urls[index]
+    }
+}
+```
+
+```swift
+class Codec {
+    private var urls = [String]()
+
+    func encode(_ longUrl: String) -> String {
+        urls.append(longUrl)
+        return "http://tinyurl.com/\(urls.count - 1)"
+    }
+
+    func decode(_ shortUrl: String) -> String {
+        let index = Int(shortUrl.split(separator: "/").last!)!
+        return urls[index]
+    }
+}
+```
+
+```rust
+struct Codec {
+    urls: Vec<String>,
+}
+
+impl Codec {
+    fn new() -> Self {
+        Codec { urls: Vec::new() }
+    }
+
+    fn encode(&mut self, long_url: String) -> String {
+        self.urls.push(long_url);
+        format!("http://tinyurl.com/{}", self.urls.len() - 1)
+    }
+
+    fn decode(&self, short_url: String) -> String {
+        let index: usize = short_url.rsplit('/').next().unwrap().parse().unwrap();
+        self.urls[index].clone()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -95,6 +210,21 @@ class Codec {
 ---
 
 ## 2. Hash Map - I
+
+### Intuition
+
+Instead of using a list with implicit indices, we use a hash map with an explicit incrementing ID. This offers more flexibility since we can use the ID as a key and don't rely on list indexing. Each new URL gets assigned the current ID, which then increments. The hash map allows constant-time lookup when decoding.
+
+### Algorithm
+
+1. Maintain a hash map `url_map` and an integer `id` starting at `0`.
+2. `encode(longUrl)`:
+    - Store `url_map[id] = longUrl`.
+    - Generate the short URL using the current `id`.
+    - Increment `id` and return the short URL.
+3. `decode(shortUrl)`:
+    - Parse the ID from the short URL.
+    - Return `url_map[id]`.
 
 ::tabs-start
 
@@ -189,6 +319,110 @@ class Codec {
 }
 ```
 
+```csharp
+public class Codec {
+    private Dictionary<int, string> urlMap = new Dictionary<int, string>();
+    private int id = 0;
+
+    public string encode(string longUrl) {
+        urlMap[id] = longUrl;
+        return "http://tinyurl.com/" + id++;
+    }
+
+    public string decode(string shortUrl) {
+        int urlId = int.Parse(shortUrl.Substring(shortUrl.LastIndexOf('/') + 1));
+        return urlMap[urlId];
+    }
+}
+```
+
+```go
+type Codec struct {
+    urlMap map[int]string
+    id     int
+}
+
+func Constructor() Codec {
+    return Codec{urlMap: make(map[int]string), id: 0}
+}
+
+func (this *Codec) encode(longUrl string) string {
+    this.urlMap[this.id] = longUrl
+    this.id++
+    return "http://tinyurl.com/" + strconv.Itoa(this.id-1)
+}
+
+func (this *Codec) decode(shortUrl string) string {
+    parts := strings.Split(shortUrl, "/")
+    urlId, _ := strconv.Atoi(parts[len(parts)-1])
+    return this.urlMap[urlId]
+}
+```
+
+```kotlin
+class Codec {
+    private val urlMap = mutableMapOf<Int, String>()
+    private var id = 0
+
+    fun encode(longUrl: String): String {
+        urlMap[id] = longUrl
+        return "http://tinyurl.com/${id++}"
+    }
+
+    fun decode(shortUrl: String): String {
+        val urlId = shortUrl.substringAfterLast('/').toInt()
+        return urlMap[urlId]!!
+    }
+}
+```
+
+```swift
+class Codec {
+    private var urlMap = [Int: String]()
+    private var id = 0
+
+    func encode(_ longUrl: String) -> String {
+        urlMap[id] = longUrl
+        let shortUrl = "http://tinyurl.com/\(id)"
+        id += 1
+        return shortUrl
+    }
+
+    func decode(_ shortUrl: String) -> String {
+        let urlId = Int(shortUrl.split(separator: "/").last!)!
+        return urlMap[urlId]!
+    }
+}
+```
+
+```rust
+struct Codec {
+    url_map: HashMap<i32, String>,
+    id: i32,
+}
+
+impl Codec {
+    fn new() -> Self {
+        Codec {
+            url_map: HashMap::new(),
+            id: 0,
+        }
+    }
+
+    fn encode(&mut self, long_url: String) -> String {
+        self.url_map.insert(self.id, long_url);
+        let short_url = format!("http://tinyurl.com/{}", self.id);
+        self.id += 1;
+        short_url
+    }
+
+    fn decode(&self, short_url: String) -> String {
+        let url_id: i32 = short_url.rsplit('/').next().unwrap().parse().unwrap();
+        self.url_map[&url_id].clone()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -201,6 +435,20 @@ class Codec {
 ---
 
 ## 3. Hash Map - II
+
+### Intuition
+
+This approach uses two hash maps to create a bidirectional mapping. One maps long URLs to short URLs, and the other maps short URLs back to long URLs. This ensures that encoding the same long URL twice returns the same short URL, avoiding duplicates. The trade-off is using more memory for the extra map.
+
+### Algorithm
+
+1. Maintain two hash maps: `encodeMap` (longUrl to shortUrl) and `decodeMap` (shortUrl to longUrl).
+2. `encode(longUrl)`:
+    - If `longUrl` is not in `encodeMap`, create a new short URL using the current count.
+    - Store the mapping in both `encodeMap` and `decodeMap`.
+    - Return the short URL.
+3. `decode(shortUrl)`:
+    - Look up the short URL in `decodeMap` and return the corresponding long URL.
 
 ::tabs-start
 
@@ -302,6 +550,129 @@ class Codec {
 }
 ```
 
+```csharp
+public class Codec {
+    private Dictionary<string, string> encodeMap = new Dictionary<string, string>();
+    private Dictionary<string, string> decodeMap = new Dictionary<string, string>();
+    private string baseUrl = "http://tinyurl.com/";
+
+    public string encode(string longUrl) {
+        if (!encodeMap.ContainsKey(longUrl)) {
+            string shortUrl = baseUrl + (encodeMap.Count + 1);
+            encodeMap[longUrl] = shortUrl;
+            decodeMap[shortUrl] = longUrl;
+        }
+        return encodeMap[longUrl];
+    }
+
+    public string decode(string shortUrl) {
+        return decodeMap[shortUrl];
+    }
+}
+```
+
+```go
+type Codec struct {
+    encodeMap map[string]string
+    decodeMap map[string]string
+    base      string
+}
+
+func Constructor() Codec {
+    return Codec{
+        encodeMap: make(map[string]string),
+        decodeMap: make(map[string]string),
+        base:      "http://tinyurl.com/",
+    }
+}
+
+func (this *Codec) encode(longUrl string) string {
+    if _, exists := this.encodeMap[longUrl]; !exists {
+        shortUrl := this.base + strconv.Itoa(len(this.encodeMap)+1)
+        this.encodeMap[longUrl] = shortUrl
+        this.decodeMap[shortUrl] = longUrl
+    }
+    return this.encodeMap[longUrl]
+}
+
+func (this *Codec) decode(shortUrl string) string {
+    return this.decodeMap[shortUrl]
+}
+```
+
+```kotlin
+class Codec {
+    private val encodeMap = mutableMapOf<String, String>()
+    private val decodeMap = mutableMapOf<String, String>()
+    private val base = "http://tinyurl.com/"
+
+    fun encode(longUrl: String): String {
+        if (longUrl !in encodeMap) {
+            val shortUrl = base + (encodeMap.size + 1)
+            encodeMap[longUrl] = shortUrl
+            decodeMap[shortUrl] = longUrl
+        }
+        return encodeMap[longUrl]!!
+    }
+
+    fun decode(shortUrl: String): String {
+        return decodeMap[shortUrl]!!
+    }
+}
+```
+
+```swift
+class Codec {
+    private var encodeMap = [String: String]()
+    private var decodeMap = [String: String]()
+    private let base = "http://tinyurl.com/"
+
+    func encode(_ longUrl: String) -> String {
+        if encodeMap[longUrl] == nil {
+            let shortUrl = base + String(encodeMap.count + 1)
+            encodeMap[longUrl] = shortUrl
+            decodeMap[shortUrl] = longUrl
+        }
+        return encodeMap[longUrl]!
+    }
+
+    func decode(_ shortUrl: String) -> String {
+        return decodeMap[shortUrl]!
+    }
+}
+```
+
+```rust
+struct Codec {
+    encode_map: HashMap<String, String>,
+    decode_map: HashMap<String, String>,
+    base: String,
+}
+
+impl Codec {
+    fn new() -> Self {
+        Codec {
+            encode_map: HashMap::new(),
+            decode_map: HashMap::new(),
+            base: "http://tinyurl.com/".to_string(),
+        }
+    }
+
+    fn encode(&mut self, long_url: String) -> String {
+        if !self.encode_map.contains_key(&long_url) {
+            let short_url = format!("{}{}", self.base, self.encode_map.len() + 1);
+            self.encode_map.insert(long_url.clone(), short_url.clone());
+            self.decode_map.insert(short_url, long_url);
+        }
+        self.encode_map[&long_url].clone()
+    }
+
+    fn decode(&self, short_url: String) -> String {
+        self.decode_map[&short_url].clone()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -310,3 +681,19 @@ class Codec {
 - Space complexity: $O(n * m)$
 
 > Where $n$ is the number of $longUrls$, $m$ is the average length of the URLs.
+
+---
+
+## Common Pitfalls
+
+### Not Handling Duplicate URLs Consistently
+
+If the same long URL is encoded multiple times, some implementations generate different short URLs each time, wasting storage. Using a bidirectional mapping (approach 3) ensures the same long URL always returns the same short URL, but this trade-off uses more memory.
+
+### Incorrect Parsing of the Short URL
+
+When decoding, you must correctly extract the ID from the short URL. Common mistakes include not handling the base URL prefix properly, using the wrong string split method, or forgetting to convert the extracted string to an integer before lookup.
+
+### Integer Overflow with Sequential IDs
+
+Using a simple incrementing integer ID works for small scale, but can overflow for very large numbers of URLs. In production systems, consider using larger integer types, UUIDs, or base62 encoding to handle billions of URLs while keeping short URLs compact.

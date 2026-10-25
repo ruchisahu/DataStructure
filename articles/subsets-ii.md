@@ -1,4 +1,42 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Backtracking** - The core technique for exploring all possible subsets through recursive inclusion/exclusion decisions
+- **Sorting** - Required to group duplicate elements together so they can be properly skipped
+- **Recursion** - Understanding how to build solutions incrementally and backtrack when needed
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+This brute-force method generates **every possible subset** by making a binary choice at each index:
+
+- **Include** the current number, or
+- **Skip** the current number.
+
+Since duplicates exist, many generated subsets may look identical.  
+To avoid returning duplicates, we:
+
+1. **Sort the array first**, so duplicates are next to each other.
+2. **Store each subset as a tuple inside a set**, because:
+    - Sets automatically remove duplicates.
+    - Tuples are hashable (lists are not).
+
+In the end, we convert the set of tuples back to a list of lists.
+
+### Algorithm
+
+1. Sort the input list.
+2. Use a recursive function:
+    - If we processed all numbers → add the subset (as a tuple) to a set.
+    - Otherwise:
+        - Include the current number → recurse.
+        - Exclude the current number → recurse.
+3. After exploring all possibilities, convert the set of tuples into lists.
+4. Return the final list of unique subsets.
 
 ::tabs-start
 
@@ -218,6 +256,31 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn subsets_with_dup(nums: Vec<i32>) -> Vec<Vec<i32>> {
+        let mut nums = nums;
+        nums.sort();
+        let mut res: HashSet<Vec<i32>> = HashSet::new();
+
+        fn backtrack(nums: &[i32], i: usize, subset: &mut Vec<i32>, res: &mut HashSet<Vec<i32>>) {
+            if i == nums.len() {
+                res.insert(subset.clone());
+                return;
+            }
+
+            subset.push(nums[i]);
+            backtrack(nums, i + 1, subset, res);
+            subset.pop();
+            backtrack(nums, i + 1, subset, res);
+        }
+
+        backtrack(&nums, 0, &mut vec![], &mut res);
+        res.into_iter().collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -228,6 +291,35 @@ class Solution {
 ---
 
 ## 2. Backtracking - I
+
+### Intuition
+
+We want all subsets, but the array may contain duplicates.
+If we blindly generate all subsets, we will produce repeated ones.
+So we must **avoid picking the same value in the same decision level** more than once.
+
+Key idea:
+
+- At each index `i`, we make two choices:
+    1. **Include** `nums[i]`
+    2. **Exclude** `nums[i]`
+
+But when excluding, if the next number is the same (`nums[i] == nums[i+1]`), then skipping it now and skipping it later produce the same subset.
+So after exploring the "exclude" branch, we **skip over all duplicate values** to avoid generating duplicate subsets.
+
+We also **sort the array first**, so duplicates become consecutive and easy to skip.
+
+### Algorithm
+
+1. Sort the input list.
+2. Use a recursive `backtrack(i, subset)`:
+    - If `i` reaches the end → add a copy of `subset` to the result.
+    - Otherwise:
+        - **Include** `nums[i]` → recurse on `i+1`.
+        - **Exclude** `nums[i]`:
+            - Move `i` forward while the next value is the same (skip duplicates).
+            - Recurse on the next unique index.
+3. Return the result list.
 
 ::tabs-start
 
@@ -317,29 +409,27 @@ class Solution {
      * @return {number[][]}
      */
     subsetsWithDup(nums) {
-        const res = [];
+        let res = [];
         nums.sort((a, b) => a - b);
-        this.backtrack(0, [], nums, res);
-        return res;
-    }
 
-    /**
-     * @param {number} start
-     * @param {number[]} subset
-     * @param {number[]} nums
-     * @param {number[][]} res
-     * @return {void}
-     */
-    backtrack(start, subset, nums, res) {
-        res.push([...subset]);
-        for (let i = start; i < nums.length; i++) {
-            if (i > start && nums[i] === nums[i - 1]) {
-                continue;
+        const backtrack = (i, subset) => {
+            if (i === nums.length) {
+                res.push([...subset]);
+                return;
             }
+
             subset.push(nums[i]);
-            this.backtrack(i + 1, subset, nums, res);
+            backtrack(i + 1, subset);
             subset.pop();
-        }
+
+            while (i + 1 < nums.length && nums[i] === nums[i + 1]) {
+                i++;
+            }
+            backtrack(i + 1, subset);
+        };
+
+        backtrack(0, []);
+        return res;
     }
 }
 ```
@@ -460,6 +550,36 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn subsets_with_dup(nums: Vec<i32>) -> Vec<Vec<i32>> {
+        let mut nums = nums;
+        nums.sort();
+        let mut res = Vec::new();
+
+        fn backtrack(nums: &[i32], i: usize, subset: &mut Vec<i32>, res: &mut Vec<Vec<i32>>) {
+            if i == nums.len() {
+                res.push(subset.clone());
+                return;
+            }
+
+            subset.push(nums[i]);
+            backtrack(nums, i + 1, subset, res);
+            subset.pop();
+
+            let mut j = i;
+            while j + 1 < nums.len() && nums[j] == nums[j + 1] {
+                j += 1;
+            }
+            backtrack(nums, j + 1, subset, res);
+        }
+
+        backtrack(&nums, 0, &mut vec![], &mut res);
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -472,6 +592,38 @@ class Solution {
 ---
 
 ## 3. Backtracking - II
+
+### Intuition
+
+We want to generate all subsets, but duplicates in the input can create repeated subsets.
+To avoid duplicates cleanly, instead of making "pick / not pick" decisions, this approach builds subsets by **choosing each possible next element**—but **only once per unique value** at each recursion level.
+
+Key idea:
+
+- Sort the array so identical numbers are next to each other.
+- At each recursion level, we loop `j` from the current index to the end.
+- If `nums[j]` is the same as `nums[j-1]` and `j > i`, we skip it.
+  This prevents generating the same subset starting with the same prefix.
+- Every time we enter `backtrack`, we push the current subset into `res`.
+
+This ensures:
+
+- Each subset is generated exactly once.
+- All valid subsets are included.
+- No need for sets or extra data structures.
+
+### Algorithm
+
+1. Sort the input list to group duplicates.
+2. Use a recursive function `backtrack(i, subset)`:
+    - Add the current subset to the result.
+    - For each index `j` from `i` to the end:
+        - If `j > i` and `nums[j] == nums[j-1]`: skip duplicate choices.
+        - Include `nums[j]` into the subset.
+        - Recursively call `backtrack(j + 1, subset)`.
+        - Remove the element to backtrack.
+3. Start with `backtrack(0, [])`.
+4. Return the result.
 
 ::tabs-start
 
@@ -678,6 +830,32 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn subsets_with_dup(nums: Vec<i32>) -> Vec<Vec<i32>> {
+        let mut nums = nums;
+        nums.sort();
+        let mut res = Vec::new();
+
+        fn backtrack(nums: &[i32], i: usize, subset: &mut Vec<i32>, res: &mut Vec<Vec<i32>>) {
+            res.push(subset.clone());
+
+            for j in i..nums.len() {
+                if j > i && nums[j] == nums[j - 1] {
+                    continue;
+                }
+                subset.push(nums[j]);
+                backtrack(nums, j + 1, subset, res);
+                subset.pop();
+            }
+        }
+
+        backtrack(&nums, 0, &mut vec![], &mut res);
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -690,6 +868,41 @@ class Solution {
 ---
 
 ## 4. Iteration
+
+### Intuition
+
+This iterative method builds subsets step by step.
+Normally, for each new number, we **add it to every existing subset**.
+But duplicates cause repeated subsets — so we must avoid recombining duplicates with all previous subsets.
+
+Key idea:
+
+- Sort the array so duplicates are next to each other.
+- Maintain two indices:
+    - `idx`: start point for generating new subsets.
+    - `prev_idx`: end point (previous size of result list before adding this number).
+- If the current number is **not a duplicate**, we start from the beginning (`idx = 0`).
+- If it **is a duplicate**, we only combine it with subsets created in the **last round**.
+  This prevents duplicate subsets from being generated.
+
+Example:
+For input `[1,2,2]`
+
+- First `2` extends all subsets.
+- Second `2` extends only the subsets added when first `2` was processed → no duplicates.
+
+### Algorithm
+
+1. Sort `nums` so duplicates are adjacent.
+2. Initialize `res = [[]]`.
+3. For each index `i`:
+    - If `nums[i]` is the same as `nums[i-1]` → set `idx` to the previous end (`prev_idx`).
+    - Otherwise → set `idx = 0`.
+    - Set `prev_idx = len(res)` (the boundary of old subsets).
+    - For every subset `res[j]` where `j` ranges from `idx` to `prev_idx - 1`:
+        - Create a new subset by appending `nums[i]`.
+        - Add it to `res`.
+4. Return `res`.
 
 ::tabs-start
 
@@ -880,6 +1093,33 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn subsets_with_dup(nums: Vec<i32>) -> Vec<Vec<i32>> {
+        let mut nums = nums;
+        nums.sort();
+        let mut res: Vec<Vec<i32>> = vec![vec![]];
+        let mut prev_idx = 0usize;
+
+        for i in 0..nums.len() {
+            let idx = if i >= 1 && nums[i] == nums[i - 1] {
+                prev_idx
+            } else {
+                0
+            };
+            prev_idx = res.len();
+            for j in idx..prev_idx {
+                let mut tmp = res[j].clone();
+                tmp.push(nums[i]);
+                res.push(tmp);
+            }
+        }
+
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -888,3 +1128,19 @@ class Solution {
 - Space complexity:
     - $O(1)$ extra space.
     - $O(2 ^ n)$ space for the output list.
+
+---
+
+## Common Pitfalls
+
+### Forgetting to Sort the Array First
+
+Sorting is essential because it groups duplicate elements together, enabling the skip logic to work correctly. Without sorting, duplicates scattered throughout the array cannot be detected and skipped, resulting in duplicate subsets.
+
+### Incorrect Duplicate Skipping Condition
+
+The condition `j > i && nums[j] == nums[j-1]` must use `j > i`, not `j > 0` or `j >= i`. Using `j > 0` would skip the first occurrence of a duplicate at each recursion level, missing valid subsets. The check ensures we only skip duplicates after the first one at the current decision level.
+
+### Modifying the Subset Reference Incorrectly
+
+When adding subsets to the result, you must copy the current subset (e.g., `subset[:]` in Python or `new ArrayList<>(subset)` in Java). Adding the reference directly means all entries in the result will point to the same list, which gets modified during backtracking.

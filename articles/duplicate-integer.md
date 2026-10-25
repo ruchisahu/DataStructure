@@ -1,4 +1,25 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Hash Sets** - The optimal solution uses a hash set for O(1) lookups to detect duplicates efficiently
+- **Sorting** - An alternative approach sorts the array to bring duplicates adjacent, then scans linearly
+- **Basic Array Traversal** - The brute force approach uses nested loops to compare all pairs of elements
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+We can check every pair of different elements in the array and return `true` if any pair has equal values.  
+This is the most intuitive approach because it directly compares all possible pairs, but it is also the least efficient since it examines every combination.
+
+### Algorithm
+
+1. Iterate through the array using two nested loops to check all possible pairs of distinct indices.
+2. If any pair of elements has the same value, return `true`.
+3. If all pairs are checked and no duplicates are found, return `false`.
 
 ::tabs-start
 
@@ -120,6 +141,21 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn has_duplicate(nums: Vec<i32>) -> bool {
+        for i in 0..nums.len() {
+            for j in (i + 1)..nums.len() {
+                if nums[i] == nums[j] {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -130,6 +166,20 @@ class Solution {
 ---
 
 ## 2. Sorting
+
+### Intuition
+
+If we sort the array, then any duplicate values will appear next to each other.  
+Sorting groups identical elements together, so we can simply check adjacent positions to detect duplicates.  
+This reduces the problem to a single linear scan after sorting, making it easy to identify if any value repeats.
+
+### Algorithm
+
+1. Sort the array in non-decreasing order.
+2. Iterate through the array starting from index `1`.
+3. Compare the current element with the previous element.
+4. If both elements are equal, we have found a duplicate — return `true`.
+5. If the loop finishes without detecting equal neighbors, return `false`.
 
 ::tabs-start
 
@@ -244,6 +294,20 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn has_duplicate(mut nums: Vec<i32>) -> bool {
+        nums.sort();
+        for i in 1..nums.len() {
+            if nums[i] == nums[i - 1] {
+                return true;
+            }
+        }
+        false
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -254,6 +318,22 @@ class Solution {
 ---
 
 ## 3. Hash Set
+
+### Intuition
+
+We can use a hash set to efficiently keep track of the values we have already encountered.  
+As we iterate through the array, we check whether the current value is already present in the set.  
+If it is, that means we've seen this value before, so a duplicate exists.  
+Using a hash set allows constant-time lookups, making this approach much more efficient than comparing every pair.
+
+### Algorithm
+
+1. Initialize an empty hash set to store seen values.
+2. Iterate through each number in the array.
+3. For each number:
+    - If it is already in the set, return `true` because a duplicate has been found.
+    - Otherwise, add it to the set.
+4. If the loop finishes without finding any duplicates, return `false`.
 
 ::tabs-start
 
@@ -376,6 +456,20 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn has_duplicate(nums: Vec<i32>) -> bool {
+        let mut seen = HashSet::new();
+        for &num in &nums {
+            if !seen.insert(num) {
+                return true;
+            }
+        }
+        false
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -386,6 +480,20 @@ class Solution {
 ---
 
 ## 4. Hash Set Length
+
+### Intuition
+
+This approach uses the same idea as the previous hash set method: a set only stores unique values, so duplicates are automatically removed.  
+Instead of checking each element manually, we simply compare the length of the set to the length of the original array.  
+If duplicates exist, the set will contain fewer elements.  
+The logic is identical to the earlier approach — this version is just a shorter and more concise implementation of it.
+
+### Algorithm
+
+1. Convert the array into a hash set, which removes duplicates.
+2. Compare the size of the set with the size of the original array.
+3. If the set is smaller, return `true` because duplicates must have been removed.
+4. Otherwise, return `false`.
 
 ::tabs-start
 
@@ -458,9 +566,52 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn has_duplicate(nums: Vec<i32>) -> bool {
+        let set: HashSet<i32> = nums.iter().copied().collect();
+        set.len() < nums.len()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(n)$
+
+---
+
+## Common Pitfalls
+
+### Using Wrong Comparison in Brute Force
+
+When using nested loops, a common mistake is comparing an element with itself by starting the inner loop at `i` instead of `i + 1`.
+
+```python
+# Wrong: Compares element with itself
+for i in range(len(nums)):
+    for j in range(len(nums)):  # Should start at i + 1
+        if nums[i] == nums[j]:
+            return True
+
+# Correct: Skip self-comparison
+for i in range(len(nums)):
+    for j in range(i + 1, len(nums)):
+        if nums[i] == nums[j]:
+            return True
+```
+
+### Modifying Input Array Unexpectedly
+
+The sorting approach modifies the original array, which may not be acceptable in some contexts. If the original order matters, make a copy first.
+
+```python
+# Caution: This modifies the input
+nums.sort()
+
+# Safer: Sort a copy if original order matters
+sorted_nums = sorted(nums)
+```

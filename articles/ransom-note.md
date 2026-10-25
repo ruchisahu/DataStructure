@@ -1,4 +1,25 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Hash Maps / Frequency Counting** - Used to efficiently count and compare character occurrences between two strings
+- **String Iteration** - Understanding how to traverse characters in a string and perform lookups
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+For each character in the ransom note, we search for a matching character in the magazine. When found, we remove that character from the magazine so it cannot be reused. If any character cannot be found, we know the ransom note cannot be constructed.
+
+### Algorithm
+
+1. Convert the magazine string to a mutable list of characters.
+2. For each character `c` in the ransom note:
+    - If `c` is not in the magazine list, return `false`.
+    - Otherwise, remove one occurrence of `c` from the magazine list.
+3. If all characters are found, return `true`.
 
 ::tabs-start
 
@@ -12,7 +33,7 @@ class Solution:
                 return False
             else:
                 magazine.remove(c)
-        
+
         return True
 ```
 
@@ -59,7 +80,7 @@ class Solution {
      * @return {boolean}
      */
     canConstruct(ransomNote, magazine) {
-        let mag = magazine.split("");
+        let mag = magazine.split('');
 
         for (let c of ransomNote) {
             let idx = mag.indexOf(c);
@@ -87,18 +108,103 @@ public class Solution {
 }
 ```
 
+```go
+func canConstruct(ransomNote string, magazine string) bool {
+    mag := []rune(magazine)
+
+    for _, c := range ransomNote {
+        found := false
+        for i, m := range mag {
+            if m == c {
+                mag = append(mag[:i], mag[i+1:]...)
+                found = true
+                break
+            }
+        }
+        if !found {
+            return false
+        }
+    }
+
+    return true
+}
+```
+
+```kotlin
+class Solution {
+    fun canConstruct(ransomNote: String, magazine: String): Boolean {
+        val mag = magazine.toMutableList()
+
+        for (c in ransomNote) {
+            if (!mag.contains(c)) return false
+            mag.remove(c)
+        }
+
+        return true
+    }
+}
+```
+
+```swift
+class Solution {
+    func canConstruct(_ ransomNote: String, _ magazine: String) -> Bool {
+        var mag = Array(magazine)
+
+        for c in ransomNote {
+            if let idx = mag.firstIndex(of: c) {
+                mag.remove(at: idx)
+            } else {
+                return false
+            }
+        }
+
+        return true
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn can_construct(ransom_note: String, magazine: String) -> bool {
+        let mut mag: Vec<char> = magazine.chars().collect();
+
+        for c in ransom_note.chars() {
+            if let Some(idx) = mag.iter().position(|&x| x == c) {
+                mag.remove(idx);
+            } else {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
-* Time complexity: $O(m * n)$
-* Space complexity: $O(n)$
+- Time complexity: $O(m * n)$
+- Space complexity: $O(n)$
 
 > Where $m$ and $n$ are the lengths of the strings $ransomNote$ and $magazine$, respectively.
 
 ---
 
 ## 2. Count Frequency
+
+### Intuition
+
+Instead of searching and removing characters one by one, we can count the frequency of each character in both strings. The ransom note can be constructed if and only if the magazine contains at least as many of each character as the ransom note requires.
+
+### Algorithm
+
+1. Count the frequency of each character in the ransom note (`countR`).
+2. Count the frequency of each character in the magazine (`countM`).
+3. For each character in `countR`:
+    - If `countM[c] < countR[c]`, return `false`.
+4. Return `true`.
 
 ::tabs-start
 
@@ -213,18 +319,125 @@ public class Solution {
 }
 ```
 
+```go
+func canConstruct(ransomNote string, magazine string) bool {
+    countR := make([]int, 26)
+    countM := make([]int, 26)
+
+    for _, c := range ransomNote {
+        countR[c-'a']++
+    }
+
+    for _, c := range magazine {
+        countM[c-'a']++
+    }
+
+    for i := 0; i < 26; i++ {
+        if countM[i] < countR[i] {
+            return false
+        }
+    }
+
+    return true
+}
+```
+
+```kotlin
+class Solution {
+    fun canConstruct(ransomNote: String, magazine: String): Boolean {
+        val countR = IntArray(26)
+        val countM = IntArray(26)
+
+        for (c in ransomNote) {
+            countR[c - 'a']++
+        }
+
+        for (c in magazine) {
+            countM[c - 'a']++
+        }
+
+        for (i in 0 until 26) {
+            if (countM[i] < countR[i]) return false
+        }
+
+        return true
+    }
+}
+```
+
+```swift
+class Solution {
+    func canConstruct(_ ransomNote: String, _ magazine: String) -> Bool {
+        var countR = [Int](repeating: 0, count: 26)
+        var countM = [Int](repeating: 0, count: 26)
+
+        for c in ransomNote.unicodeScalars {
+            countR[Int(c.value) - Int(Character("a").asciiValue!)] += 1
+        }
+
+        for c in magazine.unicodeScalars {
+            countM[Int(c.value) - Int(Character("a").asciiValue!)] += 1
+        }
+
+        for i in 0..<26 {
+            if countM[i] < countR[i] { return false }
+        }
+
+        return true
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn can_construct(ransom_note: String, magazine: String) -> bool {
+        let mut count_r = [0i32; 26];
+        let mut count_m = [0i32; 26];
+
+        for c in ransom_note.bytes() {
+            count_r[(c - b'a') as usize] += 1;
+        }
+
+        for c in magazine.bytes() {
+            count_m[(c - b'a') as usize] += 1;
+        }
+
+        for i in 0..26 {
+            if count_m[i] < count_r[i] {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
-* Time complexity: $O(m + n)$
-* Space complexity: $O(1)$ since we have at most $26$ different characters.
+- Time complexity: $O(m + n)$
+- Space complexity: $O(1)$ since we have at most $26$ different characters.
 
 > Where $m$ and $n$ are the lengths of the strings $ransomNote$ and $magazine$, respectively.
 
 ---
 
 ## 3. Count Frequency (Optimal)
+
+### Intuition
+
+We can optimize further by using a single count array. First, we count all characters in the magazine. Then, as we iterate through the ransom note, we decrement the count for each character. If any count goes negative, the magazine does not have enough of that character.
+
+### Algorithm
+
+1. Create a count array of size 26 (for lowercase letters).
+2. For each character in the magazine, increment its count.
+3. For each character in the ransom note:
+    - Decrement its count.
+    - If the count becomes negative, return `false`.
+4. Return `true`.
 
 ::tabs-start
 
@@ -309,11 +522,90 @@ public class Solution {
 }
 ```
 
+```go
+func canConstruct(ransomNote string, magazine string) bool {
+    count := make([]int, 26)
+    for _, c := range magazine {
+        count[c-'a']++
+    }
+    for _, c := range ransomNote {
+        count[c-'a']--
+        if count[c-'a'] < 0 {
+            return false
+        }
+    }
+    return true
+}
+```
+
+```kotlin
+class Solution {
+    fun canConstruct(ransomNote: String, magazine: String): Boolean {
+        val count = IntArray(26)
+        for (c in magazine) {
+            count[c - 'a']++
+        }
+        for (c in ransomNote) {
+            if (--count[c - 'a'] < 0) return false
+        }
+        return true
+    }
+}
+```
+
+```swift
+class Solution {
+    func canConstruct(_ ransomNote: String, _ magazine: String) -> Bool {
+        var count = [Int](repeating: 0, count: 26)
+        let aValue = Int(Character("a").asciiValue!)
+
+        for c in magazine.unicodeScalars {
+            count[Int(c.value) - aValue] += 1
+        }
+        for c in ransomNote.unicodeScalars {
+            count[Int(c.value) - aValue] -= 1
+            if count[Int(c.value) - aValue] < 0 { return false }
+        }
+        return true
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn can_construct(ransom_note: String, magazine: String) -> bool {
+        let mut count = [0i32; 26];
+        for c in magazine.bytes() {
+            count[(c - b'a') as usize] += 1;
+        }
+        for c in ransom_note.bytes() {
+            count[(c - b'a') as usize] -= 1;
+            if count[(c - b'a') as usize] < 0 {
+                return false;
+            }
+        }
+        true
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
-* Time complexity: $O(m + n)$
-* Space complexity: $O(1)$ since we have at most $26$ different characters.
+- Time complexity: $O(m + n)$
+- Space complexity: $O(1)$ since we have at most $26$ different characters.
 
 > Where $m$ and $n$ are the lengths of the strings $ransomNote$ and $magazine$, respectively.
+
+---
+
+## Common Pitfalls
+
+### Counting the Wrong String First
+
+A common mistake is counting characters from the ransom note first and then trying to match against the magazine. This leads to incorrect logic when checking availability. Always count the magazine characters first (the source), then verify against the ransom note requirements.
+
+### Not Handling Character Reuse Properly
+
+When using the brute force approach, forgetting to remove a character from the magazine after using it leads to incorrect results. Each magazine character can only be used once, so after matching a character, it must be marked as consumed to prevent reuse.

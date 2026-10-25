@@ -1,4 +1,37 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Backtracking** - Exploring all possible paths by making choices, recursing, and undoing choices to try alternatives
+- **Depth-First Search (DFS)** - Traversing a graph or grid by exploring as far as possible along each branch before backtracking
+- **Trie (Prefix Tree)** - A tree data structure used for efficient prefix matching and word storage
+- **2D Grid Traversal** - Moving through a matrix in four directions (up, down, left, right) while handling boundaries
+
+---
+
 ## 1. Backtracking
+
+### Intuition
+
+For each word, we try to **trace it on the board** by walking through adjacent cells (up/down/left/right).
+To avoid using the same cell twice in one word path, we **temporarily mark the cell as visited**, and then restore it after exploring (classic backtracking).
+
+If we can match all characters of a word in order, that word is found and added to the result.
+
+### Algorithm
+
+1. Let `ROWS`, `COLS` be board dimensions.
+2. For each `word` in `words`:
+    1. Try every cell `(r, c)` as a possible starting point (only if it matches `word[0]`).
+    2. Run a `DFS`/backtracking function `backtrack(r, c, i)` where:
+        - `i` = current index in `word` we need to match.
+        - Base case: if `i == len(word)`, return `true` (whole word matched).
+        - If out of bounds or board cell doesn't match `word[i]`, return `false`.
+        - Mark the cell as visited (e.g., replace with `*`).
+        - Recurse to 4 neighbors with `i + 1`.
+        - Restore the original character (undo the choice).
+        - Return whether any neighbor path succeeded.
+    3. If any start cell succeeds, add `word` to the answer list and stop searching this word.
 
 ::tabs-start
 
@@ -337,18 +370,88 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn find_words(mut board: Vec<Vec<char>>, words: Vec<String>) -> Vec<String> {
+        let rows = board.len();
+        let cols = board[0].len();
+        let mut res = Vec::new();
+
+        for word in &words {
+            let word_chars: Vec<char> = word.chars().collect();
+            let mut found = false;
+            for r in 0..rows {
+                if found { break; }
+                for c in 0..cols {
+                    if board[r][c] != word_chars[0] { continue; }
+                    if Self::backtrack(&mut board, r, c, &word_chars, 0) {
+                        res.push(word.clone());
+                        found = true;
+                        break;
+                    }
+                }
+            }
+        }
+        res
+    }
+
+    fn backtrack(board: &mut Vec<Vec<char>>, r: i32, c: i32, word: &[char], i: usize) -> bool {
+        if i == word.len() { return true; }
+        if r < 0 || c < 0 || r >= board.len() as i32 || c >= board[0].len() as i32 {
+            return false;
+        }
+        let (ru, cu) = (r as usize, c as usize);
+        if board[ru][cu] != word[i] { return false; }
+
+        board[ru][cu] = '*';
+        let ret = Self::backtrack(board, r + 1, c, word, i + 1)
+            || Self::backtrack(board, r - 1, c, word, i + 1)
+            || Self::backtrack(board, r, c + 1, word, i + 1)
+            || Self::backtrack(board, r, c - 1, word, i + 1);
+        board[ru][cu] = word[i];
+        ret
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
-- Time complexity: $O(m * n * 4 ^ t + s)$
+- Time complexity: $O(w * m * n * 4 * 3 ^ t - 1)$
 - Space complexity: $O(t)$
 
-> Where $m$ is the number of rows, $n$ is the number of columns, $t$ is the maximum length of any word in the array $words$ and $s$ is the sum of the lengths of all the words.
+> Where $w$ is the number of words, $m$ is the number of rows, $n$ is the number of columns and $t$ is the maximum length of any word in the array $words$.
 
 ---
 
 ## 2. Backtracking (Trie + Hash Set)
+
+### Intuition
+
+Searching each word separately repeats the same work many times.
+A **Trie (prefix tree)** lets us share work: while walking on the board, we only continue paths that match **some prefix** of the given words.
+So the board `DFS` explores "possible prefixes", and whenever the Trie node says **this prefix is a complete word**, we record it.
+
+We also need to avoid reusing the same cell in a single path, so we keep a **visited set** during the current `DFS` path (and backtrack/remove when returning).
+
+### Algorithm
+
+1. **Build a Trie** from all `words`.
+    - Each Trie node stores `children` (next letters) and `isWord` (`true` if a word ends here).
+2. Initialize:
+    - `res` as a set (to avoid duplicates).
+    - `visit` as a set for the current `DFS` path.
+3. Define `DFS` `dfs(r, c, node, wordSoFar)`:
+    1. If `(r,c)` is out of bounds, already visited, or `board[r][c]` is not in `node.children`, stop.
+    2. Mark `(r,c)` visited.
+    3. Move Trie pointer: `node = node.children[board[r][c]]`
+    4. Append current char to `wordSoFar`.
+    5. If `node.isWord == true`, add `wordSoFar` to `res`.
+    6. Recurse to 4 neighbors (up/down/left/right) using the updated `node` and `wordSoFar`.
+    7. Backtrack: remove `(r,c)` from `visit`.
+4. Run `DFS` starting from **every cell** `(r, c)` with the Trie root.
+5. Return all collected words from `res`.
 
 ::tabs-start
 
@@ -867,6 +970,85 @@ class Solution {
 }
 ```
 
+```rust
+struct TrieNode {
+    children: HashMap<char, TrieNode>,
+    is_word: bool,
+}
+
+impl TrieNode {
+    fn new() -> Self {
+        TrieNode {
+            children: HashMap::new(),
+            is_word: false,
+        }
+    }
+
+    fn add_word(&mut self, word: &str) {
+        let mut cur = self;
+        for c in word.chars() {
+            cur = cur.children.entry(c).or_insert_with(TrieNode::new);
+        }
+        cur.is_word = true;
+    }
+}
+
+impl Solution {
+    pub fn find_words(board: Vec<Vec<char>>, words: Vec<String>) -> Vec<String> {
+        let mut root = TrieNode::new();
+        for w in &words {
+            root.add_word(w);
+        }
+
+        let rows = board.len();
+        let cols = board[0].len();
+        let mut res = HashSet::new();
+        let mut visit = vec![vec![false; cols]; rows];
+
+        for r in 0..rows {
+            for c in 0..cols {
+                Self::dfs(&board, r as i32, c as i32, &root,
+                          &mut String::new(), &mut visit, &mut res);
+            }
+        }
+        res.into_iter().collect()
+    }
+
+    fn dfs(
+        board: &Vec<Vec<char>>, r: i32, c: i32, node: &TrieNode,
+        word: &mut String, visit: &mut Vec<Vec<bool>>,
+        res: &mut HashSet<String>,
+    ) {
+        let rows = board.len() as i32;
+        let cols = board[0].len() as i32;
+        if r < 0 || c < 0 || r >= rows || c >= cols {
+            return;
+        }
+        let (ru, cu) = (r as usize, c as usize);
+        if visit[ru][cu] { return; }
+        let ch = board[ru][cu];
+        let next = match node.children.get(&ch) {
+            Some(n) => n,
+            None => return,
+        };
+
+        visit[ru][cu] = true;
+        word.push(ch);
+        if next.is_word {
+            res.insert(word.clone());
+        }
+
+        Self::dfs(board, r + 1, c, next, word, visit, res);
+        Self::dfs(board, r - 1, c, next, word, visit, res);
+        Self::dfs(board, r, c + 1, next, word, visit, res);
+        Self::dfs(board, r, c - 1, next, word, visit, res);
+
+        word.pop();
+        visit[ru][cu] = false;
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -879,6 +1061,62 @@ class Solution {
 ---
 
 ## 3. Backtracking (Trie)
+
+### Intuition
+
+We still do `DFS` on the board, but we guide the `DFS` using a **Trie** so we only walk paths that match prefixes of the given words.
+
+This version is faster because it adds **aggressive pruning**:
+
+- Each Trie node keeps `refs` = "how many words in the dictionary still pass through this node".
+- When we successfully find one or more words, each `DFS` call returns how many new words it found below its current prefix.
+- We subtract that count from `refs` as `DFS` unwinds, removing the found words from every Trie node on their paths.
+- If after removal a node's `refs` becomes `0`, that branch is **dead** (no remaining words use it), so we physically cut the pointer from its parent (`prev.children[...] = null`).
+  That prevents future `DFS` calls from exploring useless prefixes.
+
+Also, instead of using a visited set, we mark the board in-place:
+
+- Temporarily set `board[r][c] = '*'` while exploring that path.
+- Restore it when backtracking.
+
+#### What the Trie stores
+
+Each node has:
+
+- `children[26]`: next letters (array, faster than hashmap)
+- `idx`: index of a word in `words` if a word ends here, else `-1`
+- `refs`: number of “still-alive” words that go through this node (including end words)
+
+### Algorithm
+
+1. **Build the Trie**:
+    - Insert every word `words[i]`.
+    - While inserting, increment `refs` on every node along the path.
+    - At the end node, store `idx = i`.
+
+2. **`DFS` from every board cell**:
+    - `dfs(r, c, node)` tries to extend the current Trie path using `board[r][c]`.
+
+3. **`DFS` rules**:
+    - Stop if:
+        - out of bounds, or
+        - cell is already used in current path (`'*'`), or
+        - Trie has no child for `board[r][c]`
+    - Otherwise:
+        1. Take letter `ch = board[r][c]`, move to `child = node.children[ch]`
+        2. Mark cell as visited: `board[r][c] = '*'`
+        3. If `child.idx != -1`, we found a word:
+            - add `words[child.idx]` to result
+            - set `child.idx = -1` (avoid duplicates)
+            - initialize `found = 1`
+        4. Recurse into 4 neighbors with `child`, adding their returned counts to `found`
+        5. Decrease `child.refs` by `found`
+        6. If `child.refs == 0`, cut this branch from its parent:
+            - `node.children[ch] = null`
+        7. Restore the board cell and return `found` so every ancestor can update its own `refs`
+
+4. After each top-level `DFS`, decrease `root.refs` by the returned count.
+5. Return collected results.
 
 ::tabs-start
 
@@ -917,32 +1155,32 @@ class Solution:
             if (r < 0 or c < 0 or r >= ROWS or
                 c >= COLS or board[r][c] == '*' or
                 not node.children[getIndex(board[r][c])]):
-                return
+                return 0
 
             tmp = board[r][c]
             board[r][c] = '*'
             prev = node
             node = node.children[getIndex(tmp)]
+            found = 0
             if node.idx != -1:
                 res.append(words[node.idx])
                 node.idx = -1
-                node.refs -= 1
-                if not node.refs:
-                    prev.children[getIndex(tmp)] = None
-                    node = None
-                    board[r][c] = tmp
-                    return
+                found += 1
 
-            dfs(r + 1, c, node)
-            dfs(r - 1, c, node)
-            dfs(r, c + 1, node)
-            dfs(r, c - 1, node)
+            found += dfs(r + 1, c, node)
+            found += dfs(r - 1, c, node)
+            found += dfs(r, c + 1, node)
+            found += dfs(r, c - 1, node)
 
             board[r][c] = tmp
+            node.refs -= found
+            if not node.refs:
+                prev.children[getIndex(tmp)] = None
+            return found
 
         for r in range(ROWS):
             for c in range(COLS):
-                dfs(r, c, root)
+                root.refs -= dfs(r, c, root)
 
         return res
 ```
@@ -979,42 +1217,42 @@ public class Solution {
 
         for (int r = 0; r < board.length; r++) {
             for (int c = 0; c < board[0].length; c++) {
-                dfs(board, root, r, c, words);
+                root.refs -= dfs(board, root, r, c, words);
             }
         }
 
         return res;
     }
 
-    private void dfs(char[][] board, TrieNode node, int r, int c, String[] words) {
+    private int dfs(char[][] board, TrieNode node, int r, int c, String[] words) {
         if (r < 0 || c < 0 || r >= board.length ||
             c >= board[0].length || board[r][c] == '*' ||
             node.children[board[r][c] - 'a'] == null) {
-            return;
+            return 0;
         }
 
         char temp = board[r][c];
         board[r][c] = '*';
         TrieNode prev = node;
         node = node.children[temp - 'a'];
+        int found = 0;
         if (node.idx != -1) {
             res.add(words[node.idx]);
             node.idx = -1;
-            node.refs--;
-            if (node.refs == 0) {
-                node = null;
-                prev.children[temp - 'a'] = null;
-                board[r][c] = temp;
-                return;
-            }
+            found++;
         }
 
-        dfs(board, node, r + 1, c, words);
-        dfs(board, node, r - 1, c, words);
-        dfs(board, node, r, c + 1, words);
-        dfs(board, node, r, c - 1, words);
+        found += dfs(board, node, r + 1, c, words);
+        found += dfs(board, node, r - 1, c, words);
+        found += dfs(board, node, r, c + 1, words);
+        found += dfs(board, node, r, c - 1, words);
 
         board[r][c] = temp;
+        node.refs -= found;
+        if (node.refs == 0) {
+            prev.children[temp - 'a'] = null;
+        }
+        return found;
     }
 }
 ```
@@ -1061,42 +1299,42 @@ public:
 
         for (int r = 0; r < board.size(); ++r) {
             for (int c = 0; c < board[0].size(); ++c) {
-                dfs(board, root, r, c, words);
+                root->refs -= dfs(board, root, r, c, words);
             }
         }
 
         return res;
     }
 
-    void dfs(auto& board, TrieNode* node, int r, int c, auto& words) {
+    int dfs(auto& board, TrieNode* node, int r, int c, auto& words) {
         if (r < 0 || c < 0 || r >= board.size() ||
             c >= board[0].size() || board[r][c] == '*' ||
             !node->children[board[r][c] - 'a']) {
-            return;
+            return 0;
         }
 
         char temp = board[r][c];
         board[r][c] = '*';
         TrieNode* prev = node;
         node = node->children[temp - 'a'];
+        int found = 0;
         if (node->idx != -1) {
             res.push_back(words[node->idx]);
             node->idx = -1;
-            node->refs--;
-            if (!node->refs) {
-                prev->children[temp - 'a'] = nullptr;
-                node = nullptr;
-                board[r][c] = temp;
-                return;
-            }
+            found++;
         }
 
-        dfs(board, node, r + 1, c, words);
-        dfs(board, node, r - 1, c, words);
-        dfs(board, node, r, c + 1, words);
-        dfs(board, node, r, c - 1, words);
+        found += dfs(board, node, r + 1, c, words);
+        found += dfs(board, node, r - 1, c, words);
+        found += dfs(board, node, r, c + 1, words);
+        found += dfs(board, node, r, c - 1, words);
 
         board[r][c] = temp;
+        node->refs -= found;
+        if (!node->refs) {
+            prev->children[temp - 'a'] = nullptr;
+        }
+        return found;
     }
 };
 ```
@@ -1154,36 +1392,36 @@ class Solution {
                 board[r][c] === '*' ||
                 node.children[this.getId(board[r][c])] === null
             ) {
-                return;
+                return 0;
             }
 
             let tmp = board[r][c];
             board[r][c] = '*';
             let prev = node;
             node = node.children[this.getId(tmp)];
+            let found = 0;
             if (node.idx !== -1) {
                 res.push(words[node.idx]);
                 node.idx = -1;
-                node.refs--;
-                if (node.refs === 0) {
-                    prev.children[this.getId(tmp)] = null;
-                    node = null;
-                    board[r][c] = tmp;
-                    return;
-                }
+                found++;
             }
 
-            dfs(r + 1, c, node);
-            dfs(r - 1, c, node);
-            dfs(r, c + 1, node);
-            dfs(r, c - 1, node);
+            found += dfs(r + 1, c, node);
+            found += dfs(r - 1, c, node);
+            found += dfs(r, c + 1, node);
+            found += dfs(r, c - 1, node);
 
             board[r][c] = tmp;
+            node.refs -= found;
+            if (node.refs === 0) {
+                prev.children[this.getId(tmp)] = null;
+            }
+            return found;
         };
 
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
-                dfs(r, c, root);
+                root.refs -= dfs(r, c, root);
             }
         }
 
@@ -1232,42 +1470,42 @@ public class Solution {
 
         for (int r = 0; r < board.Length; r++) {
             for (int c = 0; c < board[0].Length; c++) {
-                Dfs(board, root, r, c, words);
+                root.refs -= Dfs(board, root, r, c, words);
             }
         }
 
         return res;
     }
 
-    private void Dfs(char[][] board, TrieNode node, int r, int c, string[] words) {
+    private int Dfs(char[][] board, TrieNode node, int r, int c, string[] words) {
         if (r < 0 || c < 0 || r >= board.Length ||
             c >= board[0].Length || board[r][c] == '*' ||
             node.children[board[r][c] - 'a'] == null) {
-            return;
+            return 0;
         }
 
         char temp = board[r][c];
         board[r][c] = '*';
         TrieNode prev = node;
         node = node.children[temp - 'a'];
+        int found = 0;
         if (node.idx != -1) {
             res.Add(words[node.idx]);
             node.idx = -1;
-            node.refs--;
-            if (node.refs == 0) {
-                node = null;
-                prev.children[temp - 'a'] = null;
-                board[r][c] = temp;
-                return;
-            }
+            found++;
         }
 
-        Dfs(board, node, r + 1, c, words);
-        Dfs(board, node, r - 1, c, words);
-        Dfs(board, node, r, c + 1, words);
-        Dfs(board, node, r, c - 1, words);
+        found += Dfs(board, node, r + 1, c, words);
+        found += Dfs(board, node, r - 1, c, words);
+        found += Dfs(board, node, r, c + 1, words);
+        found += Dfs(board, node, r, c - 1, words);
 
         board[r][c] = temp;
+        node.refs -= found;
+        if (node.refs == 0) {
+            prev.children[temp - 'a'] = null;
+        }
+        return found;
     }
 }
 ```
@@ -1308,39 +1546,40 @@ func findWords(board [][]byte, words []string) []string {
 
 	getIndex := func(c byte) int { return int(c - 'a') }
 
-	var dfs func(r, c int, node *TrieNode)
-	dfs = func(r, c int, node *TrieNode) {
+	var dfs func(r, c int, node *TrieNode) int
+	dfs = func(r, c int, node *TrieNode) int {
 		if r < 0 || c < 0 || r >= rows || c >= cols ||
            board[r][c] == '*' || node.children[getIndex(board[r][c])] == nil {
-			return
+			return 0
 		}
 
 		tmp := board[r][c]
 		board[r][c] = '*'
 		prev := node
 		node = node.children[getIndex(tmp)]
+		found := 0
 		if node.idx != -1 {
 			res = append(res, words[node.idx])
 			node.idx = -1
-			node.refs--
-			if node.refs == 0 {
-				prev.children[getIndex(tmp)] = nil
-				board[r][c] = tmp
-				return
-			}
+			found++
 		}
 
-		dfs(r+1, c, node)
-		dfs(r-1, c, node)
-		dfs(r, c+1, node)
-		dfs(r, c-1, node)
+		found += dfs(r+1, c, node)
+		found += dfs(r-1, c, node)
+		found += dfs(r, c+1, node)
+		found += dfs(r, c-1, node)
 
 		board[r][c] = tmp
+		node.refs -= found
+		if node.refs == 0 {
+			prev.children[getIndex(tmp)] = nil
+		}
+		return found
 	}
 
 	for r := 0; r < rows; r++ {
 		for c := 0; c < cols; c++ {
-			dfs(r, c, root)
+			root.refs -= dfs(r, c, root)
 		}
 	}
 
@@ -1380,39 +1619,40 @@ class Solution {
 
         fun getIndex(c: Char): Int = c - 'a'
 
-        fun dfs(r: Int, c: Int, node: TrieNode?) {
+        fun dfs(r: Int, c: Int, node: TrieNode?): Int {
             if (r < 0 || c < 0 || r >= rows || c >= cols || board[r][c] == '*' ||
                 node?.children?.get(getIndex(board[r][c])) == null) {
-                return
+                return 0
             }
 
             val tmp = board[r][c]
             board[r][c] = '*'
             val prev = node
-            val nextNode = node.children[getIndex(tmp)]
+            val nextNode = node.children[getIndex(tmp)]!!
+            var found = 0
 
-            if (nextNode != null && nextNode.idx != -1) {
+            if (nextNode.idx != -1) {
                 res.add(words[nextNode.idx])
                 nextNode.idx = -1
-                nextNode.refs--
-                if (nextNode.refs == 0) {
-                    prev?.children?.set(getIndex(tmp), null)
-                    board[r][c] = tmp
-                    return
-                }
+                found++
             }
 
-            dfs(r + 1, c, nextNode)
-            dfs(r - 1, c, nextNode)
-            dfs(r, c + 1, nextNode)
-            dfs(r, c - 1, nextNode)
+            found += dfs(r + 1, c, nextNode)
+            found += dfs(r - 1, c, nextNode)
+            found += dfs(r, c + 1, nextNode)
+            found += dfs(r, c - 1, nextNode)
 
             board[r][c] = tmp
+            nextNode.refs -= found
+            if (nextNode.refs == 0) {
+                prev.children[getIndex(tmp)] = null
+            }
+            return found
         }
 
         for (r in 0 until rows) {
             for (c in 0 until cols) {
-                dfs(r, c, root)
+                root.refs -= dfs(r, c, root)
             }
         }
 
@@ -1458,44 +1698,144 @@ class Solution {
             return Int(c.asciiValue! - Character("a").asciiValue!)
         }
 
-        func dfs(_ r: Int, _ c: Int, _ node: TrieNode) {
+        func dfs(_ r: Int, _ c: Int, _ node: TrieNode) -> Int {
             if r < 0 || c < 0 || r >= ROWS || c >= COLS ||
                boardCopy[r][c] == "*" ||
                node.children[getIndex(boardCopy[r][c])] == nil {
-                return
+                return 0
             }
 
             let tmp = boardCopy[r][c]
             boardCopy[r][c] = "*"
             let prev = node
             let nextNode = node.children[getIndex(tmp)]!
+            var found = 0
 
             if nextNode.idx != -1 {
                 res.append(words[nextNode.idx])
                 nextNode.idx = -1
-                nextNode.refs -= 1
-                if nextNode.refs == 0 {
-                    prev.children[getIndex(tmp)] = nil
-                    boardCopy[r][c] = tmp
-                    return
-                }
+                found += 1
             }
 
-            dfs(r + 1, c, nextNode)
-            dfs(r - 1, c, nextNode)
-            dfs(r, c + 1, nextNode)
-            dfs(r, c - 1, nextNode)
+            found += dfs(r + 1, c, nextNode)
+            found += dfs(r - 1, c, nextNode)
+            found += dfs(r, c + 1, nextNode)
+            found += dfs(r, c - 1, nextNode)
 
             boardCopy[r][c] = tmp
+            nextNode.refs -= found
+            if nextNode.refs == 0 {
+                prev.children[getIndex(tmp)] = nil
+            }
+            return found
         }
 
         for r in 0..<ROWS {
             for c in 0..<COLS {
-                dfs(r, c, root)
+                root.refs -= dfs(r, c, root)
             }
         }
 
         return res
+    }
+}
+```
+
+```rust
+struct TrieNode {
+    children: [Option<Box<TrieNode>>; 26],
+    idx: i32,
+    refs: i32,
+}
+
+impl TrieNode {
+    fn new() -> Self {
+        TrieNode {
+            children: Default::default(),
+            idx: -1,
+            refs: 0,
+        }
+    }
+
+    fn add_word(&mut self, word: &str, i: i32) {
+        let mut cur = self;
+        cur.refs += 1;
+        for c in word.bytes() {
+            let index = (c - b'a') as usize;
+            if cur.children[index].is_none() {
+                cur.children[index] = Some(Box::new(TrieNode::new()));
+            }
+            cur = cur.children[index].as_mut().unwrap();
+            cur.refs += 1;
+        }
+        cur.idx = i;
+    }
+}
+
+impl Solution {
+    pub fn find_words(mut board: Vec<Vec<char>>, words: Vec<String>) -> Vec<String> {
+        let mut root = TrieNode::new();
+        for (i, word) in words.iter().enumerate() {
+            root.add_word(word, i as i32);
+        }
+
+        let rows = board.len();
+        let cols = board[0].len();
+        let mut res = Vec::new();
+
+        for r in 0..rows {
+            for c in 0..cols {
+                let found = Self::dfs(
+                    &mut board, &mut root, r as i32, c as i32,
+                    &words, &mut res,
+                );
+                root.refs -= found;
+            }
+        }
+        res
+    }
+
+    fn dfs(
+        board: &mut Vec<Vec<char>>, node: &mut TrieNode,
+        r: i32, c: i32, words: &[String], res: &mut Vec<String>,
+    ) -> i32 {
+        if r < 0 || c < 0 || r >= board.len() as i32
+            || c >= board[0].len() as i32
+        {
+            return 0;
+        }
+        let (ru, cu) = (r as usize, c as usize);
+        if board[ru][cu] == '*' { return 0; }
+        let idx = (board[ru][cu] as u8 - b'a') as usize;
+        if node.children[idx].is_none() { return 0; }
+
+        let tmp = board[ru][cu];
+        board[ru][cu] = '*';
+        let mut found = 0;
+        let should_prune;
+
+        {
+            let child = node.children[idx].as_mut().unwrap();
+            if child.idx != -1 {
+                res.push(words[child.idx as usize].clone());
+                child.idx = -1;
+                found += 1;
+            }
+
+            found += Self::dfs(board, child, r + 1, c, words, res);
+            found += Self::dfs(board, child, r - 1, c, words, res);
+            found += Self::dfs(board, child, r, c + 1, words, res);
+            found += Self::dfs(board, child, r, c - 1, words, res);
+
+            child.refs -= found;
+            should_prune = child.refs == 0;
+        }
+
+        if should_prune {
+            node.children[idx] = None;
+        }
+        board[ru][cu] = tmp;
+        found
     }
 }
 ```
@@ -1508,3 +1848,27 @@ class Solution {
 - Space complexity: $O(s)$
 
 > Where $m$ is the number of rows, $n$ is the number of columns, $t$ is the maximum length of any word in the array $words$ and $s$ is the sum of the lengths of all the words.
+
+---
+
+## Common Pitfalls
+
+### Forgetting to Remove Duplicate Words from Results
+
+When multiple paths on the board can form the same word, adding the word to the result list without checking for duplicates leads to duplicate entries. Using a set for results or marking words as found in the Trie (by setting `idx = -1` or `isWord = false`) prevents this issue.
+
+### Not Restoring the Board After Backtracking
+
+When marking cells as visited by modifying the board directly (e.g., setting `board[r][c] = '*'`), forgetting to restore the original character after the recursive calls will corrupt the board state. This prevents other starting positions or words from finding valid paths.
+
+### Inefficient Trie Without Pruning
+
+Building a Trie but not pruning it after finding words leads to repeated exploration of dead branches. Without decrementing `refs` counts and removing nodes when `refs` reaches zero, the algorithm continues searching paths that cannot yield any new words, significantly degrading performance.
+
+### Incorrect Trie Traversal During DFS
+
+Advancing the Trie pointer before checking if the child node exists can cause null pointer exceptions. Always verify that `node.children[char]` exists before moving to the next node. Similarly, checking `isWord` before updating the node pointer will miss the current word.
+
+### Not Handling the Visited Set Correctly with Trie
+
+When using a separate visited set alongside the Trie, forgetting to clear or properly backtrack the visited set for each new starting cell can block valid paths. Each DFS starting point should begin with a fresh or properly reset visited state.

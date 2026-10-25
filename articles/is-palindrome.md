@@ -1,4 +1,30 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Two Pointers** - Using pointers from both ends of a string to compare characters efficiently
+- **String Manipulation** - Filtering characters, converting case, and reversing strings
+- **Character Classification** - Identifying alphanumeric vs non-alphanumeric characters
+
+---
+
 ## 1. Reverse String
+
+### Intuition
+
+To check if a string is a palindrome, we only care about letters and digits—everything else can be ignored.  
+We can build a cleaned version of the string that contains only alphanumeric characters, all converted to lowercase for consistency.  
+Once we have this cleaned string, the problem becomes very simple:  
+a string is a palindrome if it is exactly the same as its reverse.
+
+### Algorithm
+
+1. Create an empty string `newStr`.
+2. Loop through each character `c` in the input string:
+    - If `c` is alphanumeric, convert it to lowercase and add it to `newStr`.
+3. Compare `newStr` with its reverse (`newStr[::-1]`):
+    - If they are equal, return `true`.
+    - Otherwise, return `false`.
 
 ::tabs-start
 
@@ -75,12 +101,13 @@ class Solution {
 ```csharp
 public class Solution {
     public bool IsPalindrome(string s) {
-        string newStr = "";
+        StringBuilder builder = new StringBuilder();
         foreach (char c in s) {
             if (char.IsLetterOrDigit(c)) {
-                newStr += char.ToLower(c);
+                builder.Append(char.ToLower(c));
             }
         }
+        string newStr = builder.ToString();
         return newStr == new string(newStr.Reverse().ToArray());
     }
 }
@@ -141,6 +168,19 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn is_palindrome(s: String) -> bool {
+        let new_str: Vec<u8> = s
+            .bytes()
+            .filter(|b| b.is_ascii_alphanumeric())
+            .map(|b| b.to_ascii_lowercase())
+            .collect();
+        new_str == new_str.iter().copied().rev().collect::<Vec<u8>>()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -151,6 +191,28 @@ class Solution {
 ---
 
 ## 2. Two Pointers
+
+### Intuition
+
+Instead of building a new string, we can check the palindrome directly in-place using two pointers.  
+One pointer starts at the beginning (`l`) and the other at the end (`r`).  
+We move both pointers inward, skipping any characters that are not letters or digits.  
+Whenever both pointers point to valid characters, we compare them in lowercase form.  
+If at any point they differ, the string is not a palindrome.  
+This method avoids extra space and keeps the logic simple and efficient.
+
+### Algorithm
+
+1. Initialize two pointers:
+    - `l` at the start of the string,
+    - `r` at the end of the string.
+2. While `l` is less than `r`:
+    - Move `l` forward until it points to an alphanumeric character.
+    - Move `r` backward until it points to an alphanumeric character.
+    - Compare the lowercase characters at `l` and `r`:
+        - If they don't match, return `false`.
+    - Move both pointers inward: `l += 1`, `r -= 1`.
+3. If the loop finishes without mismatches, return `true`.
 
 ::tabs-start
 
@@ -377,9 +439,45 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn is_palindrome(s: String) -> bool {
+        let s = s.as_bytes();
+        let (mut l, mut r) = (0i32, s.len() as i32 - 1);
+
+        while l < r {
+            while l < r && !s[l as usize].is_ascii_alphanumeric() {
+                l += 1;
+            }
+            while r > l && !s[r as usize].is_ascii_alphanumeric() {
+                r -= 1;
+            }
+            if s[l as usize].to_ascii_lowercase() != s[r as usize].to_ascii_lowercase() {
+                return false;
+            }
+            l += 1;
+            r -= 1;
+        }
+        true
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(1)$
+
+---
+
+## Common Pitfalls
+
+### Not Skipping Non-Alphanumeric Characters
+
+The problem requires ignoring all characters that are not letters or digits. Forgetting to skip spaces, punctuation, and special characters will cause false negatives. For example, "A man, a plan, a canal: Panama" should be recognized as a palindrome, but including the spaces and punctuation in the comparison will incorrectly return false.
+
+### Case Sensitivity
+
+Letters must be compared in a case-insensitive manner. Comparing 'A' directly with 'a' will return false even though they should be treated as equal. Always convert both characters to the same case (lowercase or uppercase) before comparing.

@@ -1,4 +1,25 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Arrays** - Basic array indexing and iteration
+- **Two Pointers** - Using pointers at opposite ends to traverse and modify data
+- **In-place Modification** - Modifying data structures without using extra space
+
+---
+
 ## 1. Array
+
+### Intuition
+
+The simplest approach is to build the reversed string in a separate array. We iterate through the original array from the end to the beginning, collecting characters in a new temporary array. Then we copy the reversed characters back to the original array. This works because reading backward gives us characters in reverse order.
+
+### Algorithm
+
+1. Create a temporary array `tmp` to store characters.
+2. Iterate through the input array from the last index to the first using index `i`.
+3. Append each character to `tmp`.
+4. Copy all characters from `tmp` back to the original array `s`.
 
 ::tabs-start
 
@@ -79,6 +100,60 @@ public class Solution {
 }
 ```
 
+```go
+func reverseString(s []byte) {
+    tmp := make([]byte, len(s))
+    for i := len(s) - 1; i >= 0; i-- {
+        tmp[len(s)-1-i] = s[i]
+    }
+    for i := 0; i < len(s); i++ {
+        s[i] = tmp[i]
+    }
+}
+```
+
+```kotlin
+class Solution {
+    fun reverseString(s: CharArray): Unit {
+        val tmp = CharArray(s.size)
+        val n = s.size
+
+        for (i in 0 until n) {
+            tmp[i] = s[n - 1 - i]
+        }
+
+        for (i in 0 until n) {
+            s[i] = tmp[i]
+        }
+    }
+}
+```
+
+```swift
+class Solution {
+    func reverseString(_ s: inout [Character]) {
+        var tmp = [Character]()
+        for i in stride(from: s.count - 1, through: 0, by: -1) {
+            tmp.append(s[i])
+        }
+        for i in 0..<s.count {
+            s[i] = tmp[i]
+        }
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn reverse_string(s: &mut Vec<char>) {
+        let tmp: Vec<char> = s.iter().rev().cloned().collect();
+        for i in 0..s.len() {
+            s[i] = tmp[i];
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -89,6 +164,18 @@ public class Solution {
 ---
 
 ## 2. Recursion
+
+### Intuition
+
+We can reverse a string recursively by thinking of it as swapping the outermost characters, then reversing the inner substring. If we have pointers at both ends (`l` and `r`), we first recurse to handle the inner portion, then swap the current pair on the way back up. This naturally reverses the array through the call stack.
+
+### Algorithm
+
+1. Define a recursive helper function `reverse(l, r)` where `l` is the left index and `r` is the right index.
+2. Base case: if `l >= r`, return (nothing to swap).
+3. Recurse on the inner portion: call `reverse(l + 1, r - 1)`.
+4. After returning, swap `s[l]` and `s[r]`.
+5. Start the recursion with `reverse(0, len(s) - 1)`.
 
 ::tabs-start
 
@@ -175,6 +262,69 @@ public class Solution {
 }
 ```
 
+```go
+func reverseString(s []byte) {
+    var reverse func(l, r int)
+    reverse = func(l, r int) {
+        if l < r {
+            reverse(l+1, r-1)
+            s[l], s[r] = s[r], s[l]
+        }
+    }
+    reverse(0, len(s)-1)
+}
+```
+
+```kotlin
+class Solution {
+    fun reverseString(s: CharArray): Unit {
+        reverse(s, 0, s.size - 1)
+    }
+
+    private fun reverse(s: CharArray, l: Int, r: Int) {
+        if (l < r) {
+            reverse(s, l + 1, r - 1)
+            val temp = s[l]
+            s[l] = s[r]
+            s[r] = temp
+        }
+    }
+}
+```
+
+```swift
+class Solution {
+    func reverseString(_ s: inout [Character]) {
+        reverse(&s, 0, s.count - 1)
+    }
+
+    private func reverse(_ s: inout [Character], _ l: Int, _ r: Int) {
+        if l < r {
+            reverse(&s, l + 1, r - 1)
+            let temp = s[l]
+            s[l] = s[r]
+            s[r] = temp
+        }
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn reverse_string(s: &mut Vec<char>) {
+        fn reverse(s: &mut Vec<char>, l: usize, r: usize) {
+            if l < r {
+                reverse(s, l + 1, r - 1);
+                s.swap(l, r);
+            }
+        }
+        if !s.is_empty() {
+            reverse(s, 0, s.len() - 1);
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -185,6 +335,17 @@ public class Solution {
 ---
 
 ## 3. Stack
+
+### Intuition
+
+A stack follows Last-In-First-Out (LIFO) order, which is perfect for reversing. If we push all characters onto a `stack`, then pop them off one by one, we get the characters in reverse order. This exploits the stack's natural behavior to achieve the reversal.
+
+### Algorithm
+
+1. Create an empty `stack`.
+2. Push every character from the input array `s` onto the stack.
+3. Iterate through the array indices `i`, popping from the stack and writing each character back to `s`.
+4. The array is now reversed in place.
 
 ::tabs-start
 
@@ -270,6 +431,58 @@ public class Solution {
 }
 ```
 
+```go
+func reverseString(s []byte) {
+    stack := make([]byte, 0)
+    for _, c := range s {
+        stack = append(stack, c)
+    }
+    for i := 0; i < len(s); i++ {
+        s[i] = stack[len(stack)-1]
+        stack = stack[:len(stack)-1]
+    }
+}
+```
+
+```kotlin
+class Solution {
+    fun reverseString(s: CharArray): Unit {
+        val stack = ArrayDeque<Char>()
+        for (c in s) {
+            stack.addLast(c)
+        }
+        for (i in s.indices) {
+            s[i] = stack.removeLast()
+        }
+    }
+}
+```
+
+```swift
+class Solution {
+    func reverseString(_ s: inout [Character]) {
+        var stack = [Character]()
+        for c in s {
+            stack.append(c)
+        }
+        for i in 0..<s.count {
+            s[i] = stack.removeLast()
+        }
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn reverse_string(s: &mut Vec<char>) {
+        let mut stack: Vec<char> = s.iter().cloned().collect();
+        for i in 0..s.len() {
+            s[i] = stack.pop().unwrap();
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -280,6 +493,15 @@ public class Solution {
 ---
 
 ## 4. Built-In Function
+
+### Intuition
+
+Most programming languages provide a built-in method to reverse arrays or lists. These functions are typically optimized and handle the reversal in place efficiently. While this approach is the simplest to write, it hides the underlying algorithm.
+
+### Algorithm
+
+1. Call the language's built-in reverse function on the input array.
+2. The array is modified in place.
 
 ::tabs-start
 
@@ -337,6 +559,38 @@ public class Solution {
 }
 ```
 
+```go
+func reverseString(s []byte) {
+    for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+        s[i], s[j] = s[j], s[i]
+    }
+}
+```
+
+```kotlin
+class Solution {
+    fun reverseString(s: CharArray): Unit {
+        s.reverse()
+    }
+}
+```
+
+```swift
+class Solution {
+    func reverseString(_ s: inout [Character]) {
+        s.reverse()
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn reverse_string(s: &mut Vec<char>) {
+        s.reverse();
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -347,6 +601,18 @@ public class Solution {
 ---
 
 ## 5. Two Pointers
+
+### Intuition
+
+The most efficient approach uses two pointers starting at opposite ends of the array. We swap the characters at these pointers, then move them toward each other. When the pointers meet or cross, every character has been swapped exactly once, and the array is reversed. This achieves O(1) space since we only swap in place.
+
+### Algorithm
+
+1. Initialize two pointers: `l` at index 0 and `r` at the last index.
+2. While `l < r`:
+    - Swap `s[l]` and `s[r]`.
+    - Increment `l` and decrement `r`.
+3. The array `s` is now reversed in place.
 
 ::tabs-start
 
@@ -423,9 +689,77 @@ public class Solution {
 }
 ```
 
+```go
+func reverseString(s []byte) {
+    l, r := 0, len(s)-1
+    for l < r {
+        s[l], s[r] = s[r], s[l]
+        l++
+        r--
+    }
+}
+```
+
+```kotlin
+class Solution {
+    fun reverseString(s: CharArray): Unit {
+        var l = 0
+        var r = s.size - 1
+        while (l < r) {
+            val temp = s[l]
+            s[l] = s[r]
+            s[r] = temp
+            l++
+            r--
+        }
+    }
+}
+```
+
+```swift
+class Solution {
+    func reverseString(_ s: inout [Character]) {
+        var l = 0
+        var r = s.count - 1
+        while l < r {
+            let temp = s[l]
+            s[l] = s[r]
+            s[r] = temp
+            l += 1
+            r -= 1
+        }
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn reverse_string(s: &mut Vec<char>) {
+        let (mut l, mut r) = (0, s.len().wrapping_sub(1));
+        while l < r {
+            s.swap(l, r);
+            l += 1;
+            r -= 1;
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(1)$
+
+---
+
+## Common Pitfalls
+
+### Using Incorrect Loop Termination Condition
+
+When using two pointers, the loop should terminate when `l >= r`, not when `l > r`. Using `l != r` works for odd-length strings but is less intuitive. The condition `l < r` correctly handles both even and odd length arrays.
+
+### Returning a New String Instead of Modifying In-Place
+
+The problem requires modifying the input array in-place. A common mistake is creating a new reversed array or string and returning it, which violates the in-place requirement and uses unnecessary extra space.

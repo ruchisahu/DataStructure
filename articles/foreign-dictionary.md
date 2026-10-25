@@ -1,4 +1,50 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Graph Representation** - Building adjacency lists from relationships between elements
+- **Topological Sort** - Ordering nodes in a directed acyclic graph based on dependencies
+- **Depth First Search (DFS)** - Recursive graph traversal with cycle detection using visited states
+- **Kahn's Algorithm (BFS)** - Iterative topological sort using in-degree counting
+- **String Comparison** - Extracting ordering rules by comparing adjacent strings character by character
+
+---
+
 ## 1. Depth First Search
+
+### Intuition
+
+The words are already sorted in an unknown alphabet order.  
+So when you compare two **adjacent** words, the **first position where they differ** tells you a rule about letter order:
+
+- If `w1[j] != w2[j]`, then `w1[j]` must come **before** `w2[j]` in the alien alphabet (`w1[j]` -> `w2[j]`).
+
+All these rules form a **directed graph** (letters = nodes, “comes before” = directed edge).  
+Now the problem becomes: **find a topological ordering** of this graph.
+
+DFS helps in two ways:
+
+- Build the ordering (postorder append).
+- Detect cycles (if there’s a cycle, no valid alphabet exists).
+
+Also, special invalid case:
+
+- If `w1` is longer but `w2` is a prefix of `w1` (like `"abc"` before `"ab"`), that's impossible - return `""`.
+
+### Algorithm
+
+1. Build a graph with every unique character as a node.
+2. For each pair of adjacent words:
+    - If `w1` starts with `w2` and `len(w1) > len(w2)`, return `""`.
+    - Otherwise, find the first differing character and add edge `w1[j]` -> `w2[j]`.
+3. Run `dfs` from every character:
+    - Use 3-state tracking (commonly done with a map):
+        - **visiting** (in current recursion path) - cycle if seen again
+        - **visited** (fully processed) - skip
+        - **unvisited**
+    - After exploring all neighbors, add the character to result (postorder).
+4. Reverse the result list to get the alien alphabet order.
+5. If any `dfs` finds a cycle, return `""`; else return the joined string.
 
 ::tabs-start
 
@@ -466,6 +512,69 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn foreign_dictionary(words: Vec<String>) -> String {
+        let mut adj: HashMap<u8, HashSet<u8>> = HashMap::new();
+        for word in &words {
+            for &c in word.as_bytes() {
+                adj.entry(c).or_insert_with(HashSet::new);
+            }
+        }
+
+        for i in 0..words.len() - 1 {
+            let w1 = words[i].as_bytes();
+            let w2 = words[i + 1].as_bytes();
+            let min_len = w1.len().min(w2.len());
+            if w1.len() > w2.len() && w1[..min_len] == w2[..min_len] {
+                return String::new();
+            }
+            for j in 0..min_len {
+                if w1[j] != w2[j] {
+                    adj.get_mut(&w1[j]).unwrap().insert(w2[j]);
+                    break;
+                }
+            }
+        }
+
+        let mut visited: HashMap<u8, bool> = HashMap::new();
+        let mut result: Vec<u8> = Vec::new();
+
+        fn dfs(
+            ch: u8,
+            adj: &HashMap<u8, HashSet<u8>>,
+            visited: &mut HashMap<u8, bool>,
+            result: &mut Vec<u8>,
+        ) -> bool {
+            if let Some(&flag) = visited.get(&ch) {
+                return flag;
+            }
+            visited.insert(ch, true);
+            if let Some(neighbors) = adj.get(&ch) {
+                for &next in neighbors {
+                    if dfs(next, adj, visited, result) {
+                        return true;
+                    }
+                }
+            }
+            visited.insert(ch, false);
+            result.push(ch);
+            false
+        }
+
+        let keys: Vec<u8> = adj.keys().copied().collect();
+        for c in keys {
+            if dfs(c, &adj, &mut visited, &mut result) {
+                return String::new();
+            }
+        }
+
+        result.reverse();
+        String::from_utf8(result).unwrap()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -478,6 +587,40 @@ class Solution {
 ---
 
 ## 2. Topological Sort (Kahn's Algorithm)
+
+### Intuition
+
+From the sorted alien words, each pair of adjacent words gives you a **letter-order rule** at the first mismatching character:
+
+- if `w1[j] != w2[j]`, then `w1[j]` -> `w2[j]` (meaning `w1[j]` comes before `w2[j]`).
+
+These rules form a **directed graph**. The alien alphabet is just a **topological ordering** of this graph.
+
+Kahn's algorithm (BFS topological sort) works by:
+
+- Counting how many prerequisites each letter has (`indegree`).
+- Always picking letters with `indegree = 0` (no unmet prerequisites) and "removing" them from the graph.
+
+If there's a **cycle**, some letters will never reach `indegree` `0`, so we won't be able to output all letters.
+
+Also invalid input case:
+
+- If a longer word comes before its own prefix (e.g., `"abc"` before `"ab"`), ordering is impossible.
+
+### Algorithm
+
+1. Create a graph node for **every unique character** in all words.
+2. For each adjacent pair `(w1, w2)`:
+    - If `w1` starts with `w2` and `len(w1) > len(w2)`, return `""`.
+    - Find the first index `j` where they differ and add edge `w1[j]` -> `w2[j]` (only once).
+    - Increase `indegree[w2[j]]` when you add a new edge.
+3. Push all characters with `indegree = 0` into a queue.
+4. While the queue is not empty:
+    - Pop a character, add it to the answer.
+    - For each neighbor, decrement its `indegree`.
+    - If a neighbor becomes `0`, push it into the queue.
+5. If the answer contains fewer characters than total unique characters, a cycle exists - return `""`.
+6. Otherwise, join the answer list and return it.
 
 ::tabs-start
 
@@ -950,6 +1093,66 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn foreign_dictionary(words: Vec<String>) -> String {
+        let mut adj: HashMap<u8, HashSet<u8>> = HashMap::new();
+        let mut indegree: HashMap<u8, i32> = HashMap::new();
+
+        for word in &words {
+            for &c in word.as_bytes() {
+                adj.entry(c).or_insert_with(HashSet::new);
+                indegree.entry(c).or_insert(0);
+            }
+        }
+
+        for i in 0..words.len() - 1 {
+            let w1 = words[i].as_bytes();
+            let w2 = words[i + 1].as_bytes();
+            let min_len = w1.len().min(w2.len());
+            if w1.len() > w2.len() && w1[..min_len] == w2[..min_len] {
+                return String::new();
+            }
+            for j in 0..min_len {
+                if w1[j] != w2[j] {
+                    if adj.get_mut(&w1[j]).unwrap().insert(w2[j]) {
+                        *indegree.get_mut(&w2[j]).unwrap() += 1;
+                    }
+                    break;
+                }
+            }
+        }
+
+        let mut q: VecDeque<u8> = VecDeque::new();
+        for (&c, &deg) in &indegree {
+            if deg == 0 {
+                q.push_back(c);
+            }
+        }
+
+        let mut res: Vec<u8> = Vec::new();
+        while let Some(ch) = q.pop_front() {
+            res.push(ch);
+            if let Some(neighbors) = adj.get(&ch) {
+                for &neighbor in neighbors {
+                    let deg = indegree.get_mut(&neighbor).unwrap();
+                    *deg -= 1;
+                    if *deg == 0 {
+                        q.push_back(neighbor);
+                    }
+                }
+            }
+        }
+
+        if res.len() != indegree.len() {
+            return String::new();
+        }
+
+        String::from_utf8(res).unwrap()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -958,3 +1161,27 @@ class Solution {
 - Space complexity: $O(V + E)$
 
 > Where $V$ is the number of unique characters, $E$ is the number of edges and $N$ is the sum of lengths of all the strings.
+
+---
+
+## Common Pitfalls
+
+### Missing the Invalid Prefix Case
+
+When a longer word appears before its own prefix (e.g., `"abc"` before `"ab"`), this is an invalid ordering that cannot exist in any alphabet. Failing to detect this case and return an empty string leads to incorrect results or undefined behavior.
+
+### Only Comparing Adjacent Words Partially
+
+The ordering information comes from the first differing character between adjacent words. A common mistake is comparing all differing characters or only comparing the first characters. You must find the first position where characters differ and extract exactly one edge from that comparison.
+
+### Not Including All Characters in the Result
+
+Characters that appear in the words but have no ordering constraints (no incoming or outgoing edges) must still appear in the final alphabet. Forgetting to initialize nodes for all unique characters causes some letters to be missing from the output.
+
+### Incorrect Cycle Detection in DFS
+
+The three-state visited tracking (unvisited, visiting, visited) is crucial for detecting cycles. Using only two states (visited/unvisited) cannot distinguish between a back edge (cycle) and a cross edge (already processed node). This leads to either false cycle detection or missing actual cycles.
+
+### Adding Duplicate Edges
+
+When the same character pair appears from multiple adjacent word comparisons, adding duplicate edges inflates the indegree count in Kahn's algorithm, preventing nodes from ever reaching zero indegree. Use a set to track existing edges before adding new ones.

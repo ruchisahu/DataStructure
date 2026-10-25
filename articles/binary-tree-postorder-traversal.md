@@ -1,4 +1,28 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Binary Tree Structure** - Understanding how nodes connect via left and right children
+- **Recursion** - Using recursive calls to naturally traverse tree structures
+- **Stacks** - Simulating recursion iteratively by explicitly managing the call stack and visit states
+
+---
+
 ## 1. Depth First Search
+
+### Intuition
+
+Postorder traversal visits nodes in the order: left subtree, right subtree, current node. This is useful when we need to process children before their parent, such as when deleting nodes or evaluating expression trees. Recursion naturally handles this by processing both subtrees before adding the current node's value.
+
+### Algorithm
+
+1. Create a result list to store the node values.
+2. Define a recursive helper function that takes a `node` as input.
+3. If the `node` is `null`, return immediately (base case).
+4. Recursively call the function on the left child.
+5. Recursively call the function on the right child.
+6. Add the current node's value to the result list.
+7. Return the result list after traversing the entire tree.
 
 ::tabs-start
 
@@ -157,6 +181,107 @@ public class Solution {
 }
 ```
 
+```go
+/**
+ * Definition for a binary tree node.
+ * type TreeNode struct {
+ *     Val int
+ *     Left *TreeNode
+ *     Right *TreeNode
+ * }
+ */
+func postorderTraversal(root *TreeNode) []int {
+    res := []int{}
+    var postorder func(node *TreeNode)
+    postorder = func(node *TreeNode) {
+        if node == nil {
+            return
+        }
+        postorder(node.Left)
+        postorder(node.Right)
+        res = append(res, node.Val)
+    }
+    postorder(root)
+    return res
+}
+```
+
+```kotlin
+/**
+ * Example:
+ * var ti = TreeNode(5)
+ * var v = ti.`val`
+ * Definition for a binary tree node.
+ * class TreeNode(var `val`: Int) {
+ *     var left: TreeNode? = null
+ *     var right: TreeNode? = null
+ * }
+ */
+class Solution {
+    fun postorderTraversal(root: TreeNode?): List<Int> {
+        val res = mutableListOf<Int>()
+        fun postorder(node: TreeNode?) {
+            if (node == null) return
+            postorder(node.left)
+            postorder(node.right)
+            res.add(node.`val`)
+        }
+        postorder(root)
+        return res
+    }
+}
+```
+
+```swift
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     public var val: Int
+ *     public var left: TreeNode?
+ *     public var right: TreeNode?
+ *     public init() { self.val = 0; self.left = nil; self.right = nil; }
+ *     public init(_ val: Int) { self.val = val; self.left = nil; self.right = nil; }
+ *     public init(_ val: Int, _ left: TreeNode?, _ right: TreeNode?) {
+ *         self.val = val
+ *         self.left = left
+ *         self.right = right
+ *     }
+ * }
+ */
+class Solution {
+    func postorderTraversal(_ root: TreeNode?) -> [Int] {
+        var res = [Int]()
+        func postorder(_ node: TreeNode?) {
+            guard let node = node else { return }
+            postorder(node.left)
+            postorder(node.right)
+            res.append(node.val)
+        }
+        postorder(root)
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn postorder_traversal(root: Option<Rc<RefCell<TreeNode>>>) -> Vec<i32> {
+        let mut res = Vec::new();
+        Self::postorder(&root, &mut res);
+        res
+    }
+
+    fn postorder(node: &Option<Rc<RefCell<TreeNode>>>, res: &mut Vec<i32>) {
+        if let Some(n) = node {
+            let n = n.borrow();
+            Self::postorder(&n.left, res);
+            Self::postorder(&n.right, res);
+            res.push(n.val);
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -169,6 +294,20 @@ public class Solution {
 ---
 
 ## 2. Iterative Depth First Search - I
+
+### Intuition
+
+We use a stack with a `visited` flag to track whether we've already processed a node's children. When we first encounter a node, we push it back with a `visited` flag set to `true`, then push its children. On the second visit (when the flag is `true`), we know both children have been processed, so we add the node's value to the result.
+
+### Algorithm
+
+1. Initialize a stack with the root node paired with a `false` visited flag.
+2. While the stack is not empty:
+    - Pop a node and its `visited` flag.
+    - If the node is `null`, continue.
+    - If `visited` is `true`, add the node's value to the result.
+    - Otherwise, push the node back with `visited` set to `true`, then push the right child (`visited` `false`), then the left child (`visited` `false`).
+3. Return the result list.
 
 ::tabs-start
 
@@ -386,6 +525,143 @@ public class Solution {
 }
 ```
 
+```go
+/**
+ * Definition for a binary tree node.
+ * type TreeNode struct {
+ *     Val int
+ *     Left *TreeNode
+ *     Right *TreeNode
+ * }
+ */
+func postorderTraversal(root *TreeNode) []int {
+    type stackItem struct {
+        node  *TreeNode
+        visit bool
+    }
+    stack := []stackItem{{root, false}}
+    res := []int{}
+
+    for len(stack) > 0 {
+        item := stack[len(stack)-1]
+        stack = stack[:len(stack)-1]
+
+        if item.node != nil {
+            if item.visit {
+                res = append(res, item.node.Val)
+            } else {
+                stack = append(stack, stackItem{item.node, true})
+                stack = append(stack, stackItem{item.node.Right, false})
+                stack = append(stack, stackItem{item.node.Left, false})
+            }
+        }
+    }
+
+    return res
+}
+```
+
+```kotlin
+/**
+ * Example:
+ * var ti = TreeNode(5)
+ * var v = ti.`val`
+ * Definition for a binary tree node.
+ * class TreeNode(var `val`: Int) {
+ *     var left: TreeNode? = null
+ *     var right: TreeNode? = null
+ * }
+ */
+class Solution {
+    fun postorderTraversal(root: TreeNode?): List<Int> {
+        val stack = ArrayDeque<Pair<TreeNode?, Boolean>>()
+        val res = mutableListOf<Int>()
+
+        stack.addLast(Pair(root, false))
+
+        while (stack.isNotEmpty()) {
+            val (cur, v) = stack.removeLast()
+
+            if (cur != null) {
+                if (v) {
+                    res.add(cur.`val`)
+                } else {
+                    stack.addLast(Pair(cur, true))
+                    stack.addLast(Pair(cur.right, false))
+                    stack.addLast(Pair(cur.left, false))
+                }
+            }
+        }
+
+        return res
+    }
+}
+```
+
+```swift
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     public var val: Int
+ *     public var left: TreeNode?
+ *     public var right: TreeNode?
+ *     public init() { self.val = 0; self.left = nil; self.right = nil; }
+ *     public init(_ val: Int) { self.val = val; self.left = nil; self.right = nil; }
+ *     public init(_ val: Int, _ left: TreeNode?, _ right: TreeNode?) {
+ *         self.val = val
+ *         self.left = left
+ *         self.right = right
+ *     }
+ * }
+ */
+class Solution {
+    func postorderTraversal(_ root: TreeNode?) -> [Int] {
+        var stack: [(TreeNode?, Bool)] = [(root, false)]
+        var res = [Int]()
+
+        while !stack.isEmpty {
+            let (cur, v) = stack.removeLast()
+
+            if let cur = cur {
+                if v {
+                    res.append(cur.val)
+                } else {
+                    stack.append((cur, true))
+                    stack.append((cur.right, false))
+                    stack.append((cur.left, false))
+                }
+            }
+        }
+
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn postorder_traversal(root: Option<Rc<RefCell<TreeNode>>>) -> Vec<i32> {
+        let mut stack: Vec<(Option<Rc<RefCell<TreeNode>>>, bool)> = vec![(root, false)];
+        let mut res = Vec::new();
+
+        while let Some((cur, v)) = stack.pop() {
+            if let Some(node) = cur {
+                if v {
+                    res.push(node.borrow().val);
+                } else {
+                    let n = node.borrow();
+                    stack.push((Some(node.clone()), true));
+                    stack.push((n.right.clone(), false));
+                    stack.push((n.left.clone(), false));
+                }
+            }
+        }
+
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -398,6 +674,20 @@ public class Solution {
 ---
 
 ## 3. Iterative Depth First Search - II
+
+### Intuition
+
+Postorder is the reverse of a modified preorder traversal. If we traverse in the order: current, right, left (instead of current, left, right), and then reverse the result, we get the postorder sequence. This avoids the complexity of tracking visited nodes.
+
+### Algorithm
+
+1. Initialize an empty result list and an empty stack.
+2. Set the current node to the root.
+3. While the current node is not `null` or the stack is not empty:
+    - If the current node is not `null`, add its value to the result, push it onto the stack, and move to the right child.
+    - Otherwise, pop a node from the stack and move to its left child.
+4. Reverse the result list to get the correct postorder sequence.
+5. Return the result list.
 
 ::tabs-start
 
@@ -578,6 +868,136 @@ public class Solution {
 }
 ```
 
+```go
+/**
+ * Definition for a binary tree node.
+ * type TreeNode struct {
+ *     Val int
+ *     Left *TreeNode
+ *     Right *TreeNode
+ * }
+ */
+func postorderTraversal(root *TreeNode) []int {
+    res := []int{}
+    stack := []*TreeNode{}
+    cur := root
+
+    for cur != nil || len(stack) > 0 {
+        if cur != nil {
+            res = append(res, cur.Val)
+            stack = append(stack, cur)
+            cur = cur.Right
+        } else {
+            cur = stack[len(stack)-1]
+            stack = stack[:len(stack)-1]
+            cur = cur.Left
+        }
+    }
+
+    for i, j := 0, len(res)-1; i < j; i, j = i+1, j-1 {
+        res[i], res[j] = res[j], res[i]
+    }
+    return res
+}
+```
+
+```kotlin
+/**
+ * Example:
+ * var ti = TreeNode(5)
+ * var v = ti.`val`
+ * Definition for a binary tree node.
+ * class TreeNode(var `val`: Int) {
+ *     var left: TreeNode? = null
+ *     var right: TreeNode? = null
+ * }
+ */
+class Solution {
+    fun postorderTraversal(root: TreeNode?): List<Int> {
+        val res = mutableListOf<Int>()
+        val stack = ArrayDeque<TreeNode>()
+        var cur = root
+
+        while (cur != null || stack.isNotEmpty()) {
+            if (cur != null) {
+                res.add(cur.`val`)
+                stack.addLast(cur)
+                cur = cur.right
+            } else {
+                cur = stack.removeLast()
+                cur = cur.left
+            }
+        }
+
+        res.reverse()
+        return res
+    }
+}
+```
+
+```swift
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     public var val: Int
+ *     public var left: TreeNode?
+ *     public var right: TreeNode?
+ *     public init() { self.val = 0; self.left = nil; self.right = nil; }
+ *     public init(_ val: Int) { self.val = val; self.left = nil; self.right = nil; }
+ *     public init(_ val: Int, _ left: TreeNode?, _ right: TreeNode?) {
+ *         self.val = val
+ *         self.left = left
+ *         self.right = right
+ *     }
+ * }
+ */
+class Solution {
+    func postorderTraversal(_ root: TreeNode?) -> [Int] {
+        var res = [Int]()
+        var stack = [TreeNode]()
+        var cur = root
+
+        while cur != nil || !stack.isEmpty {
+            if cur != nil {
+                res.append(cur!.val)
+                stack.append(cur!)
+                cur = cur?.right
+            } else {
+                cur = stack.removeLast()
+                cur = cur?.left
+            }
+        }
+
+        res.reverse()
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn postorder_traversal(root: Option<Rc<RefCell<TreeNode>>>) -> Vec<i32> {
+        let mut res = Vec::new();
+        let mut stack: Vec<Rc<RefCell<TreeNode>>> = Vec::new();
+        let mut cur = root;
+
+        while cur.is_some() || !stack.is_empty() {
+            if let Some(node) = cur {
+                res.push(node.borrow().val);
+                stack.push(node.clone());
+                cur = node.borrow().right.clone();
+            } else {
+                let node = stack.pop().unwrap();
+                cur = node.borrow().left.clone();
+            }
+        }
+
+        res.reverse();
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -590,6 +1010,21 @@ public class Solution {
 ---
 
 ## 4. Morris Traversal
+
+### Intuition
+
+Similar to the iterative approach that reverses a modified preorder, Morris Traversal for postorder works by performing a reverse preorder traversal (current, right, left) without using extra space for a stack. We use temporary thread links from the leftmost node of the right subtree back to the current node. After the traversal, we reverse the result.
+
+### Algorithm
+
+1. Initialize the current node to the root.
+2. While the current node is not `null`:
+    - If the current node has no right child, add its value to the result and move to the left child.
+    - Otherwise, find the leftmost node in the right subtree.
+    - If the leftmost node's left pointer is `null`, add the current value to the result, set the left pointer to the current node (create thread), and move to the right child.
+    - If the left pointer already points to the current node, remove the thread and move to the left child.
+3. Reverse the result list to get the correct postorder sequence.
+4. Return the result list.
 
 ::tabs-start
 
@@ -812,6 +1247,165 @@ public class Solution {
 }
 ```
 
+```go
+/**
+ * Definition for a binary tree node.
+ * type TreeNode struct {
+ *     Val int
+ *     Left *TreeNode
+ *     Right *TreeNode
+ * }
+ */
+func postorderTraversal(root *TreeNode) []int {
+    res := []int{}
+    cur := root
+
+    for cur != nil {
+        if cur.Right == nil {
+            res = append(res, cur.Val)
+            cur = cur.Left
+        } else {
+            prev := cur.Right
+            for prev.Left != nil && prev.Left != cur {
+                prev = prev.Left
+            }
+
+            if prev.Left == nil {
+                res = append(res, cur.Val)
+                prev.Left = cur
+                cur = cur.Right
+            } else {
+                prev.Left = nil
+                cur = cur.Left
+            }
+        }
+    }
+
+    for i, j := 0, len(res)-1; i < j; i, j = i+1, j-1 {
+        res[i], res[j] = res[j], res[i]
+    }
+    return res
+}
+```
+
+```kotlin
+/**
+ * Example:
+ * var ti = TreeNode(5)
+ * var v = ti.`val`
+ * Definition for a binary tree node.
+ * class TreeNode(var `val`: Int) {
+ *     var left: TreeNode? = null
+ *     var right: TreeNode? = null
+ * }
+ */
+class Solution {
+    fun postorderTraversal(root: TreeNode?): List<Int> {
+        val res = mutableListOf<Int>()
+        var cur = root
+
+        while (cur != null) {
+            if (cur.right == null) {
+                res.add(cur.`val`)
+                cur = cur.left
+            } else {
+                var prev = cur.right
+                while (prev?.left != null && prev.left != cur) {
+                    prev = prev.left
+                }
+
+                if (prev?.left == null) {
+                    res.add(cur.`val`)
+                    prev?.left = cur
+                    cur = cur.right
+                } else {
+                    prev.left = null
+                    cur = cur.left
+                }
+            }
+        }
+
+        res.reverse()
+        return res
+    }
+}
+```
+
+```swift
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     public var val: Int
+ *     public var left: TreeNode?
+ *     public var right: TreeNode?
+ *     public init() { self.val = 0; self.left = nil; self.right = nil; }
+ *     public init(_ val: Int) { self.val = val; self.left = nil; self.right = nil; }
+ *     public init(_ val: Int, _ left: TreeNode?, _ right: TreeNode?) {
+ *         self.val = val
+ *         self.left = left
+ *         self.right = right
+ *     }
+ * }
+ */
+class Solution {
+    func postorderTraversal(_ root: TreeNode?) -> [Int] {
+        var res = [Int]()
+        var cur = root
+
+        while cur != nil {
+            if cur?.right == nil {
+                res.append(cur!.val)
+                cur = cur?.left
+            } else {
+                var prev = cur?.right
+                while prev?.left != nil && prev?.left !== cur {
+                    prev = prev?.left
+                }
+
+                if prev?.left == nil {
+                    res.append(cur!.val)
+                    prev?.left = cur
+                    cur = cur?.right
+                } else {
+                    prev?.left = nil
+                    cur = cur?.left
+                }
+            }
+        }
+
+        res.reverse()
+        return res
+    }
+}
+```
+
+```rust
+// Note: Morris Traversal requires mutable tree node pointers,
+// which is not idiomatic in Rust's Rc<RefCell<TreeNode>> model.
+// Use the iterative stack-based approach instead for LeetCode Rust.
+impl Solution {
+    pub fn postorder_traversal(root: Option<Rc<RefCell<TreeNode>>>) -> Vec<i32> {
+        let mut res = Vec::new();
+        let mut stack: Vec<Rc<RefCell<TreeNode>>> = Vec::new();
+        let mut cur = root;
+
+        while cur.is_some() || !stack.is_empty() {
+            if let Some(node) = cur {
+                res.push(node.borrow().val);
+                stack.push(node.clone());
+                cur = node.borrow().right.clone();
+            } else {
+                let node = stack.pop().unwrap();
+                cur = node.borrow().left.clone();
+            }
+        }
+
+        res.reverse();
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -820,3 +1414,22 @@ public class Solution {
 - Space complexity:
     - $O(1)$ extra space.
     - $O(n)$ space for the output array.
+
+---
+
+## Common Pitfalls
+
+### Adding Node Value Before Recursing on Children
+
+Postorder requires visiting children before the current node. Adding the value before recursive calls produces preorder traversal instead.
+
+```python
+# Wrong: this is preorder, not postorder
+res.append(node.val)
+postorder(node.left)
+postorder(node.right)
+```
+
+### Wrong Child Order in Iterative Approach
+
+In the iterative approach using reversal, you must traverse current -> right -> left, then reverse. Traversing current -> left -> right and reversing gives incorrect results.

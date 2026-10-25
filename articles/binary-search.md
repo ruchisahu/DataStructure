@@ -1,4 +1,41 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Arrays** - Understanding how arrays are indexed and accessed
+- **Sorted Arrays** - Recognizing properties of sorted data that enable efficient searching
+- **Recursion** - Writing and understanding recursive functions with base cases
+- **Time Complexity** - Understanding O(log n) vs O(n) and why halving the search space is efficient
+
+---
+
 ## 1. Recursive Binary Search
+
+### Intuition
+
+Binary search works by repeatedly cutting the search space in half.  
+Instead of scanning the entire array, we check the **middle element**:
+
+- If it’s the target → return the index.
+- If the target is larger → search only in the right half.
+- If the target is smaller → search only in the left half.
+
+The recursive version simply expresses this idea as a function that keeps calling itself on the appropriate half until the target is found or the range becomes invalid.
+
+### Algorithm
+
+1. Define a recursive function that takes the current search range `[l, r]`.
+2. If `l > r`, the range is empty, return `-1`.
+3. Compute the middle index `m = (l + r) // 2`.
+4. Compare `nums[m]` with `target`:
+    - If equal, return `m`.
+    - If `nums[m] < target`, recursively search `[m + 1, r]`.
+    - If `nums[m] > target`, recursively search `[l, m - 1]`.
+5. Start the recursion with the full range `[0, n - 1]`.
+6. Return the final result.
+
+
+<br>
 
 ::tabs-start
 
@@ -162,6 +199,29 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn search(nums: Vec<i32>, target: i32) -> i32 {
+        Self::binary_search(0, nums.len() as i32 - 1, &nums, target)
+    }
+
+    fn binary_search(l: i32, r: i32, nums: &[i32], target: i32) -> i32 {
+        if l > r {
+            return -1;
+        }
+        let m = l + (r - l) / 2;
+        if nums[m as usize] == target {
+            return m;
+        }
+        if nums[m as usize] < target {
+            Self::binary_search(m + 1, r, nums, target)
+        } else {
+            Self::binary_search(l, m - 1, nums, target)
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -172,6 +232,27 @@ class Solution {
 ---
 
 ## 2. Iterative Binary Search
+
+### Intuition
+
+Binary search checks the middle element of a sorted array and decides which half to discard.  
+Instead of using recursion, the iterative approach keeps shrinking the search range using a loop.  
+We adjust the left and right pointers until we either find the target or the pointers cross, meaning the target isn’t present.
+
+### Algorithm
+
+1. Initialize two pointers:
+    - `l = 0` (start of array)
+    - `r = len(nums) - 1` (end of array)
+2. While `l <= r`:
+    - Compute `m = l + (r - l) // 2` (safe midpoint).
+    - If `nums[m] == target`, return `m`.
+    - If `nums[m] < target`, move search to the right half: update `l = m + 1`.
+    - If `nums[m] > target`, move search to the left half: update `r = m - 1`.
+3. If the loop ends without finding the target, return `-1`.
+
+
+<br>
 
 ::tabs-start
 
@@ -341,6 +422,26 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn search(nums: Vec<i32>, target: i32) -> i32 {
+        let (mut l, mut r) = (0i32, nums.len() as i32 - 1);
+
+        while l <= r {
+            let m = l + (r - l) / 2;
+            if nums[m as usize] > target {
+                r = m - 1;
+            } else if nums[m as usize] < target {
+                l = m + 1;
+            } else {
+                return m;
+            }
+        }
+        -1
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -351,6 +452,29 @@ class Solution {
 ---
 
 ## 3. Upper Bound
+
+### Intuition
+
+Upper bound binary search finds the **first index where a value greater than the target appears**.  
+Once we know that position, the actual target—if it exists—must be right before it.  
+So instead of directly searching for the target, we search for the boundary where values stop being ≤ target.  
+Then we simply check whether the element just before that boundary is the target.
+
+### Algorithm
+
+1. Set `l = 0` and `r = len(nums)` (right is one past the last index).
+2. While `l < r`:
+    - Compute midpoint `m`.
+    - If `nums[m] > target`, shrink the right side: `r = m`.
+    - Otherwise (`nums[m] <= target`), shrink the left side: `l = m + 1`.
+3. After the loop:
+    - `l` is the upper bound: first index where `nums[l] > target`.
+    - So the potential location of the target is `l - 1`.
+4. If `l > 0` and `nums[l - 1] == target`, return `l - 1`.
+5. Otherwise, return `-1` (target not found).
+
+
+<br>
 
 ::tabs-start
 
@@ -503,6 +627,28 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn search(nums: Vec<i32>, target: i32) -> i32 {
+        let (mut l, mut r) = (0usize, nums.len());
+
+        while l < r {
+            let m = l + (r - l) / 2;
+            if nums[m] > target {
+                r = m;
+            } else {
+                l = m + 1;
+            }
+        }
+        if l > 0 && nums[l - 1] == target {
+            (l - 1) as i32
+        } else {
+            -1
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -513,6 +659,31 @@ class Solution {
 ---
 
 ## 4. Lower Bound
+
+### Intuition
+
+Lower bound binary search finds the **first index where a value is greater than or equal to the target**.  
+This means if the target exists in the array, this lower-bound index will point exactly to its first occurrence.  
+So instead of directly searching for equality, we search for the **leftmost position** where the target _could_ appear, then verify it.
+
+This approach is especially useful for sorted arrays because it avoids overshooting and naturally handles duplicates.
+
+### Algorithm
+
+1. Initialize:
+    - `l = 0`
+    - `r = len(nums)` (right is one past the last index).
+2. While `l < r`:
+    - Compute midpoint `m`.
+    - If `nums[m] >= target`, shrink the search to the left half: `r = m`.
+    - Otherwise (`nums[m] < target`), search in the right half: `l = m + 1`.
+3. After the loop:
+    - `l` is the lower bound: first index where value >= `target`.
+4. If `l` is within bounds and `nums[l] == target`, return `l`.
+5. Otherwise, return `-1` (the target is not in the array).
+
+
+<br>
 
 ::tabs-start
 
@@ -665,6 +836,28 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn search(nums: Vec<i32>, target: i32) -> i32 {
+        let (mut l, mut r) = (0usize, nums.len());
+
+        while l < r {
+            let m = l + (r - l) / 2;
+            if nums[m] >= target {
+                r = m;
+            } else {
+                l = m + 1;
+            }
+        }
+        if l < nums.len() && nums[l] == target {
+            l as i32
+        } else {
+            -1
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -675,6 +868,9 @@ class Solution {
 ---
 
 ## 5. Built-In Function
+
+
+<br>
 
 ::tabs-start
 
@@ -756,9 +952,47 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn search(nums: Vec<i32>, target: i32) -> i32 {
+        match nums.binary_search(&target) {
+            Ok(index) => index as i32,
+            Err(_) => -1,
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(\log n)$
 - Space complexity: $O(1)$
+
+---
+
+## Common Pitfalls
+
+### Integer Overflow When Calculating Mid
+
+Using `(l + r) / 2` can overflow when `l` and `r` are large. Use `l + (r - l) / 2` instead to safely compute the midpoint.
+
+```python
+# Wrong: can overflow in some languages
+m = (l + r) // 2
+# Correct: prevents overflow
+m = l + (r - l) // 2
+```
+
+### Infinite Loop Due to Wrong Pointer Update
+
+Updating `l = m` instead of `l = m + 1` (or `r = m` instead of `r = m - 1` in some variants) can cause an infinite loop when `l` and `r` are adjacent.
+
+### Off-by-One Errors with Loop Condition
+
+Using `while l <= r` vs `while l < r` changes the behavior significantly. Mixing these up with the wrong pointer updates causes bugs. Be consistent with your chosen template.
+
+### Not Checking if Target Was Actually Found
+
+Binary search converges to a position, but that position might not contain the target. Always verify that `nums[result] == target` before returning the index.

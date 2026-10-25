@@ -1,4 +1,28 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Hash Maps** - Using dictionaries to store values and their indices for O(1) lookup of complements
+- **Two Pointers technique** - Understanding how sorting enables the two-pointer approach for finding pairs
+- **Array traversal** - Iterating through arrays while tracking indices and values
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+We can check every pair of different elements in the array and return the first pair that sums up to the target. This is the most intuitive approach but it's not the most efficient.
+
+### Algorithm
+
+1. Iterate through the array with two nested loops using indices `i` and `j` to check every pair of different elements.
+2. If the sum of the pair equals the target, return the indices of the pair.
+3. If no such pair is found, return an empty array.
+4. There is guaranteed to be exactly one solution, so we will never return an empty array.
+
+
+<br>
 
 ::tabs-start
 
@@ -121,6 +145,21 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn two_sum(nums: Vec<i32>, target: i32) -> Vec<i32> {
+        for i in 0..nums.len() {
+            for j in (i + 1)..nums.len() {
+                if nums[i] + nums[j] == target {
+                    return vec![i as i32, j as i32];
+                }
+            }
+        }
+        vec![]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -131,6 +170,23 @@ class Solution {
 ---
 
 ## 2. Sorting
+
+### Intuition
+
+We can sort the array and use two pointers to find the two numbers that sum up to the target. This is more efficient than the brute force approach. This approach is similar to the one used in <a href="https://neetcode.io/problems/two-integer-sum-ii" target="_blank">Two Sum II</a>.
+
+### Algorithm
+
+1. Create a copy of the array and sort it in ascending order.
+2. Initialize two pointers, one at the beginning (`i`) and one at the end (`j`) of the array.
+3. Iterate through the array with the two pointers and check if the sum of the two numbers is equal to the target.
+4. If the sum is equal to the target, return the indices of the two numbers.
+5. If the sum is less than the target, move the left pointer `i` to the right, which will increase the sum.
+6. If the sum is greater than the target, move the right pointer `j` to the left, which will decrease the sum.
+7. There is guaranteed to be exactly one solution, so we will never return an empty array.
+
+
+<br>
 
 ::tabs-start
 
@@ -356,6 +412,36 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn two_sum(nums: Vec<i32>, target: i32) -> Vec<i32> {
+        let mut a: Vec<(i32, usize)> = nums.iter().copied()
+            .enumerate()
+            .map(|(i, num)| (num, i))
+            .collect();
+
+        a.sort();
+
+        let mut i = 0;
+        let mut j = nums.len() - 1;
+        while i < j {
+            let cur = a[i].0 + a[j].0;
+            if cur == target {
+                return vec![
+                    a[i].1.min(a[j].1) as i32,
+                    a[i].1.max(a[j].1) as i32,
+                ];
+            } else if cur < target {
+                i += 1;
+            } else {
+                j -= 1;
+            }
+        }
+        vec![]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -366,6 +452,23 @@ class Solution {
 ---
 
 ## 3. Hash Map (Two Pass)
+
+### Intuition
+
+We can use a hash map to store the value and index of each element in the array. Then, we can iterate through the array and check if the complement of the current element exists in the hash map. The complement must be at a different index, because we can't use the same element twice.
+
+By using a hashmap, we can achieve a time complexity of `O(n)` because the insertion and lookup time of a hashmap is `O(1)`.
+
+### Algorithm
+
+1. Create a hash map to store the value and index of each element in the array.
+2. Iterate through the array and compute the complement of the current element, which is `target - nums[i]`.
+3. Check if the complement exists in the hash map.
+4. If it does, return the indices of the current element and its complement.
+5. If no such pair is found, return an empty array.
+
+
+<br>
 
 ::tabs-start
 
@@ -381,6 +484,7 @@ class Solution:
             diff = target - n
             if diff in indices and indices[diff] != i:
                 return [i, indices[diff]]
+        return []
 ```
 
 ```java
@@ -533,6 +637,29 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn two_sum(nums: Vec<i32>, target: i32) -> Vec<i32> {
+        let mut indices = HashMap::new(); // val -> index
+
+        for (i, &n) in nums.iter().enumerate() {
+            indices.insert(n, i);
+        }
+
+        for (i, &n) in nums.iter().enumerate() {
+            let diff = target - n;
+            if let Some(&j) = indices.get(&diff) {
+                if j != i {
+                    return vec![i as i32, j as i32];
+                }
+            }
+        }
+
+        vec![]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -543,6 +670,23 @@ class Solution {
 ---
 
 ## 4. Hash Map (One Pass)
+
+### Intuition
+
+We can solve the problem in a single pass by iterating through the array and checking if the complement of the current element exists in the hash map.
+
+If it does, we return the indices of the current element and its complement. If not, we store the current element in the hash map. This guarantees that we will never use the same element twice, but we still check every element in the array.
+
+### Algorithm
+
+1. Create a hash map to store the value and index of each element in the array.
+2. Iterate through the array using index `i` and compute the complement of the current element, which is `target - nums[i]`.
+3. Check if the complement exists in the hash map.
+4. If it does, return the indices of the current element and its complement.
+5. If no such pair is found, return an empty array.
+
+
+<br>
 
 ::tabs-start
 
@@ -689,9 +833,56 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn two_sum(nums: Vec<i32>, target: i32) -> Vec<i32> {
+        let mut prev_map = HashMap::new(); // val -> index
+
+        for (i, &n) in nums.iter().enumerate() {
+            let diff = target - n;
+            if let Some(&index) = prev_map.get(&diff) {
+                return vec![index as i32, i as i32];
+            }
+            prev_map.insert(n, i);
+        }
+
+        vec![]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(n)$
+
+---
+
+## Common Pitfalls
+
+### Using the Same Element Twice
+
+You cannot use the same element twice to form a pair. When using a hash map, ensure you check that the found index differs from the current index, or use one-pass where you only look at previously seen elements.
+
+```python
+# Wrong: might return [i, i] when nums[i] * 2 == target
+if diff in indices:
+    return [i, indices[diff]]
+# Correct: ensure different indices
+if diff in indices and indices[diff] != i:
+    return [i, indices[diff]]
+```
+
+### Returning Values Instead of Indices
+
+The problem asks for indices, not the values themselves. A common mistake is returning the two numbers that sum to the target rather than their positions in the array.
+
+### Handling Duplicate Values
+
+When building a hash map with values as keys, duplicate values overwrite earlier indices. In the two-pass approach, this still works because you check `indices[diff] != i`. In the one-pass approach, you check for the complement before inserting the current element.
+
+### Wrong Complement Calculation
+
+The complement should be `target - nums[i]`, not `nums[i] - target`. Getting this backwards will search for the wrong value.

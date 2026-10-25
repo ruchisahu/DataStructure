@@ -1,4 +1,27 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Sorting** - The main solution sorts arrival times to process monsters in order of urgency
+- **Greedy Algorithms** - Understanding that eliminating the earliest-arriving monster first is always optimal
+- **Min-Heap / Priority Queue** - An alternative approach uses a min-heap to extract minimum arrival times on demand
+
+---
+
 ## 1. Sorting
+
+### Intuition
+
+The weapon needs 1 minute to recharge after each shot. To maximize eliminations, we should prioritize monsters that will reach the city soonest. For each monster, we calculate the time it takes to arrive (`distance / speed`, rounded up). Sorting these arrival times lets us greedily eliminate monsters in order of urgency. If at any minute the earliest uneliminated monster has already arrived, the game ends.
+
+### Algorithm
+
+1. Compute `minReach[i] = ceil(dist[i] / speed[i])` for each monster.
+2. Sort `minReach` in ascending order.
+3. Iterate through the sorted array with index `minute`:
+    - If `minute >= minReach[minute]`, the monster arrives before we can shoot it. Return the current count.
+    - Otherwise, increment the elimination count.
+4. Return the total count if all monsters are eliminated.
 
 ::tabs-start
 
@@ -98,6 +121,125 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int EliminateMaximum(int[] dist, int[] speed) {
+        int n = dist.Length;
+        int[] minReach = new int[n];
+
+        for (int i = 0; i < n; i++) {
+            minReach[i] = (int)Math.Ceiling((double)dist[i] / speed[i]);
+        }
+
+        Array.Sort(minReach);
+
+        int res = 0;
+        for (int minute = 0; minute < n; minute++) {
+            if (minute >= minReach[minute]) {
+                return res;
+            }
+            res++;
+        }
+
+        return res;
+    }
+}
+```
+
+```go
+func eliminateMaximum(dist []int, speed []int) int {
+    n := len(dist)
+    minReach := make([]int, n)
+
+    for i := 0; i < n; i++ {
+        minReach[i] = (dist[i] + speed[i] - 1) / speed[i]
+    }
+
+    sort.Ints(minReach)
+
+    res := 0
+    for minute := 0; minute < n; minute++ {
+        if minute >= minReach[minute] {
+            return res
+        }
+        res++
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun eliminateMaximum(dist: IntArray, speed: IntArray): Int {
+        val n = dist.size
+        val minReach = IntArray(n) { i ->
+            (dist[i] + speed[i] - 1) / speed[i]
+        }
+
+        minReach.sort()
+
+        var res = 0
+        for (minute in 0 until n) {
+            if (minute >= minReach[minute]) {
+                return res
+            }
+            res++
+        }
+
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func eliminateMaximum(_ dist: [Int], _ speed: [Int]) -> Int {
+        let n = dist.count
+        var minReach = [Int](repeating: 0, count: n)
+
+        for i in 0..<n {
+            minReach[i] = (dist[i] + speed[i] - 1) / speed[i]
+        }
+
+        minReach.sort()
+
+        var res = 0
+        for minute in 0..<n {
+            if minute >= minReach[minute] {
+                return res
+            }
+            res += 1
+        }
+
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn eliminate_maximum(dist: Vec<i32>, speed: Vec<i32>) -> i32 {
+        let n = dist.len();
+        let mut min_reach: Vec<i32> = (0..n)
+            .map(|i| (dist[i] + speed[i] - 1) / speed[i])
+            .collect();
+
+        min_reach.sort();
+
+        let mut res = 0;
+        for minute in 0..n {
+            if minute as i32 >= min_reach[minute] {
+                return res;
+            }
+            res += 1;
+        }
+
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -107,7 +249,19 @@ class Solution {
 
 ---
 
-## 2. Sorting (Overwrting Input Array)
+## 2. Sorting (Overwriting Input Array)
+
+### Intuition
+
+This is the same approach as above, but we save space by reusing the input `dist` array to store arrival times instead of creating a new array. The logic remains identical: compute arrival times, sort, and check if we can eliminate each monster before it arrives.
+
+### Algorithm
+
+1. Overwrite `dist[i]` with `ceil(dist[i] / speed[i])`.
+2. Sort `dist` in ascending order.
+3. For each `minute` from `0` to `n - 1`:
+    - If `minute >= dist[minute]`, return `minute`.
+4. Return `n` if all monsters are eliminated.
 
 ::tabs-start
 
@@ -191,6 +345,26 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn eliminate_maximum(mut dist: Vec<i32>, speed: Vec<i32>) -> i32 {
+        let n = dist.len();
+        for i in 0..n {
+            dist[i] = (dist[i] + speed[i] - 1) / speed[i];
+        }
+
+        dist.sort();
+        for minute in 0..n {
+            if minute as i32 >= dist[minute] {
+                return minute as i32;
+            }
+        }
+
+        n as i32
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -201,6 +375,20 @@ class Solution {
 ---
 
 ## 3. Min-Heap
+
+### Intuition
+
+Instead of sorting all arrival times upfront, we can use a min-heap to extract the minimum arrival time on demand. This still achieves the same goal of processing monsters in order of how soon they reach the city. We pop from the heap one at a time and check if the monster arrives before the current minute.
+
+### Algorithm
+
+1. Push `dist[i] / speed[i]` into a min-heap for each monster.
+2. Initialize `res = 0` to count eliminations.
+3. While the heap is non-empty:
+    - Pop the smallest arrival time.
+    - If `res >= arrival_time`, the monster has reached the city. Return `res`.
+    - Otherwise, increment `res`.
+4. Return `res` after all monsters are eliminated.
 
 ::tabs-start
 
@@ -290,9 +478,50 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn eliminate_maximum(dist: Vec<i32>, speed: Vec<i32>) -> i32 {
+        let mut min_heap = BinaryHeap::new();
+        for i in 0..dist.len() {
+            // Use Reverse for min-heap behavior; store as (numerator, denominator)
+            // arrival time = dist[i] / speed[i] as float, but we can compare fractions
+            // For simplicity, use ceiling integer division
+            let arrival = (dist[i] + speed[i] - 1) / speed[i];
+            min_heap.push(std::cmp::Reverse(arrival));
+        }
+
+        let mut res = 0;
+        while let Some(std::cmp::Reverse(arrival)) = min_heap.pop() {
+            if res >= arrival {
+                return res;
+            }
+            res += 1;
+        }
+
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n \log n)$
 - Space complexity: $O(n)$
+
+---
+
+## Common Pitfalls
+
+### Using Floor Division Instead of Ceiling
+
+When calculating arrival time, you need `ceil(dist[i] / speed[i])` because a monster at distance 3 with speed 2 arrives at minute 2 (not 1.5). Using floor division or integer division without rounding up causes incorrect arrival time calculations, leading to wrong elimination counts.
+
+### Forgetting to Sort the Arrival Times
+
+The greedy approach only works when monsters are processed in order of their arrival times. Without sorting, you might try to eliminate a monster that arrives later while an earlier one reaches the city, giving incorrect results.
+
+### Off-by-One Error in the Comparison
+
+The condition should be `minute >= minReach[minute]` (monster arrives at or before the current minute), not `minute > minReach[minute]`. If a monster arrives exactly at minute 2 and we're at minute 2, we cannot eliminate it in time since we shoot at the start of each minute.

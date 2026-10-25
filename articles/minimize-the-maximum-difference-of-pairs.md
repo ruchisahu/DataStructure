@@ -1,4 +1,33 @@
-## 1. Greedy + Dynamic Programming (Top-Down)
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Sorting** - Optimal pairs are adjacent elements in sorted order, making sorting essential for the greedy approach
+- **Dynamic Programming (Memoization)** - The take/skip decision pattern with overlapping subproblems requires DP for efficient solutions
+- **Binary Search** - The optimal solution uses binary search on the answer space to find the minimum valid threshold
+- **Greedy Algorithms** - Understanding when greedy choices (pairing adjacent elements) lead to optimal solutions
+
+---
+
+## 1. Greedy + Dynamic Programming (Top-Down) (May Exceed Time Limit)
+
+### Intuition
+
+To minimize the maximum difference among `p` pairs, we first sort the array. After sorting, optimal pairs are always adjacent elements because non-adjacent pairs would have larger differences. The problem becomes selecting `p` non-overlapping adjacent pairs to minimize the largest difference.
+
+This is a classic DP problem: at each position, we decide whether to pair the current element with the next one (taking them both) or skip the current element. The goal is to minimize the maximum difference among all selected pairs.
+
+### Algorithm
+
+1. Sort the array.
+2. Define `dfs(i, pairs)` as the minimum possible maximum difference when considering elements from index `i` onward and needing `pairs` more pairs.
+3. Base cases:
+    - If `pairs == p`, return `0` (no more pairs needed).
+    - If `i >= n - 1`, return infinity (cannot form more pairs).
+4. At each position, choose the better option:
+    - **Take**: Pair elements at `i` and `i+1`, recursively solve for `i+2` with one fewer pair needed. The result is the `max` of this pair's difference and the recursive result.
+    - **Skip**: Move to `i+1` without pairing.
+5. Return the `min` of take and skip.
 
 ::tabs-start
 
@@ -110,6 +139,148 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    private int n;
+    private int p;
+    private int[] nums;
+    private Dictionary<(int, int), int> dp;
+
+    public int MinimizeMax(int[] nums, int p) {
+        Array.Sort(nums);
+        this.nums = nums;
+        this.p = p;
+        this.n = nums.Length;
+        dp = new Dictionary<(int, int), int>();
+        return Dfs(0, 0);
+    }
+
+    private int Dfs(int i, int pairs) {
+        if (pairs == p) {
+            return 0;
+        }
+        if (i >= n - 1) {
+            return int.MaxValue / 2;
+        }
+        if (dp.ContainsKey((i, pairs))) {
+            return dp[(i, pairs)];
+        }
+
+        int take = Math.Max(nums[i + 1] - nums[i], Dfs(i + 2, pairs + 1));
+        int skip = Dfs(i + 1, pairs);
+        dp[(i, pairs)] = Math.Min(take, skip);
+        return dp[(i, pairs)];
+    }
+}
+```
+
+```go
+func minimizeMax(nums []int, p int) int {
+    n := len(nums)
+    sort.Ints(nums)
+    dp := make(map[int]int)
+
+    var dfs func(i, pairs int) int
+    dfs = func(i, pairs int) int {
+        if pairs == p {
+            return 0
+        }
+        if i >= n-1 {
+            return math.MaxInt32
+        }
+        key := i*10001 + pairs
+        if val, ok := dp[key]; ok {
+            return val
+        }
+
+        take := max(nums[i+1]-nums[i], dfs(i+2, pairs+1))
+        skip := dfs(i+1, pairs)
+        dp[key] = min(take, skip)
+        return dp[key]
+    }
+
+    return dfs(0, 0)
+}
+```
+
+```kotlin
+class Solution {
+    fun minimizeMax(nums: IntArray, p: Int): Int {
+        val n = nums.size
+        nums.sort()
+        val dp = HashMap<Pair<Int, Int>, Int>()
+
+        fun dfs(i: Int, pairs: Int): Int {
+            if (pairs == p) return 0
+            if (i >= n - 1) return Int.MAX_VALUE / 2
+
+            val key = Pair(i, pairs)
+            if (dp.containsKey(key)) return dp[key]!!
+
+            val take = maxOf(nums[i + 1] - nums[i], dfs(i + 2, pairs + 1))
+            val skip = dfs(i + 1, pairs)
+            dp[key] = minOf(take, skip)
+            return dp[key]!!
+        }
+
+        return dfs(0, 0)
+    }
+}
+```
+
+```swift
+class Solution {
+    func minimizeMax(_ nums: [Int], _ p: Int) -> Int {
+        let n = nums.count
+        var nums = nums.sorted()
+        var dp = [String: Int]()
+
+        func dfs(_ i: Int, _ pairs: Int) -> Int {
+            if pairs == p { return 0 }
+            if i >= n - 1 { return Int.max / 2 }
+
+            let key = "\(i),\(pairs)"
+            if let val = dp[key] { return val }
+
+            let take = max(nums[i + 1] - nums[i], dfs(i + 2, pairs + 1))
+            let skip = dfs(i + 1, pairs)
+            dp[key] = min(take, skip)
+            return dp[key]!
+        }
+
+        return dfs(0, 0)
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn minimize_max(nums: Vec<i32>, p: i32) -> i32 {
+        let mut nums = nums;
+        nums.sort();
+        let n = nums.len();
+        let mut dp = HashMap::new();
+
+        fn dfs(
+            i: usize, pairs: i32, nums: &[i32], p: i32,
+            dp: &mut HashMap<(usize, i32), i32>,
+        ) -> i32 {
+            if pairs == p { return 0; }
+            if i >= nums.len() - 1 { return i32::MAX; }
+            if let Some(&v) = dp.get(&(i, pairs)) { return v; }
+
+            let take = (nums[i + 1] - nums[i]).max(dfs(i + 2, pairs + 1, nums, p, dp));
+            let skip = dfs(i + 1, pairs, nums, p, dp);
+            let res = take.min(skip);
+            dp.insert((i, pairs), res);
+            res
+        }
+
+        dfs(0, 0, &nums, p, &mut dp)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -121,7 +292,23 @@ class Solution {
 
 ---
 
-## 2. Greesy + Dynamic Programming (Bottom-Up)
+## 2. Greedy + Dynamic Programming (Bottom-Up)
+
+### Intuition
+
+The same logic as the top-down approach, but we fill the DP table iteratively from the end of the array backward. At each position and pair count, we compute the minimum maximum difference achievable.
+
+### Algorithm
+
+1. Sort the array.
+2. Create a 2D DP table where `dp[i][pairs]` represents the minimum maximum difference starting from index `i` with `pairs` pairs still needed.
+3. Initialize `dp[i][0] = 0` for all `i` (no pairs needed means `0` difference).
+4. Fill the table from `i = n - 2` down to `0`:
+    - For each number of pairs from `1` to `p`:
+        - **Take**: `max(nums[i+1] - nums[i], dp[i+2][pairs-1])`
+        - **Skip**: `dp[i+1][pairs]`
+        - Store the `min` of take and skip.
+5. Return `dp[0][p]`.
 
 ::tabs-start
 
@@ -240,6 +427,158 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int MinimizeMax(int[] nums, int p) {
+        int n = nums.Length;
+        Array.Sort(nums);
+
+        int INF = int.MaxValue / 2;
+        int[,] dp = new int[n + 1, p + 1];
+
+        for (int i = 0; i <= n; i++) {
+            for (int j = 0; j <= p; j++) {
+                dp[i, j] = INF;
+            }
+        }
+
+        for (int i = 0; i <= n; i++) {
+            dp[i, 0] = 0;
+        }
+
+        for (int i = n - 2; i >= 0; i--) {
+            for (int pairs = 1; pairs <= p; pairs++) {
+                int take = INF;
+                if (i + 1 < n) {
+                    take = Math.Max(nums[i + 1] - nums[i], dp[i + 2, pairs - 1]);
+                }
+
+                int skip = dp[i + 1, pairs];
+                dp[i, pairs] = Math.Min(take, skip);
+            }
+        }
+
+        return dp[0, p];
+    }
+}
+```
+
+```go
+func minimizeMax(nums []int, p int) int {
+    n := len(nums)
+    sort.Ints(nums)
+
+    INF := math.MaxInt32
+    dp := make([][]int, n+1)
+    for i := range dp {
+        dp[i] = make([]int, p+1)
+        for j := range dp[i] {
+            dp[i][j] = INF
+        }
+        dp[i][0] = 0
+    }
+
+    for i := n - 2; i >= 0; i-- {
+        for pairs := 1; pairs <= p; pairs++ {
+            take := INF
+            if i+1 < n {
+                take = max(nums[i+1]-nums[i], dp[i+2][pairs-1])
+            }
+            skip := dp[i+1][pairs]
+            dp[i][pairs] = min(take, skip)
+        }
+    }
+
+    return dp[0][p]
+}
+```
+
+```kotlin
+class Solution {
+    fun minimizeMax(nums: IntArray, p: Int): Int {
+        val n = nums.size
+        nums.sort()
+
+        val INF = Int.MAX_VALUE / 2
+        val dp = Array(n + 1) { IntArray(p + 1) { INF } }
+        for (i in 0..n) {
+            dp[i][0] = 0
+        }
+
+        for (i in n - 2 downTo 0) {
+            for (pairs in 1..p) {
+                var take = INF
+                if (i + 1 < n) {
+                    take = maxOf(nums[i + 1] - nums[i], dp[i + 2][pairs - 1])
+                }
+                val skip = dp[i + 1][pairs]
+                dp[i][pairs] = minOf(take, skip)
+            }
+        }
+
+        return dp[0][p]
+    }
+}
+```
+
+```swift
+class Solution {
+    func minimizeMax(_ nums: [Int], _ p: Int) -> Int {
+        let n = nums.count
+        var nums = nums.sorted()
+
+        let INF = Int.max / 2
+        var dp = [[Int]](repeating: [Int](repeating: INF, count: p + 1), count: n + 1)
+        for i in 0...n {
+            dp[i][0] = 0
+        }
+
+        for i in stride(from: n - 2, through: 0, by: -1) {
+            for pairs in 1...p {
+                var take = INF
+                if i + 1 < n {
+                    take = max(nums[i + 1] - nums[i], dp[i + 2][pairs - 1])
+                }
+                let skip = dp[i + 1][pairs]
+                dp[i][pairs] = min(take, skip)
+            }
+        }
+
+        return dp[0][p]
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn minimize_max(nums: Vec<i32>, p: i32) -> i32 {
+        let mut nums = nums;
+        let p = p as usize;
+        nums.sort();
+        let n = nums.len();
+
+        let mut dp = vec![vec![i32::MAX; p + 1]; n + 1];
+        for i in 0..=n {
+            dp[i][0] = 0;
+        }
+
+        for i in (0..=(n as i32 - 2).max(0) as usize).rev() {
+            for pairs in 1..=p {
+                let mut take = i32::MAX;
+                if i + 1 < n {
+                    let next = if i + 2 <= n { dp[i + 2][pairs - 1] } else { i32::MAX };
+                    take = (nums[i + 1] - nums[i]).max(next);
+                }
+                let skip = dp[i + 1][pairs];
+                dp[i][pairs] = take.min(skip);
+            }
+        }
+
+        dp[0][p]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -251,7 +590,23 @@ class Solution {
 
 ---
 
-## 3. Greesy + Dynamic Programming (Space Optimized)
+## 3. Greedy + Dynamic Programming (Space Optimized)
+
+### Intuition
+
+Since each row of the DP table only depends on the next two rows, we can reduce space by keeping only three 1D arrays instead of the full 2D table. We rotate these arrays as we iterate backward through the array.
+
+### Algorithm
+
+1. Sort the array.
+2. Use three arrays `dp`, `dp1`, and `dp2` of size `p + 1`, all initialized to infinity except index `0` which is `0`.
+3. Iterate from `i = n - 1` down to `0`:
+    - For each `pairs` from `1` to `p`:
+        - **Take**: `max(nums[i+1] - nums[i], dp2[pairs-1])` if `i + 1 < n`
+        - **Skip**: `dp1[pairs]`
+        - `dp[pairs] = min(take, skip)`
+    - Rotate: `dp2 = dp1`, `dp1 = dp`, reset `dp`.
+4. Return `dp1[p]`.
 
 ::tabs-start
 
@@ -386,6 +741,191 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int MinimizeMax(int[] nums, int p) {
+        int n = nums.Length;
+        Array.Sort(nums);
+
+        int INF = int.MaxValue / 2;
+        int[] dp = new int[p + 1];
+        int[] dp1 = new int[p + 1];
+        int[] dp2 = new int[p + 1];
+
+        for (int j = 0; j <= p; j++) {
+            dp[j] = INF;
+            dp1[j] = INF;
+            dp2[j] = INF;
+        }
+
+        dp[0] = dp1[0] = dp2[0] = 0;
+
+        for (int i = n - 1; i >= 0; i--) {
+            for (int pairs = 1; pairs <= p; pairs++) {
+                int take = INF;
+                if (i + 1 < n) {
+                    take = Math.Max(nums[i + 1] - nums[i], dp2[pairs - 1]);
+                }
+                int skip = dp1[pairs];
+                dp[pairs] = Math.Min(take, skip);
+            }
+
+            dp2 = (int[])dp1.Clone();
+            dp1 = (int[])dp.Clone();
+
+            dp = new int[p + 1];
+            for (int j = 0; j <= p; j++) dp[j] = INF;
+            dp[0] = 0;
+        }
+
+        return dp1[p];
+    }
+}
+```
+
+```go
+func minimizeMax(nums []int, p int) int {
+    n := len(nums)
+    sort.Ints(nums)
+
+    INF := math.MaxInt32
+    dp := make([]int, p+1)
+    dp1 := make([]int, p+1)
+    dp2 := make([]int, p+1)
+
+    for j := 0; j <= p; j++ {
+        dp[j] = INF
+        dp1[j] = INF
+        dp2[j] = INF
+    }
+    dp[0], dp1[0], dp2[0] = 0, 0, 0
+
+    for i := n - 1; i >= 0; i-- {
+        for pairs := 1; pairs <= p; pairs++ {
+            take := INF
+            if i+1 < n {
+                take = max(nums[i+1]-nums[i], dp2[pairs-1])
+            }
+            skip := dp1[pairs]
+            dp[pairs] = min(take, skip)
+        }
+        copy(dp2, dp1)
+        copy(dp1, dp)
+        for j := range dp {
+            dp[j] = INF
+        }
+        dp[0] = 0
+    }
+
+    return dp1[p]
+}
+```
+
+```kotlin
+class Solution {
+    fun minimizeMax(nums: IntArray, p: Int): Int {
+        val n = nums.size
+        nums.sort()
+
+        val INF = Int.MAX_VALUE / 2
+        var dp = IntArray(p + 1) { INF }
+        var dp1 = IntArray(p + 1) { INF }
+        var dp2 = IntArray(p + 1) { INF }
+
+        dp[0] = 0
+        dp1[0] = 0
+        dp2[0] = 0
+
+        for (i in n - 1 downTo 0) {
+            for (pairs in 1..p) {
+                var take = INF
+                if (i + 1 < n) {
+                    take = maxOf(nums[i + 1] - nums[i], dp2[pairs - 1])
+                }
+                val skip = dp1[pairs]
+                dp[pairs] = minOf(take, skip)
+            }
+            dp2 = dp1.copyOf()
+            dp1 = dp.copyOf()
+            dp = IntArray(p + 1) { INF }
+            dp[0] = 0
+        }
+
+        return dp1[p]
+    }
+}
+```
+
+```swift
+class Solution {
+    func minimizeMax(_ nums: [Int], _ p: Int) -> Int {
+        let n = nums.count
+        var nums = nums.sorted()
+
+        let INF = Int.max / 2
+        var dp = [Int](repeating: INF, count: p + 1)
+        var dp1 = [Int](repeating: INF, count: p + 1)
+        var dp2 = [Int](repeating: INF, count: p + 1)
+
+        dp[0] = 0
+        dp1[0] = 0
+        dp2[0] = 0
+
+        for i in stride(from: n - 1, through: 0, by: -1) {
+            for pairs in 1...p {
+                var take = INF
+                if i + 1 < n {
+                    take = max(nums[i + 1] - nums[i], dp2[pairs - 1])
+                }
+                let skip = dp1[pairs]
+                dp[pairs] = min(take, skip)
+            }
+            dp2 = dp1
+            dp1 = dp
+            dp = [Int](repeating: INF, count: p + 1)
+            dp[0] = 0
+        }
+
+        return dp1[p]
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn minimize_max(nums: Vec<i32>, p: i32) -> i32 {
+        let mut nums = nums;
+        let p = p as usize;
+        nums.sort();
+        let n = nums.len();
+
+        let mut dp = vec![i32::MAX; p + 1];
+        let mut dp1 = vec![i32::MAX; p + 1];
+        let mut dp2 = vec![i32::MAX; p + 1];
+        dp[0] = 0;
+        dp1[0] = 0;
+        dp2[0] = 0;
+
+        for i in (0..n).rev() {
+            for pairs in 1..=p {
+                let mut take = i32::MAX;
+                if i + 1 < n {
+                    take = (nums[i + 1] - nums[i]).max(dp2[pairs - 1]);
+                }
+                let skip = dp1[pairs];
+                dp[pairs] = take.min(skip);
+            }
+            dp2 = dp1.clone();
+            dp1 = dp.clone();
+            dp.fill(i32::MAX);
+            dp[0] = 0;
+        }
+
+        dp1[p]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -398,6 +938,23 @@ class Solution {
 ---
 
 ## 4. Greedy + Binary Search
+
+### Intuition
+
+Instead of DP, we can binary search on the answer. Given a threshold `t`, we greedily check if we can form `p` pairs where each pair has difference at most `t`. After sorting, we scan left to right: whenever two adjacent elements have difference at most `t`, we pair them and skip both. This greedy approach works because pairing earlier elements never blocks better options later.
+
+The answer lies between 0 and `max - min` of the sorted array, so we binary search to find the smallest threshold that allows forming `p` pairs.
+
+### Algorithm
+
+1. Handle edge case: if `p == 0`, return `0`.
+2. Sort the array.
+3. Binary search on threshold between `0` and `nums[n-1] - nums[0]`:
+    - For each threshold `mid`, check if we can greedily form `p` pairs:
+        - Scan the sorted array. If `nums[i+1] - nums[i] <= mid`, count a pair and skip to `i+2`. Otherwise move to `i+1`.
+        - If count reaches `p`, the threshold is valid.
+    - If valid, try a smaller threshold. Otherwise try larger.
+4. Return the smallest valid threshold.
 
 ::tabs-start
 
@@ -557,6 +1114,218 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int MinimizeMax(int[] nums, int p) {
+        if (p == 0) return 0;
+        Array.Sort(nums);
+
+        bool IsValid(int threshold) {
+            int i = 0, cnt = 0;
+            while (i < nums.Length - 1) {
+                if (Math.Abs(nums[i] - nums[i + 1]) <= threshold) {
+                    cnt++;
+                    i += 2;
+                } else {
+                    i++;
+                }
+                if (cnt == p) return true;
+            }
+            return false;
+        }
+
+        int l = 0, r = nums[nums.Length - 1] - nums[0];
+        int res = r;
+
+        while (l <= r) {
+            int m = l + (r - l) / 2;
+            if (IsValid(m)) {
+                res = m;
+                r = m - 1;
+            } else {
+                l = m + 1;
+            }
+        }
+
+        return res;
+    }
+}
+```
+
+```go
+func minimizeMax(nums []int, p int) int {
+    if p == 0 {
+        return 0
+    }
+
+    sort.Ints(nums)
+    n := len(nums)
+
+    isValid := func(threshold int) bool {
+        i, cnt := 0, 0
+        for i < n-1 {
+            if abs(nums[i]-nums[i+1]) <= threshold {
+                cnt++
+                i += 2
+            } else {
+                i++
+            }
+            if cnt == p {
+                return true
+            }
+        }
+        return false
+    }
+
+    l, r := 0, nums[n-1]-nums[0]
+    res := r
+
+    for l <= r {
+        m := l + (r-l)/2
+        if isValid(m) {
+            res = m
+            r = m - 1
+        } else {
+            l = m + 1
+        }
+    }
+
+    return res
+}
+
+func abs(x int) int {
+    if x < 0 {
+        return -x
+    }
+    return x
+}
+```
+
+```kotlin
+class Solution {
+    fun minimizeMax(nums: IntArray, p: Int): Int {
+        if (p == 0) return 0
+
+        nums.sort()
+        val n = nums.size
+
+        fun isValid(threshold: Int): Boolean {
+            var i = 0
+            var cnt = 0
+            while (i < n - 1) {
+                if (kotlin.math.abs(nums[i] - nums[i + 1]) <= threshold) {
+                    cnt++
+                    i += 2
+                } else {
+                    i++
+                }
+                if (cnt == p) return true
+            }
+            return false
+        }
+
+        var l = 0
+        var r = nums[n - 1] - nums[0]
+        var res = r
+
+        while (l <= r) {
+            val m = l + (r - l) / 2
+            if (isValid(m)) {
+                res = m
+                r = m - 1
+            } else {
+                l = m + 1
+            }
+        }
+
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func minimizeMax(_ nums: [Int], _ p: Int) -> Int {
+        if p == 0 { return 0 }
+
+        var nums = nums.sorted()
+        let n = nums.count
+
+        func isValid(_ threshold: Int) -> Bool {
+            var i = 0
+            var cnt = 0
+            while i < n - 1 {
+                if abs(nums[i] - nums[i + 1]) <= threshold {
+                    cnt += 1
+                    i += 2
+                } else {
+                    i += 1
+                }
+                if cnt == p { return true }
+            }
+            return false
+        }
+
+        var l = 0
+        var r = nums[n - 1] - nums[0]
+        var res = r
+
+        while l <= r {
+            let m = l + (r - l) / 2
+            if isValid(m) {
+                res = m
+                r = m - 1
+            } else {
+                l = m + 1
+            }
+        }
+
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn minimize_max(nums: Vec<i32>, p: i32) -> i32 {
+        if p == 0 { return 0; }
+        let mut nums = nums;
+        nums.sort();
+        let n = nums.len();
+
+        let is_valid = |threshold: i32| -> bool {
+            let (mut i, mut cnt) = (0, 0);
+            while i < n - 1 {
+                if (nums[i] - nums[i + 1]).abs() <= threshold {
+                    cnt += 1;
+                    i += 2;
+                } else {
+                    i += 1;
+                }
+                if cnt == p { return true; }
+            }
+            false
+        };
+
+        let mut l = 0;
+        let mut r = nums[n - 1] - nums[0];
+        let mut res = r;
+
+        while l <= r {
+            let m = l + (r - l) / 2;
+            if is_valid(m) {
+                res = m;
+                r = m - 1;
+            } else {
+                l = m + 1;
+            }
+        }
+
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -565,3 +1334,19 @@ class Solution {
 - Space complexity: $O(1)$ or $O(n)$ depending on the sorting algorithm.
 
 > Where $n$ is the size of the input array and $m$ is the maximum value in the array.
+
+---
+
+## Common Pitfalls
+
+### Forgetting to Sort the Array First
+
+Optimal pairs in this problem are always adjacent elements in the sorted array. If you try to form pairs without sorting, you might pair elements that are far apart in value, leading to suboptimal or incorrect results. Always sort the array before applying either the DP or binary search approach.
+
+### Incorrect Greedy Pairing in Binary Search Validation
+
+When validating a threshold in the binary search approach, you must skip both elements when forming a pair (move to `i + 2`), not just one. A common bug is incrementing by 1 after forming a pair, which would allow the same element to be used in multiple pairs. Remember: if `nums[i]` and `nums[i+1]` form a valid pair, jump to index `i + 2` to ensure non-overlapping pairs.
+
+### Not Handling the Edge Case When p Equals Zero
+
+When `p = 0`, no pairs need to be formed, so the answer is always `0` regardless of the array contents. Some solutions fail to handle this edge case and may return incorrect results or encounter errors when attempting to form zero pairs. Always check for `p == 0` at the start and return `0` immediately.

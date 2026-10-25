@@ -1,4 +1,27 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **String Manipulation** - Comparing characters and understanding prefix matching operations
+- **Trie (Prefix Tree)** - A tree-based data structure for efficient prefix storage and lookup
+- **Array/List Traversal** - Iterating through collections of strings
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+To check if a word has a given prefix, we compare the first few characters of the word with the prefix string. If the word is shorter than the prefix, it cannot have that prefix. Otherwise, we check character by character until we either find a mismatch or confirm all prefix characters match.
+
+### Algorithm
+
+1. Initialize a counter to `0`.
+2. For each word in the array:
+    - Skip if the word is shorter than the prefix length.
+    - Compare each character of the word with the corresponding character of the prefix.
+    - If all characters match, increment the counter.
+3. Return the final count.
 
 ::tabs-start
 
@@ -73,7 +96,8 @@ class Solution {
      * @return {number}
      */
     prefixCount(words, pref) {
-        let N = pref.length, res = 0;
+        let N = pref.length,
+            res = 0;
 
         for (let w of words) {
             if (w.length < N) continue;
@@ -114,18 +138,125 @@ public class Solution {
 }
 ```
 
+```go
+func prefixCount(words []string, pref string) int {
+    N := len(pref)
+    res := 0
+
+    for _, w := range words {
+        if len(w) < N {
+            continue
+        }
+        inc := 1
+        for i := 0; i < N; i++ {
+            if w[i] != pref[i] {
+                inc = 0
+                break
+            }
+        }
+        res += inc
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun prefixCount(words: Array<String>, pref: String): Int {
+        val N = pref.length
+        var res = 0
+
+        for (w in words) {
+            if (w.length < N) continue
+            var inc = 1
+            for (i in 0 until N) {
+                if (w[i] != pref[i]) {
+                    inc = 0
+                    break
+                }
+            }
+            res += inc
+        }
+
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func prefixCount(_ words: [String], _ pref: String) -> Int {
+        let N = pref.count
+        var res = 0
+        let prefArr = Array(pref)
+
+        for w in words {
+            if w.count < N { continue }
+            let wArr = Array(w)
+            var inc = 1
+            for i in 0..<N {
+                if wArr[i] != prefArr[i] {
+                    inc = 0
+                    break
+                }
+            }
+            res += inc
+        }
+
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn prefix_count(words: Vec<String>, pref: String) -> i32 {
+        let pref = pref.as_bytes();
+        let n = pref.len();
+        let mut res = 0;
+
+        for w in &words {
+            let w = w.as_bytes();
+            if w.len() < n { continue; }
+            let mut inc = 1;
+            for i in 0..n {
+                if w[i] != pref[i] {
+                    inc = 0;
+                    break;
+                }
+            }
+            res += inc;
+        }
+
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
-* Time complexity: $O(m * n)$
-* Space complexity: $O(1)$
+- Time complexity: $O(m * n)$
+- Space complexity: $O(1)$
 
 > Where $m$ is the number of words and $n$ is the length of the string $pref$.
 
 ---
 
 ## 2. Built-In Method
+
+### Intuition
+
+Most programming languages provide built-in methods to check if a string starts with a given prefix. These methods handle the character comparison internally and are optimized for the task, making the code cleaner and less error-prone.
+
+### Algorithm
+
+1. Initialize a counter to `0`.
+2. For each word in the array, use the language's built-in prefix checking method (like `startsWith` or `hasPrefix`).
+3. If the word starts with the prefix, increment the counter.
+4. Return the final count.
 
 ::tabs-start
 
@@ -200,18 +331,86 @@ public class Solution {
 }
 ```
 
+```go
+func prefixCount(words []string, pref string) int {
+    res := 0
+    for _, w := range words {
+        if strings.HasPrefix(w, pref) {
+            res++
+        }
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun prefixCount(words: Array<String>, pref: String): Int {
+        var res = 0
+        for (w in words) {
+            if (w.startsWith(pref)) {
+                res++
+            }
+        }
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func prefixCount(_ words: [String], _ pref: String) -> Int {
+        var res = 0
+        for w in words {
+            if w.hasPrefix(pref) {
+                res += 1
+            }
+        }
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn prefix_count(words: Vec<String>, pref: String) -> i32 {
+        let mut res = 0;
+        for w in &words {
+            if w.starts_with(&pref) {
+                res += 1;
+            }
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
-* Time complexity: $O(m * n)$
-* Space complexity: $O(1)$
+- Time complexity: $O(m * n)$
+- Space complexity: $O(1)$
 
 > Where $m$ is the number of words and $n$ is the length of the string $pref$.
 
 ---
 
 ## 3. Trie
+
+### Intuition
+
+A Trie (prefix tree) is a tree structure where each node represents a character. By inserting only the first few characters of each word (up to the prefix length), we build a compact structure. Each node keeps a count of how many words pass through it. After inserting all words, we traverse the trie following the prefix characters and return the count at the final node.
+
+### Algorithm
+
+1. Create a Trie data structure where each node has children and a count.
+2. For each word in the array:
+    - If the word is at least as long as the prefix, insert the first `prefix.length` characters into the trie.
+    - Increment the count at each node during insertion.
+3. Traverse the trie following the prefix characters.
+4. If any character is missing, return `0`.
+5. Otherwise, return the count at the final node.
 
 ::tabs-start
 
@@ -472,11 +671,251 @@ public class Solution {
 }
 ```
 
+```go
+type PrefixNode struct {
+    children [26]*PrefixNode
+    count    int
+}
+
+type PrefixTree struct {
+    root *PrefixNode
+}
+
+func NewPrefixTree() *PrefixTree {
+    return &PrefixTree{root: &PrefixNode{}}
+}
+
+func (t *PrefixTree) Add(w string, length int) {
+    cur := t.root
+    for i := 0; i < length; i++ {
+        idx := w[i] - 'a'
+        if cur.children[idx] == nil {
+            cur.children[idx] = &PrefixNode{}
+        }
+        cur = cur.children[idx]
+        cur.count++
+    }
+}
+
+func (t *PrefixTree) Count(pref string) int {
+    cur := t.root
+    for _, c := range pref {
+        idx := c - 'a'
+        if cur.children[idx] == nil {
+            return 0
+        }
+        cur = cur.children[idx]
+    }
+    return cur.count
+}
+
+func prefixCount(words []string, pref string) int {
+    prefixTree := NewPrefixTree()
+    for _, w := range words {
+        if len(w) >= len(pref) {
+            prefixTree.Add(w, len(pref))
+        }
+    }
+    return prefixTree.Count(pref)
+}
+```
+
+```kotlin
+class PrefixNode {
+    val children = arrayOfNulls<PrefixNode>(26)
+    var count = 0
+}
+
+class PrefixTree {
+    private val root = PrefixNode()
+
+    fun add(w: String, length: Int) {
+        var cur = root
+        for (i in 0 until length) {
+            val idx = w[i] - 'a'
+            if (cur.children[idx] == null) {
+                cur.children[idx] = PrefixNode()
+            }
+            cur = cur.children[idx]!!
+            cur.count++
+        }
+    }
+
+    fun count(pref: String): Int {
+        var cur = root
+        for (c in pref) {
+            val idx = c - 'a'
+            if (cur.children[idx] == null) return 0
+            cur = cur.children[idx]!!
+        }
+        return cur.count
+    }
+}
+
+class Solution {
+    fun prefixCount(words: Array<String>, pref: String): Int {
+        val prefixTree = PrefixTree()
+        for (w in words) {
+            if (w.length >= pref.length) {
+                prefixTree.add(w, pref.length)
+            }
+        }
+        return prefixTree.count(pref)
+    }
+}
+```
+
+```swift
+class PrefixNode {
+    var children = [Character: PrefixNode]()
+    var count = 0
+}
+
+class PrefixTree {
+    private let root = PrefixNode()
+
+    func add(_ w: String, _ length: Int) {
+        var cur = root
+        let chars = Array(w)
+        for i in 0..<length {
+            let c = chars[i]
+            if cur.children[c] == nil {
+                cur.children[c] = PrefixNode()
+            }
+            cur = cur.children[c]!
+            cur.count += 1
+        }
+    }
+
+    func count(_ pref: String) -> Int {
+        var cur = root
+        for c in pref {
+            if cur.children[c] == nil {
+                return 0
+            }
+            cur = cur.children[c]!
+        }
+        return cur.count
+    }
+}
+
+class Solution {
+    func prefixCount(_ words: [String], _ pref: String) -> Int {
+        let prefixTree = PrefixTree()
+        for w in words {
+            if w.count >= pref.count {
+                prefixTree.add(w, pref.count)
+            }
+        }
+        return prefixTree.count(pref)
+    }
+}
+```
+
+```rust
+struct PrefixNode {
+    children: [Option<Box<PrefixNode>>; 26],
+    count: i32,
+}
+
+impl PrefixNode {
+    fn new() -> Self {
+        PrefixNode {
+            children: Default::default(),
+            count: 0,
+        }
+    }
+}
+
+struct PrefixTree {
+    root: PrefixNode,
+}
+
+impl PrefixTree {
+    fn new() -> Self {
+        PrefixTree { root: PrefixNode::new() }
+    }
+
+    fn add(&mut self, w: &[u8], length: usize) {
+        let mut cur = &mut self.root;
+        for i in 0..length {
+            let idx = (w[i] - b'a') as usize;
+            cur = cur.children[idx].get_or_insert_with(|| Box::new(PrefixNode::new()));
+            cur.count += 1;
+        }
+    }
+
+    fn count(&self, pref: &[u8]) -> i32 {
+        let mut cur = &self.root;
+        for &c in pref {
+            let idx = (c - b'a') as usize;
+            match &cur.children[idx] {
+                Some(node) => cur = node,
+                None => return 0,
+            }
+        }
+        cur.count
+    }
+}
+
+impl Solution {
+    pub fn prefix_count(words: Vec<String>, pref: String) -> i32 {
+        let mut prefix_tree = PrefixTree::new();
+        let pref_bytes = pref.as_bytes();
+        let pref_len = pref_bytes.len();
+
+        for w in &words {
+            if w.len() >= pref_len {
+                prefix_tree.add(w.as_bytes(), pref_len);
+            }
+        }
+
+        prefix_tree.count(pref_bytes)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
-* Time complexity: $O(m * l + n)$
-* Space complexity: $O(m * l)$
+- Time complexity: $O(m * l + n)$
+- Space complexity: $O(m * l)$
 
 > Where $m$ is the number of words, $n$ is the length of the string $pref$ and $l$ is the maximum length of a word.
+
+---
+
+## Common Pitfalls
+
+### Checking Contains Instead of Starts With
+
+The problem asks for words that start with the prefix, not words that contain the prefix anywhere. Using a contains/includes check instead of a starts-with check will incorrectly count words where the prefix appears in the middle.
+
+```python
+# Wrong: Checks if prefix exists anywhere in the word
+if pref in word:
+    count += 1
+
+# Correct: Checks if word starts with prefix
+if word.startswith(pref):
+    count += 1
+```
+
+### Not Handling Words Shorter Than the Prefix
+
+When manually comparing characters, forgetting to check if the word is at least as long as the prefix leads to index out of bounds errors or incorrect matches.
+
+```python
+# Wrong: May cause index error if word is shorter than prefix
+for i in range(len(pref)):
+    if word[i] != pref[i]:  # Error when len(word) < len(pref)
+        break
+
+# Correct: Skip words shorter than the prefix
+if len(word) < len(pref):
+    continue
+for i in range(len(pref)):
+    if word[i] != pref[i]:
+        break
+```

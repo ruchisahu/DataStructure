@@ -1,4 +1,32 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Hash Tables / Frequency Counting** - Tracking character counts to compare substrings
+- **Sliding Window Technique** - Efficiently checking fixed-size substrings without rebuilding counts
+- **String Manipulation** - Working with substrings and character comparisons
+- **Sorting** - Used in the brute-force approach to compare permutations
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+The brute-force approach tries every possible substring of `s2` and checks whether it is a permutation of `s1`.
+To do this, we sort `s1` once, and then for each substring of `s2`, we sort it and compare.
+If the sorted substring matches the sorted `s1`, it means the substring contains exactly the same characters.
+This method is simple to understand but very slow because it examines all substrings and sorts each one.
+
+### Algorithm
+
+1. Sort `s1` so we can compare substrings against it.
+2. Loop through every starting index `i` in `s2`.
+3. For each `i`, loop through every ending index `j ≥ i`:
+    - Extract the substring `s2[i : j + 1]`.
+    - Sort it and compare with sorted `s1`.
+    - If they match, return `true`.
+4. If no matching substring is found, return `false`.
 
 ::tabs-start
 
@@ -172,6 +200,26 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn check_inclusion(s1: String, s2: String) -> bool {
+        let mut s1_sorted: Vec<u8> = s1.bytes().collect();
+        s1_sorted.sort();
+        let s2 = s2.as_bytes();
+        for i in 0..s2.len() {
+            for j in i..s2.len() {
+                let mut sub: Vec<u8> = s2[i..=j].to_vec();
+                sub.sort();
+                if sub == s1_sorted {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -182,6 +230,27 @@ class Solution {
 ---
 
 ## 2. Hash Table
+
+### Intuition
+
+We first count the characters in `s1`, since any valid substring in `s2` must match these exact frequencies.
+Then, for every starting point in `s2`, we build a frequency map as we extend the substring.
+If we ever exceed the needed count for a character, we stop early because the substring can no longer be a valid permutation.
+If all character counts match exactly, we have found a valid permutation.
+This method is much cleaner than brute force but still slow because it restarts counting for each position.
+
+### Algorithm
+
+1. Build a frequency map `count1` for all characters in `s1`.
+2. Let `need` be the number of unique characters in `s1` whose counts must match.
+3. For each starting index `i` in `s2`:
+    - Create an empty map `count2` and a match counter `cur = 0`.
+    - Extend the substring by moving `j` from `i` forward:
+        - Increment the frequency of `s2[j]` in `count2`.
+        - If `count2[s2[j]]` exceeds what `count1` requires, break — this substring can't work.
+        - If the count for this character now matches `count1`, increase `cur`.
+        - If `cur == need`, return `true` — we found a valid permutation.
+4. If no starting index yields a match, return `false`.
 
 ::tabs-start
 
@@ -447,6 +516,39 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn check_inclusion(s1: String, s2: String) -> bool {
+        let mut count1 = HashMap::new();
+        for c in s1.bytes() {
+            *count1.entry(c).or_insert(0) += 1;
+        }
+        let need = count1.len();
+        let s2 = s2.as_bytes();
+        for i in 0..s2.len() {
+            let mut count2 = HashMap::new();
+            let mut cur = 0;
+            for j in i..s2.len() {
+                let c = s2[j];
+                *count2.entry(c).or_insert(0) += 1;
+                let c1 = *count1.get(&c).unwrap_or(&0);
+                let c2 = *count2.get(&c).unwrap_or(&0);
+                if c1 < c2 {
+                    break;
+                }
+                if c1 == c2 {
+                    cur += 1;
+                }
+                if cur == need {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -459,6 +561,31 @@ class Solution {
 ---
 
 ## 3. Sliding Window
+
+### Intuition
+
+Since a permutation of `s1` must have the **same character counts**, we can use a fixed-size sliding window over `s2` whose length is exactly `len(s1)`.
+We maintain two frequency arrays:
+
+- one for `s1`
+- one for the current window in `s2`
+
+If these two arrays ever match, the window is a valid permutation.
+As we slide the window forward, we update counts by removing the left character and adding the new right character — no need to rebuild the counts each time.
+This makes the solution fast and efficient.
+
+### Algorithm
+
+1. If `s1` is longer than `s2`, return `false`.
+2. Build character frequency arrays for:
+    - `s1`
+    - the first window of `s2` of size `len(s1)`
+3. Count how many positions match between the two arrays (`matches`).
+4. Slide the window from left to right across `s2`:
+    - At each step, add the new right character and update counts/matches.
+    - Remove the left character and update counts/matches.
+    - If at any time `matches == 26`, return `true`.
+5. After finishing the loop, return whether `matches == 26`.
 
 ::tabs-start
 
@@ -847,9 +974,71 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn check_inclusion(s1: String, s2: String) -> bool {
+        let s1 = s1.as_bytes();
+        let s2 = s2.as_bytes();
+        if s1.len() > s2.len() {
+            return false;
+        }
+        let mut s1_count = [0i32; 26];
+        let mut s2_count = [0i32; 26];
+        for i in 0..s1.len() {
+            s1_count[(s1[i] - b'a') as usize] += 1;
+            s2_count[(s2[i] - b'a') as usize] += 1;
+        }
+        let mut matches = 0;
+        for i in 0..26 {
+            if s1_count[i] == s2_count[i] {
+                matches += 1;
+            }
+        }
+        let mut l = 0;
+        for r in s1.len()..s2.len() {
+            if matches == 26 {
+                return true;
+            }
+            let idx = (s2[r] - b'a') as usize;
+            s2_count[idx] += 1;
+            if s1_count[idx] == s2_count[idx] {
+                matches += 1;
+            } else if s1_count[idx] + 1 == s2_count[idx] {
+                matches -= 1;
+            }
+            let idx = (s2[l] - b'a') as usize;
+            s2_count[idx] -= 1;
+            if s1_count[idx] == s2_count[idx] {
+                matches += 1;
+            } else if s1_count[idx] - 1 == s2_count[idx] {
+                matches -= 1;
+            }
+            l += 1;
+        }
+        matches == 26
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(1)$
+
+---
+
+## Common Pitfalls
+
+### Not Checking Length Before Proceeding
+
+If `s1` is longer than `s2`, no permutation of `s1` can exist as a substring of `s2`. Forgetting this early check leads to unnecessary computation or index errors when initializing the sliding window.
+
+### Incorrect Window Size
+
+The sliding window must be exactly the length of `s1`. A common mistake is using a variable-size window or forgetting to remove the leftmost character when adding a new right character. This breaks the frequency comparison and produces incorrect results.
+
+### Mishandling the Matches Counter
+
+When updating the frequency counts during window sliding, the `matches` counter must be carefully updated. A character transition from matching to non-matching should decrement `matches`, and vice versa. Off-by-one errors in these conditions (e.g., checking `==` vs `+1` or `-1`) cause the algorithm to miss valid windows or report false positives.

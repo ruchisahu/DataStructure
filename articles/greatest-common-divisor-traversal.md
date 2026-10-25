@@ -1,4 +1,27 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Graph Traversal (DFS/BFS)** - The problem models indices as nodes and requires checking if all nodes are connected in a single component
+- **Union-Find (Disjoint Set Union)** - Optimal solutions use DSU to efficiently track and merge connected components
+- **Greatest Common Divisor (GCD)** - Understanding how to compute GCD and recognizing when two numbers share common factors
+- **Prime Factorization** - Breaking numbers into prime factors to efficiently determine shared factors between numbers
+- **Sieve of Eratosthenes** - Precomputing smallest prime factors enables O(log n) factorization per number
+
+---
+
 ## 1. Brute Force (DFS)
+
+### Intuition
+
+Two indices can be connected if their corresponding values share a common factor greater than `1`. We can model this as a graph where each index is a node, and edges connect pairs with GCD > 1. The problem reduces to checking if all nodes belong to a single connected component.
+
+### Algorithm
+
+1. Build an adjacency list where indices `i` and `j` are connected if `gcd(nums[i], nums[j]) > 1`.
+2. Run DFS starting from index `0`, marking all reachable nodes.
+3. After DFS, check if all nodes were visited.
+4. Return `true` if all nodes are in one component, `false` otherwise.
 
 ::tabs-start
 
@@ -191,16 +214,182 @@ public class Solution {
 }
 ```
 
+```go
+func canTraverseAllPairs(nums []int) bool {
+    n := len(nums)
+    visit := make([]bool, n)
+    adj := make([][]int, n)
+    for i := range adj {
+        adj[i] = []int{}
+    }
+
+    gcd := func(a, b int) int {
+        for b != 0 {
+            a, b = b, a%b
+        }
+        return a
+    }
+
+    for i := 0; i < n; i++ {
+        for j := i + 1; j < n; j++ {
+            if gcd(nums[i], nums[j]) > 1 {
+                adj[i] = append(adj[i], j)
+                adj[j] = append(adj[j], i)
+            }
+        }
+    }
+
+    var dfs func(node int)
+    dfs = func(node int) {
+        visit[node] = true
+        for _, nei := range adj[node] {
+            if !visit[nei] {
+                dfs(nei)
+            }
+        }
+    }
+
+    dfs(0)
+    for _, v := range visit {
+        if !v {
+            return false
+        }
+    }
+    return true
+}
+```
+
+```kotlin
+class Solution {
+    fun canTraverseAllPairs(nums: IntArray): Boolean {
+        val n = nums.size
+        val visit = BooleanArray(n)
+        val adj = Array(n) { mutableListOf<Int>() }
+
+        fun gcd(a: Int, b: Int): Int = if (b == 0) a else gcd(b, a % b)
+
+        for (i in 0 until n) {
+            for (j in i + 1 until n) {
+                if (gcd(nums[i], nums[j]) > 1) {
+                    adj[i].add(j)
+                    adj[j].add(i)
+                }
+            }
+        }
+
+        fun dfs(node: Int) {
+            visit[node] = true
+            for (nei in adj[node]) {
+                if (!visit[nei]) {
+                    dfs(nei)
+                }
+            }
+        }
+
+        dfs(0)
+        return visit.all { it }
+    }
+}
+```
+
+```swift
+class Solution {
+    func canTraverseAllPairs(_ nums: [Int]) -> Bool {
+        let n = nums.count
+        var visit = [Bool](repeating: false, count: n)
+        var adj = [[Int]](repeating: [], count: n)
+
+        func gcd(_ a: Int, _ b: Int) -> Int {
+            return b == 0 ? a : gcd(b, a % b)
+        }
+
+        for i in 0..<n {
+            for j in (i + 1)..<n {
+                if gcd(nums[i], nums[j]) > 1 {
+                    adj[i].append(j)
+                    adj[j].append(i)
+                }
+            }
+        }
+
+        func dfs(_ node: Int) {
+            visit[node] = true
+            for nei in adj[node] {
+                if !visit[nei] {
+                    dfs(nei)
+                }
+            }
+        }
+
+        dfs(0)
+        return visit.allSatisfy { $0 }
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn can_traverse_all_pairs(nums: Vec<i32>) -> bool {
+        let n = nums.len();
+        let mut visit = vec![false; n];
+        let mut adj = vec![vec![]; n];
+
+        fn gcd(a: i32, b: i32) -> i32 {
+            if b == 0 { a } else { gcd(b, a % b) }
+        }
+
+        for i in 0..n {
+            for j in (i + 1)..n {
+                if gcd(nums[i], nums[j]) > 1 {
+                    adj[i].push(j);
+                    adj[j].push(i);
+                }
+            }
+        }
+
+        fn dfs(node: usize, adj: &Vec<Vec<usize>>, visit: &mut Vec<bool>) {
+            visit[node] = true;
+            for &nei in &adj[node] {
+                if !visit[nei] {
+                    dfs(nei, adj, visit);
+                }
+            }
+        }
+
+        dfs(0, &adj, &mut visit);
+        visit.iter().all(|&v| v)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
-- Time complexity: $O(n ^ 2 \log n)$
+- Time complexity: $O(n ^ 2 \log m)$
+    - Each of the $O(n ^ 2)$ pairs requires an $O(\log m)$ GCD computation.
 - Space complexity: $O(n ^ 2)$
+
+> Where $n$ is the size of the array $nums$ and $m$ is the maximum value in the array.
+
 
 ---
 
 ## 2. Disjoint Set Union
+
+### Intuition
+
+Instead of building explicit edges between indices, we can connect indices through their prime factors. Two numbers sharing a prime factor should be in the same component. Using Union-Find, we union each index with the first occurrence of each of its prime factors. This avoids O(n^2) pairwise comparisons.
+
+### Algorithm
+
+1. Initialize a Union-Find structure with `n` elements.
+2. Maintain a map from prime factors to the first index containing that factor.
+3. For each number, factorize it by trial division.
+4. For each prime factor found:
+    - If seen before, union the current index with the stored index.
+    - Otherwise, store the current index for this factor.
+5. Check if all indices belong to one connected component.
 
 ::tabs-start
 
@@ -580,6 +769,83 @@ public class Solution {
 }
 ```
 
+```rust
+struct UnionFind {
+    parent: Vec<usize>,
+    size: Vec<usize>,
+    n: usize,
+}
+
+impl UnionFind {
+    fn new(n: usize) -> Self {
+        Self {
+            parent: (0..=n).collect(),
+            size: vec![1; n + 1],
+            n,
+        }
+    }
+
+    fn find(&mut self, node: usize) -> usize {
+        if self.parent[node] != node {
+            self.parent[node] = self.find(self.parent[node]);
+        }
+        self.parent[node]
+    }
+
+    fn union(&mut self, u: usize, v: usize) -> bool {
+        let mut pu = self.find(u);
+        let mut pv = self.find(v);
+        if pu == pv { return false; }
+        self.n -= 1;
+        if self.size[pu] < self.size[pv] {
+            std::mem::swap(&mut pu, &mut pv);
+        }
+        self.size[pu] += self.size[pv];
+        self.parent[pv] = pu;
+        true
+    }
+
+    fn is_connected(&self) -> bool {
+        self.n == 1
+    }
+}
+
+impl Solution {
+    pub fn can_traverse_all_pairs(nums: Vec<i32>) -> bool {
+        let n = nums.len();
+        let mut uf = UnionFind::new(n);
+        let mut factor_index: HashMap<i32, usize> = HashMap::new();
+
+        for i in 0..n {
+            let mut num = nums[i];
+            let mut f = 2;
+            while f * f <= num {
+                if num % f == 0 {
+                    if let Some(&idx) = factor_index.get(&f) {
+                        uf.union(i, idx);
+                    } else {
+                        factor_index.insert(f, i);
+                    }
+                    while num % f == 0 {
+                        num /= f;
+                    }
+                }
+                f += 1;
+            }
+            if num > 1 {
+                if let Some(&idx) = factor_index.get(&num) {
+                    uf.union(i, idx);
+                } else {
+                    factor_index.insert(num, i);
+                }
+            }
+        }
+
+        uf.is_connected()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -592,6 +858,18 @@ public class Solution {
 ---
 
 ## 3. Sieve of Eratosthenes + DSU
+
+### Intuition
+
+We can speed up factorization by precomputing the smallest prime factor (SPF) for each number using the Sieve of Eratosthenes. With SPF, we can factorize any number in O(log m) time. We then use Union-Find to connect each index directly to virtual nodes representing primes.
+
+### Algorithm
+
+1. Handle edge cases: single element returns `true`; any value of `1` returns `false`.
+2. Build a sieve array where `sieve[x]` stores the smallest prime factor of `x`.
+3. Initialize Union-Find with size `n + MAX + 1` (indices + virtual prime nodes).
+4. For each index, factorize its value using the sieve and union the index with `N + prime` for each prime factor.
+5. Verify all indices share the same root in Union-Find.
 
 ::tabs-start
 
@@ -999,6 +1277,89 @@ public class Solution {
 }
 ```
 
+```rust
+struct UnionFind {
+    parent: Vec<usize>,
+    size: Vec<usize>,
+}
+
+impl UnionFind {
+    fn new(n: usize) -> Self {
+        Self {
+            parent: (0..n).collect(),
+            size: vec![1; n],
+        }
+    }
+
+    fn find(&mut self, node: usize) -> usize {
+        if self.parent[node] != node {
+            self.parent[node] = self.find(self.parent[node]);
+        }
+        self.parent[node]
+    }
+
+    fn union(&mut self, u: usize, v: usize) -> bool {
+        let mut pu = self.find(u);
+        let mut pv = self.find(v);
+        if pu == pv { return false; }
+        if self.size[pu] < self.size[pv] {
+            std::mem::swap(&mut pu, &mut pv);
+        }
+        self.size[pu] += self.size[pv];
+        self.parent[pv] = pu;
+        true
+    }
+}
+
+impl Solution {
+    pub fn can_traverse_all_pairs(nums: Vec<i32>) -> bool {
+        let n = nums.len();
+        if n == 1 { return true; }
+        if nums.iter().any(|&x| x == 1) { return false; }
+
+        let max_val = *nums.iter().max().unwrap() as usize;
+        let mut sieve = vec![0usize; max_val + 1];
+        let mut p = 2;
+        while p * p <= max_val {
+            if sieve[p] == 0 {
+                let mut composite = p * p;
+                while composite <= max_val {
+                    if sieve[composite] == 0 {
+                        sieve[composite] = p;
+                    }
+                    composite += p;
+                }
+            }
+            p += 1;
+        }
+
+        let mut uf = UnionFind::new(n + max_val + 1);
+        for i in 0..n {
+            let mut num = nums[i] as usize;
+            if sieve[num] == 0 {
+                uf.union(i, n + num);
+                continue;
+            }
+            while num > 1 {
+                let prime = if sieve[num] != 0 { sieve[num] } else { num };
+                uf.union(i, n + prime);
+                while num % prime == 0 {
+                    num /= prime;
+                }
+            }
+        }
+
+        let root = uf.find(0);
+        for i in 1..n {
+            if uf.find(i) != root {
+                return false;
+            }
+        }
+        true
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1011,6 +1372,18 @@ public class Solution {
 ---
 
 ## 4. Sieve of Eratosthenes + DFS
+
+### Intuition
+
+Rather than Union-Find, we can build an explicit graph connecting indices to virtual prime nodes and use DFS for connectivity. Each index connects to nodes representing its prime factors, and primes connect back to indices. A single DFS from index `0` should reach all indices if they form one component.
+
+### Algorithm
+
+1. Handle edge cases: single element returns `true`; any value of `1` returns `false`.
+2. Build a sieve array for smallest prime factors.
+3. Construct an adjacency list where each index `i` connects to `N + prime` for each of its prime factors, and vice versa.
+4. Run DFS from index `0`, visiting all reachable nodes.
+5. Return `true` if all indices (`0` to `N-1`) were visited.
 
 ::tabs-start
 
@@ -1302,6 +1675,65 @@ public class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn can_traverse_all_pairs(nums: Vec<i32>) -> bool {
+        let n = nums.len();
+        if n == 1 { return true; }
+        if nums.iter().any(|&x| x == 1) { return false; }
+
+        let max_val = *nums.iter().max().unwrap() as usize;
+        let mut sieve = vec![0usize; max_val + 1];
+        let mut p = 2;
+        while p * p <= max_val {
+            if sieve[p] == 0 {
+                let mut composite = p * p;
+                while composite <= max_val {
+                    if sieve[composite] == 0 {
+                        sieve[composite] = p;
+                    }
+                    composite += p;
+                }
+            }
+            p += 1;
+        }
+
+        let mut adj: HashMap<usize, Vec<usize>> = HashMap::new();
+        for i in 0..n {
+            let mut num = nums[i] as usize;
+            if sieve[num] == 0 {
+                adj.entry(i).or_default().push(n + num);
+                adj.entry(n + num).or_default().push(i);
+                continue;
+            }
+            while num > 1 {
+                let prime = if sieve[num] != 0 { sieve[num] } else { num };
+                adj.entry(i).or_default().push(n + prime);
+                adj.entry(n + prime).or_default().push(i);
+                while num % prime == 0 {
+                    num /= prime;
+                }
+            }
+        }
+
+        let mut visited = HashSet::new();
+        fn dfs(node: usize, adj: &HashMap<usize, Vec<usize>>, visited: &mut HashSet<usize>) {
+            visited.insert(node);
+            if let Some(neighbors) = adj.get(&node) {
+                for &nei in neighbors {
+                    if !visited.contains(&nei) {
+                        dfs(nei, adj, visited);
+                    }
+                }
+            }
+        }
+
+        dfs(0, &adj, &mut visited);
+        (0..n).all(|i| visited.contains(&i))
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1314,6 +1746,19 @@ public class Solution {
 ---
 
 ## 5. Sieve of Eratosthenes + BFS
+
+### Intuition
+
+BFS provides an iterative alternative to DFS for checking graph connectivity. We build the same graph structure connecting indices to prime nodes, then use a queue to explore all reachable nodes starting from index `0`.
+
+### Algorithm
+
+1. Handle edge cases: single element returns `true`; any value of `1` returns `false`.
+2. Build a sieve array for smallest prime factors.
+3. Construct an adjacency list connecting indices to their prime factor nodes (offset by `N`).
+4. Initialize a queue with index `0` and a visited set.
+5. Process nodes via BFS, adding unvisited neighbors to the queue.
+6. Return `true` if all indices (`0` to `N-1`) were visited.
 
 ::tabs-start
 
@@ -1637,6 +2082,71 @@ public class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn can_traverse_all_pairs(nums: Vec<i32>) -> bool {
+        let n = nums.len();
+        if n == 1 { return true; }
+        if nums.iter().any(|&x| x == 1) { return false; }
+
+        let max_val = *nums.iter().max().unwrap() as usize;
+        let mut sieve = vec![0usize; max_val + 1];
+        let mut p = 2;
+        while p * p <= max_val {
+            if sieve[p] == 0 {
+                let mut composite = p * p;
+                while composite <= max_val {
+                    if sieve[composite] == 0 {
+                        sieve[composite] = p;
+                    }
+                    composite += p;
+                }
+            }
+            p += 1;
+        }
+
+        let mut adj: HashMap<usize, Vec<usize>> = HashMap::new();
+        let add_edge = |adj: &mut HashMap<usize, Vec<usize>>, u: usize, v: usize| {
+            adj.entry(u).or_default().push(v);
+            adj.entry(v).or_default().push(u);
+        };
+
+        for i in 0..n {
+            let mut num = nums[i] as usize;
+            if sieve[num] == 0 {
+                add_edge(&mut adj, i, n + num);
+                continue;
+            }
+            while num > 1 {
+                let prime = if sieve[num] != 0 { sieve[num] } else { num };
+                add_edge(&mut adj, i, n + prime);
+                while num % prime == 0 {
+                    num /= prime;
+                }
+            }
+        }
+
+        let mut visited = HashSet::new();
+        let mut queue = VecDeque::new();
+        queue.push_back(0);
+        visited.insert(0);
+
+        while let Some(node) = queue.pop_front() {
+            if let Some(neighbors) = adj.get(&node) {
+                for &nei in neighbors {
+                    if !visited.contains(&nei) {
+                        visited.insert(nei);
+                        queue.push_back(nei);
+                    }
+                }
+            }
+        }
+
+        (0..n).all(|i| visited.contains(&i))
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1645,3 +2155,27 @@ public class Solution {
 - Space complexity: $O(n + m)$
 
 > Where $n$ is the size of the array $nums$ and $m$ is the maximum value in the array.
+
+---
+
+## Common Pitfalls
+
+### Not Handling the Value 1 as a Special Case
+
+The number 1 has no prime factors greater than 1, so it cannot share a common factor with any other number. If the array contains 1 and has more than one element, the answer is always `false`. Failing to check for this edge case will cause incorrect results or infinite loops during factorization.
+
+### Forgetting the Single Element Case
+
+When the array has only one element, all pairs are trivially traversable (there are no pairs to check). This should return `true` regardless of the value. Missing this base case leads to incorrect behavior, especially if your factorization or union-find logic assumes at least two elements.
+
+### Incorrect Prime Factorization
+
+When factorizing numbers, you must completely divide out each prime factor before moving to the next. A common bug is incrementing the factor without fully removing it, causing duplicate unions or missed factors. Use a `while` loop to divide out each prime completely: `while (num % prime == 0) num /= prime`.
+
+### Off-by-One Errors in Virtual Prime Nodes
+
+When using Union-Find with virtual nodes for primes (offset by `N`), ensure consistent indexing. Array indices run from `0` to `N-1`, while prime nodes are at positions `N + prime`. Mixing up these offsets or forgetting to add `N` when accessing prime nodes causes incorrect unions and false connectivity results.
+
+### Memory Issues with Large Prime Values
+
+When the maximum value in the array is large (up to 10^5 or 10^6), allocating arrays sized by the maximum value can consume significant memory. Ensure your sieve and Union-Find structures are appropriately sized as `N + MAX + 1` to accommodate both indices and virtual prime nodes without out-of-bounds errors.

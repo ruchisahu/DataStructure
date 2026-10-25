@@ -1,4 +1,32 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Linked List Fundamentals** - Understanding node structure with value and next pointer, and basic traversal
+- **Pointer Manipulation** - Ability to redirect node pointers without losing references to other nodes
+- **Recursion Basics** - Understanding how recursive calls work with the call stack for the recursive solution
+
+---
+
 ## 1. Recursion
+
+### Intuition
+
+Reversing a linked list using recursion works by thinking in terms of **"reverse the rest, then fix the pointer for the current node."**
+When we recursively go to the end of the list, that last node becomes the new head.
+While the recursion unwinds, each node points **backward** to the one that called it.
+Finally, we set the original head's `next` to `null` to finish the reversal.
+
+This approach uses the call stack to naturally reverse the direction of the pointers.
+
+### Algorithm
+
+1. If the list is empty, return `null`.
+2. Recursively call the function on `head.next` to reverse the rest of the list.
+3. After the recursive call returns:
+    - Make `head.next.next = head` so the next node points back to the current node.
+4. Set `head.next = null` to avoid cycles.
+5. Return the new head returned by the deepest recursive call.
 
 ::tabs-start
 
@@ -229,6 +257,30 @@ class Solution {
 }
 ```
 
+```rust
+// Definition for singly-linked list.
+// #[derive(PartialEq, Eq, Clone, Debug)]
+// pub struct ListNode {
+//     pub val: i32,
+//     pub next: Option<Box<ListNode>>,
+// }
+impl Solution {
+    pub fn reverse_list(head: Option<Box<ListNode>>) -> Option<Box<ListNode>> {
+        fn helper(head: Option<Box<ListNode>>, prev: Option<Box<ListNode>>) -> Option<Box<ListNode>> {
+            match head {
+                None => prev,
+                Some(mut node) => {
+                    let next = node.next.take();
+                    node.next = prev;
+                    helper(next, Some(node))
+                }
+            }
+        }
+        helper(head, None)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -239,6 +291,33 @@ class Solution {
 ---
 
 ## 2. Iteration
+
+### Intuition
+
+Reversing a linked list iteratively is all about **flipping pointers one step at a time**.
+We walk through the list from left to right, and for each node, we redirect its `next` pointer to point to the node behind it.
+
+To avoid losing track of the rest of the list, we keep three pointers:
+
+- `curr` → the current node we are processing
+- `prev` → the node that should come after `curr` once reversed
+- `temp` → the original next node (so we don't break the chain)
+
+By moving these pointers forward in each step, we gradually reverse the entire list.
+When `curr` becomes `null`, the list is fully reversed, and `prev` points to the new head.
+
+### Algorithm
+
+1. Initialize:
+    - `prev = null`
+    - `curr = head`
+2. While `curr` exists:
+    - Save the next node: `temp = curr.next`
+    - Reverse the pointer: `curr.next = prev`
+    - Move `prev` to `curr`
+    - Move `curr` to `temp`
+3. When the loop ends, `prev` is the new head of the reversed list.
+4. Return `prev`.
 
 ::tabs-start
 
@@ -453,9 +532,44 @@ class Solution {
 }
 ```
 
+```rust
+// Definition for singly-linked list.
+// #[derive(PartialEq, Eq, Clone, Debug)]
+// pub struct ListNode {
+//     pub val: i32,
+//     pub next: Option<Box<ListNode>>,
+// }
+impl Solution {
+    pub fn reverse_list(head: Option<Box<ListNode>>) -> Option<Box<ListNode>> {
+        let mut prev = None;
+        let mut curr = head;
+
+        while let Some(mut node) = curr {
+            let temp = node.next.take();
+            node.next = prev;
+            prev = Some(node);
+            curr = temp;
+        }
+        prev
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(1)$
+
+---
+
+## Common Pitfalls
+
+### Losing the Reference to the Next Node
+
+When reversing a linked list iteratively, you must save the next node before modifying the current node's pointer. A common mistake is writing `curr.next = prev` before storing `curr.next` in a temporary variable, which causes you to lose access to the rest of the list and breaks the traversal.
+
+### Forgetting to Set the Original Head's Next to Null
+
+In the recursive approach, after reversing the rest of the list, the original head becomes the new tail. Forgetting to set `head.next = null` creates a cycle in the list, where the last two nodes point to each other, leading to infinite loops when traversing the reversed list.

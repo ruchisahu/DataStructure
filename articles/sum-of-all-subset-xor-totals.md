@@ -1,4 +1,30 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Recursion/Backtracking** - Used to generate all possible subsets by making include/exclude decisions for each element
+- **XOR Operation** - Understanding that XOR is self-inverse (a ^ a = 0) and its bit-level behavior
+- **Bit Manipulation** - Bitmasks can represent subsets, and the optimal solution uses OR and bit shifting
+
+---
+
 ## 1. Backtracking
+
+### Intuition
+
+We need to generate all possible subsets and compute the XOR total of each. The standard backtracking approach builds subsets by deciding for each element whether to include it or not. At each step, we compute the XOR of the current subset and add it to our running total.
+
+### Algorithm
+
+1. Initialize `res = 0` to accumulate the sum of XOR totals.
+2. Define a backtracking function that takes the current `index` and the current `subset`:
+    - Compute the XOR of all elements in the `subset` and add it to `res`.
+    - For each remaining element starting from the current `index`:
+        - Add the element to the `subset`.
+        - Recursively call `backtrack` with the next `index`.
+        - Remove the element from the `subset`.
+3. Call the backtracking function starting at `index` `0` with an empty `subset`.
+4. Return `res`.
 
 ::tabs-start
 
@@ -123,6 +149,106 @@ public class Solution {
 }
 ```
 
+```go
+func subsetXORSum(nums []int) int {
+    res := 0
+
+    var backtrack func(i int, subset []int)
+    backtrack = func(i int, subset []int) {
+        xorr := 0
+        for _, num := range subset {
+            xorr ^= num
+        }
+        res += xorr
+
+        for j := i; j < len(nums); j++ {
+            subset = append(subset, nums[j])
+            backtrack(j+1, subset)
+            subset = subset[:len(subset)-1]
+        }
+    }
+
+    backtrack(0, []int{})
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    private var res = 0
+
+    fun subsetXORSum(nums: IntArray): Int {
+        backtrack(0, mutableListOf(), nums)
+        return res
+    }
+
+    private fun backtrack(i: Int, subset: MutableList<Int>, nums: IntArray) {
+        var xorr = 0
+        for (num in subset) {
+            xorr = xorr xor num
+        }
+        res += xorr
+
+        for (j in i until nums.size) {
+            subset.add(nums[j])
+            backtrack(j + 1, subset, nums)
+            subset.removeAt(subset.size - 1)
+        }
+    }
+}
+```
+
+```swift
+class Solution {
+    func subsetXORSum(_ nums: [Int]) -> Int {
+        var res = 0
+
+        func backtrack(_ i: Int, _ subset: inout [Int]) {
+            var xorr = 0
+            for num in subset {
+                xorr ^= num
+            }
+            res += xorr
+
+            for j in i..<nums.count {
+                subset.append(nums[j])
+                backtrack(j + 1, &subset)
+                subset.removeLast()
+            }
+        }
+
+        var subset = [Int]()
+        backtrack(0, &subset)
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn subset_xor_sum(nums: Vec<i32>) -> i32 {
+        let mut res = 0;
+        let mut subset = Vec::new();
+        Self::backtrack(0, &mut subset, &nums, &mut res);
+        res
+    }
+
+    fn backtrack(i: usize, subset: &mut Vec<i32>, nums: &[i32], res: &mut i32) {
+        let mut xorr = 0;
+        for &num in subset.iter() {
+            xorr ^= num;
+        }
+        *res += xorr;
+
+        for j in i..nums.len() {
+            subset.push(nums[j]);
+            Self::backtrack(j + 1, subset, nums, res);
+            subset.pop();
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -133,6 +259,19 @@ public class Solution {
 ---
 
 ## 2. Recursion
+
+### Intuition
+
+A cleaner recursive approach avoids explicitly building subsets. For each element, we make a binary choice: include it in the XOR or skip it. We pass the running XOR total down the recursion tree. When we reach the end of the array, we return the accumulated XOR value. The sum of all returned values gives us the total.
+
+### Algorithm
+
+1. Define a recursive function `dfs(i, total)` where `i` is the current `index` and `total` is the running XOR:
+    - Base case: If `i == len(nums)`, return `total`.
+    - Recursive case: Return `dfs(i + 1, total ^ nums[i]) + dfs(i + 1, total)`.
+        - The first call includes `nums[i]` in the XOR.
+        - The second call excludes `nums[i]`.
+2. Call `dfs(0, 0)` and return the `result`.
 
 ::tabs-start
 
@@ -213,6 +352,65 @@ public class Solution {
 }
 ```
 
+```go
+func subsetXORSum(nums []int) int {
+    var dfs func(i, total int) int
+    dfs = func(i, total int) int {
+        if i == len(nums) {
+            return total
+        }
+        return dfs(i+1, total^nums[i]) + dfs(i+1, total)
+    }
+
+    return dfs(0, 0)
+}
+```
+
+```kotlin
+class Solution {
+    fun subsetXORSum(nums: IntArray): Int {
+        fun dfs(i: Int, total: Int): Int {
+            if (i == nums.size) {
+                return total
+            }
+            return dfs(i + 1, total xor nums[i]) + dfs(i + 1, total)
+        }
+
+        return dfs(0, 0)
+    }
+}
+```
+
+```swift
+class Solution {
+    func subsetXORSum(_ nums: [Int]) -> Int {
+        func dfs(_ i: Int, _ total: Int) -> Int {
+            if i == nums.count {
+                return total
+            }
+            return dfs(i + 1, total ^ nums[i]) + dfs(i + 1, total)
+        }
+
+        return dfs(0, 0)
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn subset_xor_sum(nums: Vec<i32>) -> i32 {
+        Self::dfs(&nums, 0, 0)
+    }
+
+    fn dfs(nums: &[i32], i: usize, total: i32) -> i32 {
+        if i == nums.len() {
+            return total;
+        }
+        Self::dfs(nums, i + 1, total ^ nums[i]) + Self::dfs(nums, i + 1, total)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -223,6 +421,20 @@ public class Solution {
 ---
 
 ## 3. Bit Manipulation
+
+### Intuition
+
+Every subset can be represented by a bitmask where bit `i` indicates whether element `i` is included. With `n` elements, there are `2^n` subsets corresponding to masks from `0` to `2^n - 1`. We iterate through all masks, compute the XOR of selected elements for each mask, and sum them up.
+
+### Algorithm
+
+1. Initialize `res = 0`.
+2. For each `mask` from `0` to `2^n - 1`:
+    - Initialize `xorr = 0`.
+    - For each bit position `i` from `0` to `n - 1`:
+        - If bit `i` is set in the `mask`, XOR `nums[i]` into `xorr`.
+    - Add `xorr` to `res`.
+3. Return `res`.
 
 ::tabs-start
 
@@ -331,6 +543,88 @@ public class Solution {
 }
 ```
 
+```go
+func subsetXORSum(nums []int) int {
+    n := len(nums)
+    res := 0
+
+    for mask := 0; mask < (1 << n); mask++ {
+        xorr := 0
+        for i := 0; i < n; i++ {
+            if mask&(1<<i) != 0 {
+                xorr ^= nums[i]
+            }
+        }
+        res += xorr
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun subsetXORSum(nums: IntArray): Int {
+        val n = nums.size
+        var res = 0
+
+        for (mask in 0 until (1 shl n)) {
+            var xorr = 0
+            for (i in 0 until n) {
+                if (mask and (1 shl i) != 0) {
+                    xorr = xorr xor nums[i]
+                }
+            }
+            res += xorr
+        }
+
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func subsetXORSum(_ nums: [Int]) -> Int {
+        let n = nums.count
+        var res = 0
+
+        for mask in 0..<(1 << n) {
+            var xorr = 0
+            for i in 0..<n {
+                if mask & (1 << i) != 0 {
+                    xorr ^= nums[i]
+                }
+            }
+            res += xorr
+        }
+
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn subset_xor_sum(nums: Vec<i32>) -> i32 {
+        let n = nums.len();
+        let mut res = 0;
+
+        for mask in 0..(1 << n) {
+            let mut xorr = 0;
+            for i in 0..n {
+                if mask & (1 << i) != 0 {
+                    xorr ^= nums[i];
+                }
+            }
+            res += xorr;
+        }
+
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -341,6 +635,16 @@ public class Solution {
 ---
 
 ## 4. Bit Manipulation (Optimal)
+
+### Intuition
+
+Each bit position in any number contributes independently to the XOR totals. For any bit that is set in at least one number, exactly half of all subsets will have that bit set in their XOR result (because each element either flips the bit or not, and the combinations balance out). The OR of all numbers gives us all bits that appear in at least one element. Each such bit contributes its value multiplied by `2^(n-1)` subsets.
+
+### Algorithm
+
+1. Compute the OR of all elements in `nums`. This gives a number where each `bit` is set if and only if that `bit` is set in at least one element.
+2. Left shift the `result` by `n - 1` positions (multiply by `2^(n-1)`).
+3. Return the `result`.
 
 ::tabs-start
 
@@ -406,9 +710,67 @@ public class Solution {
 }
 ```
 
+```go
+func subsetXORSum(nums []int) int {
+    res := 0
+    for _, num := range nums {
+        res |= num
+    }
+    return res << (len(nums) - 1)
+}
+```
+
+```kotlin
+class Solution {
+    fun subsetXORSum(nums: IntArray): Int {
+        var res = 0
+        for (num in nums) {
+            res = res or num
+        }
+        return res shl (nums.size - 1)
+    }
+}
+```
+
+```swift
+class Solution {
+    func subsetXORSum(_ nums: [Int]) -> Int {
+        var res = 0
+        for num in nums {
+            res |= num
+        }
+        return res << (nums.count - 1)
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn subset_xor_sum(nums: Vec<i32>) -> i32 {
+        let mut res = 0;
+        for &num in &nums {
+            res |= num;
+        }
+        res << (nums.len() - 1)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(1)$ extra space.
+
+---
+
+## Common Pitfalls
+
+### Forgetting the Empty Subset
+
+The problem includes all subsets, including the empty subset which has an XOR value of 0. While this does not affect the sum, a common conceptual error is starting the subset generation from size 1 instead of size 0, or incorrectly counting the total number of subsets as `2^n - 1` instead of `2^n`. This can lead to off-by-one issues in verification.
+
+### Misunderstanding XOR Properties
+
+A frequent mistake is confusing XOR with addition or other operations. XOR has the property that `a ^ a = 0` and `a ^ 0 = a`. When computing subset XOR totals, some assume that duplicate elements cancel out across all subsets, but each subset is computed independently. Also, the optimal solution relies on understanding that each bit appears in exactly half of all subsets, which requires grasping XOR's bit-level behavior.

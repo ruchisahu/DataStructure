@@ -1,4 +1,54 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Binary Trees** - Understanding tree node structure with left and right children
+- **Tree Traversal (DFS)** - Preorder traversal visits root, then left subtree, then right subtree
+- **Tree Traversal (BFS)** - Level-order traversal processes nodes level by level using a queue
+- **Recursion** - Building and reconstructing trees requires recursive thinking
+- **String Manipulation** - Encoding tree structure into strings and parsing them back
+
+---
+
 ## 1. Depth First Search
+
+### Intuition
+
+We want to turn a tree into a string (serialize) and then rebuild the same tree from that string (deserialize).
+We use **preorder DFS (root → left → right)** because it naturally records a node before its children.
+
+- When a node exists → record its value.
+- When a child is missing → record `"N"` so we know where `null` pointers are.
+
+Example:
+`1,2,N,N,3,N,N` uniquely represents a tree.
+
+During **deserialization**, we read the list in order:
+
+- `"N"` → return `None`
+- Otherwise → create node, then build left, then right.
+
+This works because preorder always visits nodes in the exact structure order.
+
+### Algorithm
+
+#### **Serialize**
+
+1. Use `dfs` preorder.
+2. If node is `null` → append `"N"`.
+3. Else append node value.
+4. Recursively process left child, then right child.
+5. Join list with commas → return string.
+
+#### **Deserialize**
+
+1. Split string into list `vals`.
+2. Use an index to process values in order.
+3. If current value is `"N"` → return `None`.
+4. Otherwise create a node.
+5. Recursively build left subtree.
+6. Recursively build right subtree.
+7. Return the root.
 
 ::tabs-start
 
@@ -456,6 +506,60 @@ class Codec {
 }
 ```
 
+```rust
+// Definition for a binary tree node.
+// #[derive(Debug, PartialEq, Eq)]
+// pub struct TreeNode {
+//     pub val: i32,
+//     pub left: Option<Rc<RefCell<TreeNode>>>,
+//     pub right: Option<Rc<RefCell<TreeNode>>>,
+// }
+
+struct Codec;
+
+impl Codec {
+    fn new() -> Self {
+        Codec
+    }
+
+    fn serialize(&self, root: Option<Rc<RefCell<TreeNode>>>) -> String {
+        let mut res = Vec::new();
+        Self::dfs_serialize(&root, &mut res);
+        res.join(",")
+    }
+
+    fn dfs_serialize(node: &Option<Rc<RefCell<TreeNode>>>, res: &mut Vec<String>) {
+        match node {
+            None => res.push("N".to_string()),
+            Some(n) => {
+                let n = n.borrow();
+                res.push(n.val.to_string());
+                Self::dfs_serialize(&n.left, res);
+                Self::dfs_serialize(&n.right, res);
+            }
+        }
+    }
+
+    fn deserialize(&self, data: String) -> Option<Rc<RefCell<TreeNode>>> {
+        let vals: Vec<&str> = data.split(',').collect();
+        let mut i = 0;
+        Self::dfs_deserialize(&vals, &mut i)
+    }
+
+    fn dfs_deserialize(vals: &[&str], i: &mut usize) -> Option<Rc<RefCell<TreeNode>>> {
+        if vals[*i] == "N" {
+            *i += 1;
+            return None;
+        }
+        let val = vals[*i].parse::<i32>().unwrap();
+        *i += 1;
+        let left = Self::dfs_deserialize(vals, i);
+        let right = Self::dfs_deserialize(vals, i);
+        Some(Rc::new(RefCell::new(TreeNode { val, left, right })))
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -466,6 +570,47 @@ class Codec {
 ---
 
 ## 2. Breadth First Search
+
+### Intuition
+
+Instead of using DFS, we treat the tree like a queue (level order traversal).
+BFS visits nodes level by level, so we simply record values in that order:
+
+- If a node exists → record its value and push its children (even if they are `None`).
+- If a node is missing → record `"N"` to mark empty spots.
+
+This ensures the structure is preserved, because BFS processes nodes exactly how they appear in the tree layout.
+
+During **deserialization**, we again use BFS:
+
+- The first value is the root.
+- Then for each node in the queue, assign its left and right children from the next values in the list.
+
+This keeps the tree reconstruction aligned with the serialized order.
+
+### Algorithm
+
+#### **Serialize**
+
+1. If root is `None` → return `"N"`.
+2. Initialize a queue with `root`.
+3. While queue is not empty:
+    - Pop a node.
+    - If node exists → append its value, push left & right children.
+    - If node is missing → append `"N"`.
+4. Join the list with commas and return.
+
+#### **Deserialize**
+
+1. Split string into list `vals`.
+2. If first value is `"N"` → return `None`.
+3. Create root from first value and push it into a queue.
+4. Use an `index` to read the next values:
+    - For each node popped from queue:
+        - If `vals[index]` is not `"N"` → create left child & push.
+        - Move `index`.
+        - Repeat for right child.
+5. Return the root of the rebuilt tree.
 
 ::tabs-start
 
@@ -988,9 +1133,112 @@ class Codec {
 }
 ```
 
+```rust
+// Definition for a binary tree node.
+// #[derive(Debug, PartialEq, Eq)]
+// pub struct TreeNode {
+//     pub val: i32,
+//     pub left: Option<Rc<RefCell<TreeNode>>>,
+//     pub right: Option<Rc<RefCell<TreeNode>>>,
+// }
+
+struct Codec;
+
+impl Codec {
+    fn new() -> Self {
+        Codec
+    }
+
+    fn serialize(&self, root: Option<Rc<RefCell<TreeNode>>>) -> String {
+        if root.is_none() {
+            return "N".to_string();
+        }
+        let mut res = Vec::new();
+        let mut queue: VecDeque<Option<Rc<RefCell<TreeNode>>>> = VecDeque::new();
+        queue.push_back(root);
+
+        while let Some(node_opt) = queue.pop_front() {
+            match node_opt {
+                None => res.push("N".to_string()),
+                Some(node) => {
+                    let n = node.borrow();
+                    res.push(n.val.to_string());
+                    queue.push_back(n.left.clone());
+                    queue.push_back(n.right.clone());
+                }
+            }
+        }
+        res.join(",")
+    }
+
+    fn deserialize(&self, data: String) -> Option<Rc<RefCell<TreeNode>>> {
+        let vals: Vec<&str> = data.split(',').collect();
+        if vals[0] == "N" {
+            return None;
+        }
+        let root = Rc::new(RefCell::new(TreeNode {
+            val: vals[0].parse().unwrap(),
+            left: None,
+            right: None,
+        }));
+        let mut queue: VecDeque<Rc<RefCell<TreeNode>>> = VecDeque::new();
+        queue.push_back(root.clone());
+        let mut index = 1;
+
+        while let Some(node) = queue.pop_front() {
+            if vals[index] != "N" {
+                let left = Rc::new(RefCell::new(TreeNode {
+                    val: vals[index].parse().unwrap(),
+                    left: None,
+                    right: None,
+                }));
+                node.borrow_mut().left = Some(left.clone());
+                queue.push_back(left);
+            }
+            index += 1;
+            if vals[index] != "N" {
+                let right = Rc::new(RefCell::new(TreeNode {
+                    val: vals[index].parse().unwrap(),
+                    left: None,
+                    right: None,
+                }));
+                node.borrow_mut().right = Some(right.clone());
+                queue.push_back(right);
+            }
+            index += 1;
+        }
+        Some(root)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(n)$
+
+---
+
+## Common Pitfalls
+
+### Forgetting to Handle Null Nodes
+
+A common mistake is not encoding null children in the serialized string. Without explicit null markers (like `"N"`), the tree structure becomes ambiguous during deserialization. Two different trees could produce the same serialized string if nulls are omitted.
+
+### Using a Global Index Without Proper State Management
+
+When deserializing with DFS, using a simple integer variable as an index fails because the index must persist across recursive calls. In many languages, primitive integers are passed by value, so the incremented index is lost when returning from recursion. The solution is to use a mutable wrapper (like an array or object) to maintain the index state.
+
+### Incorrect Order of Building Left and Right Subtrees
+
+The deserialization must rebuild children in the exact same order they were serialized. If you serialize using preorder (root, left, right), you must deserialize in preorder too. Building the right subtree before the left will produce an incorrect tree structure.
+
+### Not Handling Empty Trees
+
+An empty tree (null root) is a valid input that requires special handling. Forgetting to check for this case in both serialization and deserialization leads to null pointer exceptions or incorrect output.
+
+### Delimiter Conflicts with Node Values
+
+Using a delimiter that could appear in node values causes parsing errors. For example, if nodes can have negative values and you use `-` as a delimiter, parsing becomes ambiguous. Using a character that cannot appear in integer values (like `,`) avoids this issue.

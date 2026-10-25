@@ -1,4 +1,37 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **2D Arrays/Matrices** - Navigating and manipulating grid-based data structures
+- **Depth First Search (DFS)** - Recursive traversal to explore all connected components
+- **Breadth First Search (BFS)** - Level-by-level traversal using a queue
+- **Union-Find (Disjoint Set Union)** - Data structure for efficiently tracking connected components
+
+---
+
 ## 1. Depth First Search
+
+### Intuition
+
+Think of the grid as a map where `'1'` is land and `'0'` is water.  
+An **island** is a group of connected land cells (up, down, left, right).  
+Whenever we find a land cell that hasn’t been visited, we start a DFS to **sink the entire island** by marking all its connected land as water. Each DFS call corresponds to **one island**.
+
+### Algorithm
+
+1. Iterate through every cell in the grid.
+2. When a cell with value `'1'` is found:
+    - Increment the island count.
+    - Run DFS from that cell.
+3. In DFS:
+    - If the cell is out of bounds or is `'0'`, return.
+    - Mark the current cell as `'0'` (visited).
+    - Recursively explore all 4 directions (up, down, left, right).
+4. Continue until all cells are processed.
+5. Return the total island count.
+
+
+<br>
 
 ::tabs-start
 
@@ -276,6 +309,40 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn num_islands(grid: Vec<Vec<char>>) -> i32 {
+        let mut grid = grid;
+        let rows = grid.len();
+        let cols = grid[0].len();
+        let directions = [(1i32, 0i32), (-1, 0), (0, 1), (0, -1)];
+        let mut islands = 0;
+
+        fn dfs(grid: &mut Vec<Vec<char>>, r: i32, c: i32,
+               rows: usize, cols: usize, directions: &[(i32, i32)]) {
+            if r < 0 || c < 0 || r >= rows as i32 ||
+               c >= cols as i32 || grid[r as usize][c as usize] == '0' {
+                return;
+            }
+            grid[r as usize][c as usize] = '0';
+            for &(dr, dc) in directions {
+                dfs(grid, r + dr, c + dc, rows, cols, directions);
+            }
+        }
+
+        for r in 0..rows {
+            for c in 0..cols {
+                if grid[r][c] == '1' {
+                    dfs(&mut grid, r as i32, c as i32, rows, cols, &directions);
+                    islands += 1;
+                }
+            }
+        }
+        islands
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -288,6 +355,30 @@ class Solution {
 ---
 
 ## 2. Breadth First Search
+
+### Intuition
+
+Treat the grid like a map where `'1'` represents land and `'0'` represents water.  
+Each **island** is a group of connected land cells.  
+When we encounter a land cell, we use **BFS** to visit all connected land cells and mark them as water, ensuring the same island is not counted again.
+
+### Algorithm
+
+1. Traverse every cell in the grid.
+2. When a `'1'` (land) cell is found:
+    - Increment the island count.
+    - Start BFS from that cell.
+3. In BFS:
+    - Push the starting cell into a queue and mark it as `'0'`.
+    - While the queue is not empty:
+        - Pop a cell.
+        - Explore its 4 neighbors (up, down, left, right).
+        - If a neighbor is land, mark it as `'0'` and add it to the queue.
+4. Continue scanning the grid.
+5. Return the total number of islands.
+
+
+<br>
 
 ::tabs-start
 
@@ -636,6 +727,43 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn num_islands(grid: Vec<Vec<char>>) -> i32 {
+        let mut grid = grid;
+        let rows = grid.len();
+        let cols = grid[0].len();
+        let directions = [(1i32, 0i32), (-1, 0), (0, 1), (0, -1)];
+        let mut islands = 0;
+
+        for r in 0..rows {
+            for c in 0..cols {
+                if grid[r][c] == '1' {
+                    let mut q = VecDeque::new();
+                    grid[r][c] = '0';
+                    q.push_back((r as i32, c as i32));
+                    while let Some((row, col)) = q.pop_front() {
+                        for &(dr, dc) in &directions {
+                            let nr = row + dr;
+                            let nc = col + dc;
+                            if nr >= 0 && nc >= 0 && (nr as usize) < rows
+                                && (nc as usize) < cols
+                                && grid[nr as usize][nc as usize] == '1'
+                            {
+                                q.push_back((nr, nc));
+                                grid[nr as usize][nc as usize] = '0';
+                            }
+                        }
+                    }
+                    islands += 1;
+                }
+            }
+        }
+        islands
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -648,6 +776,34 @@ class Solution {
 ---
 
 ## 3. Disjoint Set Union
+
+### Intuition
+
+Think of every land cell (`'1'`) as its own separate island initially.  
+When two land cells are adjacent (up, down, left, right), they actually belong to the **same island**, so we should **merge** them.
+
+**Disjoint Set Union (Union-Find)** helps us:
+
+- Quickly connect adjacent land cells
+- Avoid counting the same island multiple times
+
+Each successful merge reduces the total island count by 1.
+
+### Algorithm
+
+1. Treat each cell as a node and map `(row, col)` to a unique index.
+2. Initialize DSU for all cells.
+3. Traverse the grid:
+    - If a cell is land (`'1'`), increment island count.
+    - Check its 4 neighbors.
+    - If a neighbor is also land:
+        - Union the two cells.
+        - If a union actually happens, decrement island count.
+4. After processing all cells, the remaining count is the number of islands.
+5. Return the island count.
+
+
+<br>
 
 ::tabs-start
 
@@ -1211,6 +1367,76 @@ class Solution {
 }
 ```
 
+```rust
+struct DSU {
+    parent: Vec<usize>,
+    size: Vec<usize>,
+}
+
+impl DSU {
+    fn new(n: usize) -> Self {
+        DSU {
+            parent: (0..=n).collect(),
+            size: vec![1; n + 1],
+        }
+    }
+
+    fn find(&mut self, node: usize) -> usize {
+        if self.parent[node] != node {
+            self.parent[node] = self.find(self.parent[node]);
+        }
+        self.parent[node]
+    }
+
+    fn union(&mut self, u: usize, v: usize) -> bool {
+        let pu = self.find(u);
+        let pv = self.find(v);
+        if pu == pv {
+            return false;
+        }
+        if self.size[pu] >= self.size[pv] {
+            self.size[pu] += self.size[pv];
+            self.parent[pv] = pu;
+        } else {
+            self.size[pv] += self.size[pu];
+            self.parent[pu] = pv;
+        }
+        true
+    }
+}
+
+impl Solution {
+    pub fn num_islands(grid: Vec<Vec<char>>) -> i32 {
+        let rows = grid.len();
+        let cols = grid[0].len();
+        let mut dsu = DSU::new(rows * cols);
+        let directions = [(1i32, 0i32), (-1, 0), (0, 1), (0, -1)];
+        let mut islands = 0;
+
+        for r in 0..rows {
+            for c in 0..cols {
+                if grid[r][c] == '1' {
+                    islands += 1;
+                    for &(dr, dc) in &directions {
+                        let nr = r as i32 + dr;
+                        let nc = c as i32 + dc;
+                        if nr >= 0 && nc >= 0 && (nr as usize) < rows
+                            && (nc as usize) < cols
+                            && grid[nr as usize][nc as usize] == '1'
+                        {
+                            if dsu.union(r * cols + c, nr as usize * cols + nc as usize) {
+                                islands -= 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        islands
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1219,3 +1445,40 @@ class Solution {
 - Space complexity: $O(m * n)$
 
 > Where $m$ is the number of rows and $n$ is the number of columns in the $grid$.
+
+---
+
+## Common Pitfalls
+
+### Not Marking Cells as Visited
+
+When exploring an island, you must mark cells as visited (either by changing them to `'0'` or using a visited set). Forgetting this causes infinite loops as the DFS/BFS keeps revisiting the same cells.
+
+```python
+# Wrong: doesn't mark visited, infinite loop
+if grid[r][c] == '1':
+    dfs(r + 1, c)
+# Correct: mark as visited
+if grid[r][c] == '1':
+    grid[r][c] = '0'  # or visited.add((r, c))
+    dfs(r + 1, c)
+```
+
+### Counting Every Land Cell Instead of Islands
+
+Each island should be counted once when you first encounter it. A common mistake is incrementing the count for every `'1'` cell rather than only incrementing when starting a new DFS/BFS traversal.
+
+### Incorrect Boundary Checks
+
+Always verify that row and column indices are within bounds before accessing the grid. Off-by-one errors or missing boundary checks cause index out of bounds errors.
+
+```python
+# Wrong: checks after access
+if grid[nr][nc] == '1' and 0 <= nr < rows:
+# Correct: check bounds first
+if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] == '1':
+```
+
+### Diagonal Connections
+
+This problem only considers horizontal and vertical connections (4-directional). Including diagonal neighbors incorrectly merges separate islands and undercounts the total.

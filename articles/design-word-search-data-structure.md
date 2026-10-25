@@ -1,4 +1,52 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Trie (Prefix Tree)** - A tree-like data structure used for efficient storage and retrieval of strings
+- **Depth-First Search (DFS)** - Used to traverse the Trie when encountering wildcard characters
+- **Recursion** - The DFS approach uses recursive calls to explore all possible character matches for wildcards
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+The simplest way to solve this problem is to **store all words as-is** and check every stored word during search.
+
+When searching:
+
+- If the lengths don't match → it can't be a match.
+- Compare characters one by one:
+    - Exact match is required **unless** the search character is `.`
+    - `.` acts as a **wildcard** and can match **any character**.
+
+This approach works because the constraints are small enough, but it is **not efficient** for large datasets.
+
+### Algorithm
+
+**Data Structure**
+
+- Maintain a list to store all added words.
+
+---
+
+**addWord(word)**
+
+1. Append the word to the list.
+
+---
+
+**search(word)**
+
+1. Loop through every stored word:
+    - Skip if lengths differ.
+2. Compare characters index by index:
+    - If characters match → continue.
+    - If search character is `.` → treat as match.
+    - Otherwise → stop checking this word.
+3. If all characters match → return `true`.
+4. If no word matches → return `false`.
 
 ::tabs-start
 
@@ -257,11 +305,52 @@ class WordDictionary {
 }
 ```
 
+```rust
+struct WordDictionary {
+    store: Vec<String>,
+}
+
+impl WordDictionary {
+    fn new() -> Self {
+        WordDictionary { store: Vec::new() }
+    }
+
+    fn add_word(&mut self, word: String) {
+        self.store.push(word);
+    }
+
+    fn search(&self, word: String) -> bool {
+        let word_bytes = word.as_bytes();
+        for w in &self.store {
+            let w_bytes = w.as_bytes();
+            if w_bytes.len() != word_bytes.len() {
+                continue;
+            }
+            let mut i = 0;
+            while i < w_bytes.len() {
+                if w_bytes[i] == word_bytes[i] || word_bytes[i] == b'.' {
+                    i += 1;
+                } else {
+                    break;
+                }
+            }
+            if i == w_bytes.len() {
+                return true;
+            }
+        }
+        false
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
-- Time complexity: $O(1)$ for $addWord()$, $O(m * n)$ for $search()$.
+- Time complexity:
+    - C++: $O(n)$ amortized for $addWord()$, since `store.push_back(word)` copies the string.
+    - Python, Java, JavaScript, C#, Go, Kotlin, Swift, Rust: $O(1)$ amortized for $addWord()$, since adding a word does not copy its characters.
+    - All languages: $O(m * n)$ for $search()$.
 - Space complexity: $O(m * n)$
 
 > Where $m$ is the number of words added and $n$ is the length of the string.
@@ -719,6 +808,71 @@ class WordDictionary {
 }
 ```
 
+```rust
+struct TrieNode {
+    children: [Option<Box<TrieNode>>; 26],
+    word: bool,
+}
+
+impl TrieNode {
+    fn new() -> Self {
+        TrieNode {
+            children: Default::default(),
+            word: false,
+        }
+    }
+}
+
+struct WordDictionary {
+    root: TrieNode,
+}
+
+impl WordDictionary {
+    fn new() -> Self {
+        WordDictionary {
+            root: TrieNode::new(),
+        }
+    }
+
+    fn add_word(&mut self, word: String) {
+        let mut cur = &mut self.root;
+        for c in word.bytes() {
+            let idx = (c - b'a') as usize;
+            cur = cur.children[idx].get_or_insert_with(|| Box::new(TrieNode::new()));
+        }
+        cur.word = true;
+    }
+
+    fn search(&self, word: String) -> bool {
+        Self::dfs(word.as_bytes(), 0, &self.root)
+    }
+
+    fn dfs(word: &[u8], j: usize, root: &TrieNode) -> bool {
+        let mut cur = root;
+        for i in j..word.len() {
+            let c = word[i];
+            if c == b'.' {
+                for child in &cur.children {
+                    if let Some(node) = child {
+                        if Self::dfs(word, i + 1, node) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            } else {
+                let idx = (c - b'a') as usize;
+                match &cur.children[idx] {
+                    None => return false,
+                    Some(node) => cur = node,
+                }
+            }
+        }
+        cur.word
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -727,3 +881,58 @@ class WordDictionary {
 - Space complexity: $O(t + n)$
 
 > Where $n$ is the length of the string and $t$ is the total number of TrieNodes created in the Trie.
+
+---
+
+## Common Pitfalls
+
+### Returning True at Any Node Instead of Word-End Nodes
+
+When the search reaches the end of the pattern, you must check if the current node marks the end of a valid word, not just that the node exists. A prefix match is not the same as a word match.
+
+```python
+# Wrong - returns True for any prefix match
+def dfs(j, root):
+    # ... traversal logic ...
+    return True  # Incorrect: "app" would match if "apple" was added
+
+# Correct - check if current node is end of word
+def dfs(j, root):
+    # ... traversal logic ...
+    return cur.word  # Only True if a complete word ends here
+```
+
+### Not Exploring All Children for Wildcard
+
+When encountering a `.` wildcard, you must try all possible children nodes. A common mistake is returning after the first child or not iterating through all 26 possible characters.
+
+```python
+# Wrong - only checks first child
+if c == ".":
+    if cur.children and dfs(i + 1, list(cur.children.values())[0]):
+        return True
+
+# Correct - must try ALL children
+if c == ".":
+    for child in cur.children.values():
+        if dfs(i + 1, child):
+            return True
+    return False
+```
+
+### Confusing Node Existence with Word Existence
+
+When a character is not found in the Trie, return False immediately. However, when using wildcards, absence of any children should also return False, but only after checking all possibilities.
+
+```python
+# Pattern: handle missing paths correctly
+if c == ".":
+    for child in cur.children.values():
+        if child is not None and dfs(i + 1, child):
+            return True
+    return False  # No valid path found
+else:
+    if c not in cur.children:
+        return False  # Character path doesn't exist
+    cur = cur.children[c]
+```

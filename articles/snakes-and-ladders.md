@@ -1,4 +1,31 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Breadth First Search (BFS)** - Finding shortest paths in unweighted graphs using level-order traversal
+- **Graph Representation** - Understanding implicit graphs where moves define edges
+- **2D Array Indexing** - Converting between 1D positions and 2D coordinates with alternating row directions
+- **Queue Data Structure** - FIFO operations for BFS traversal
+
+---
+
 ## 1. Breadth First Search - I
+
+### Intuition
+
+This is a shortest path problem on an implicit graph where each square connects to the next 1 to 6 squares (simulating a dice roll). BFS naturally finds the shortest path in an unweighted graph. The tricky part is converting between square numbers and board coordinates, since the board uses a boustrophedon (zigzag) pattern starting from the bottom-left.
+
+### Algorithm
+
+1. Create a helper function to convert a square number to board coordinates, accounting for the alternating row directions.
+2. Initialize a queue with square 1 and 0 moves, along with a visited set.
+3. While the queue is not empty:
+    - Dequeue the current square and move count.
+    - For each dice roll (1 to 6), calculate the next square.
+    - Convert to board coordinates and check for snakes/ladders (non -1 values).
+    - If the destination is the final square, return `moves + 1`.
+    - If not visited, mark as visited and enqueue with incremented move count.
+4. Return `-1` if the final square is unreachable.
 
 ::tabs-start
 
@@ -155,6 +182,207 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int SnakesAndLadders(int[][] board) {
+        int n = board.Length;
+        var queue = new Queue<int[]>();
+        queue.Enqueue(new int[] { 1, 0 });
+        var visit = new HashSet<int>();
+
+        while (queue.Count > 0) {
+            var cur = queue.Dequeue();
+            int square = cur[0], moves = cur[1];
+
+            for (int i = 1; i <= 6; i++) {
+                int nextSquare = square + i;
+                int[] pos = IntToPos(nextSquare, n);
+                int r = pos[0], c = pos[1];
+                if (board[r][c] != -1) {
+                    nextSquare = board[r][c];
+                }
+                if (nextSquare == n * n) return moves + 1;
+                if (!visit.Contains(nextSquare)) {
+                    visit.Add(nextSquare);
+                    queue.Enqueue(new int[] { nextSquare, moves + 1 });
+                }
+            }
+        }
+        return -1;
+    }
+
+    private int[] IntToPos(int square, int n) {
+        int r = (square - 1) / n;
+        int c = (square - 1) % n;
+        if (r % 2 == 1) c = n - 1 - c;
+        r = n - 1 - r;
+        return new int[] { r, c };
+    }
+}
+```
+
+```go
+func snakesAndLadders(board [][]int) int {
+    n := len(board)
+
+    intToPos := func(square int) (int, int) {
+        r := (square - 1) / n
+        c := (square - 1) % n
+        if r % 2 == 1 {
+            c = n - 1 - c
+        }
+        r = n - 1 - r
+        return r, c
+    }
+
+    queue := [][2]int{{1, 0}}
+    visit := make(map[int]bool)
+
+    for len(queue) > 0 {
+        cur := queue[0]
+        queue = queue[1:]
+        square, moves := cur[0], cur[1]
+
+        for i := 1; i <= 6; i++ {
+            nextSquare := square + i
+            r, c := intToPos(nextSquare)
+            if board[r][c] != -1 {
+                nextSquare = board[r][c]
+            }
+            if nextSquare == n * n {
+                return moves + 1
+            }
+            if !visit[nextSquare] {
+                visit[nextSquare] = true
+                queue = append(queue, [2]int{nextSquare, moves + 1})
+            }
+        }
+    }
+    return -1
+}
+```
+
+```kotlin
+class Solution {
+    fun snakesAndLadders(board: Array<IntArray>): Int {
+        val n = board.size
+
+        fun intToPos(square: Int): Pair<Int, Int> {
+            var r = (square - 1) / n
+            var c = (square - 1) % n
+            if (r % 2 == 1) c = n - 1 - c
+            r = n - 1 - r
+            return Pair(r, c)
+        }
+
+        val queue = ArrayDeque<Pair<Int, Int>>()
+        queue.add(Pair(1, 0))
+        val visit = HashSet<Int>()
+
+        while (queue.isNotEmpty()) {
+            val (square, moves) = queue.removeFirst()
+
+            for (i in 1..6) {
+                var nextSquare = square + i
+                val (r, c) = intToPos(nextSquare)
+                if (board[r][c] != -1) {
+                    nextSquare = board[r][c]
+                }
+                if (nextSquare == n * n) return moves + 1
+                if (nextSquare !in visit) {
+                    visit.add(nextSquare)
+                    queue.add(Pair(nextSquare, moves + 1))
+                }
+            }
+        }
+        return -1
+    }
+}
+```
+
+```swift
+class Solution {
+    func snakesAndLadders(_ board: [[Int]]) -> Int {
+        let n = board.count
+
+        func intToPos(_ square: Int) -> (Int, Int) {
+            var r = (square - 1) / n
+            var c = (square - 1) % n
+            if r % 2 == 1 {
+                c = n - 1 - c
+            }
+            r = n - 1 - r
+            return (r, c)
+        }
+
+        var queue = [(1, 0)]
+        var visit = Set<Int>()
+        var index = 0
+
+        while index < queue.count {
+            let (square, moves) = queue[index]
+            index += 1
+
+            for i in 1...6 {
+                var nextSquare = square + i
+                let (r, c) = intToPos(nextSquare)
+                if board[r][c] != -1 {
+                    nextSquare = board[r][c]
+                }
+                if nextSquare == n * n {
+                    return moves + 1
+                }
+                if !visit.contains(nextSquare) {
+                    visit.insert(nextSquare)
+                    queue.append((nextSquare, moves + 1))
+                }
+            }
+        }
+        return -1
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn snakes_and_ladders(board: Vec<Vec<i32>>) -> i32 {
+        let n = board.len();
+
+        let int_to_pos = |square: usize| -> (usize, usize) {
+            let mut r = (square - 1) / n;
+            let mut c = (square - 1) % n;
+            if r % 2 == 1 {
+                c = n - 1 - c;
+            }
+            r = n - 1 - r;
+            (r, c)
+        };
+
+        let mut q = VecDeque::new();
+        q.push_back((1usize, 0i32));
+        let mut visit = HashSet::new();
+
+        while let Some((square, moves)) = q.pop_front() {
+            for i in 1..=6 {
+                let mut next_square = square + i;
+                let (r, c) = int_to_pos(next_square);
+                if board[r][c] != -1 {
+                    next_square = board[r][c] as usize;
+                }
+                if next_square == n * n {
+                    return moves + 1;
+                }
+                if visit.insert(next_square) {
+                    q.push_back((next_square, moves + 1));
+                }
+            }
+        }
+
+        -1
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -165,6 +393,22 @@ class Solution {
 ---
 
 ## 2. Breadth First Search - II
+
+### Intuition
+
+This variation uses a distance array instead of a visited set, storing the minimum moves to reach each square. This approach is slightly more explicit about tracking distances and allows for early termination once we reach the destination. The core BFS logic remains the same.
+
+### Algorithm
+
+1. Initialize a distance array with `-1` for all squares except square 1 (set to `0`).
+2. Start `bfs` from square 1.
+3. For each square processed:
+    - Try all dice rolls (1 to 6).
+    - Skip if the next square exceeds the board.
+    - Apply any snake or ladder at the landing position.
+    - If this square has not been visited (distance is `-1`), set its distance and check if it is the destination.
+    - Enqueue the square for further exploration.
+4. Return the distance to the final square, or `-1` if unreachable.
 
 ::tabs-start
 
@@ -355,6 +599,240 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int SnakesAndLadders(int[][] board) {
+        int n = board.Length;
+        int[] dist = new int[n * n + 1];
+        Array.Fill(dist, -1);
+        var queue = new Queue<int>();
+        queue.Enqueue(1);
+        dist[1] = 0;
+
+        while (queue.Count > 0) {
+            int square = queue.Dequeue();
+
+            for (int i = 1; i <= 6; i++) {
+                int nextSquare = square + i;
+                if (nextSquare > n * n) break;
+
+                int[] pos = IntToPos(nextSquare, n);
+                int r = pos[0], c = pos[1];
+
+                if (board[r][c] != -1) {
+                    nextSquare = board[r][c];
+                }
+
+                if (dist[nextSquare] == -1) {
+                    dist[nextSquare] = dist[square] + 1;
+                    if (nextSquare == n * n) {
+                        return dist[nextSquare];
+                    }
+                    queue.Enqueue(nextSquare);
+                }
+            }
+        }
+
+        return -1;
+    }
+
+    private int[] IntToPos(int square, int n) {
+        int r = (square - 1) / n;
+        int c = (square - 1) % n;
+        if (r % 2 == 1) c = n - 1 - c;
+        r = n - 1 - r;
+        return new int[] { r, c };
+    }
+}
+```
+
+```go
+func snakesAndLadders(board [][]int) int {
+    n := len(board)
+    dist := make([]int, n*n+1)
+    for i := range dist {
+        dist[i] = -1
+    }
+    queue := []int{1}
+    dist[1] = 0
+
+    intToPos := func(square int) (int, int) {
+        r := (square - 1) / n
+        c := (square - 1) % n
+        if r % 2 == 1 {
+            c = n - 1 - c
+        }
+        r = n - 1 - r
+        return r, c
+    }
+
+    for len(queue) > 0 {
+        square := queue[0]
+        queue = queue[1:]
+
+        for i := 1; i <= 6; i++ {
+            nextSquare := square + i
+            if nextSquare > n*n {
+                break
+            }
+
+            r, c := intToPos(nextSquare)
+            if board[r][c] != -1 {
+                nextSquare = board[r][c]
+            }
+
+            if dist[nextSquare] == -1 {
+                dist[nextSquare] = dist[square] + 1
+                if nextSquare == n*n {
+                    return dist[nextSquare]
+                }
+                queue = append(queue, nextSquare)
+            }
+        }
+    }
+
+    return -1
+}
+```
+
+```kotlin
+class Solution {
+    fun snakesAndLadders(board: Array<IntArray>): Int {
+        val n = board.size
+        val dist = IntArray(n * n + 1) { -1 }
+        val queue = ArrayDeque<Int>()
+        queue.add(1)
+        dist[1] = 0
+
+        fun intToPos(square: Int): Pair<Int, Int> {
+            var r = (square - 1) / n
+            var c = (square - 1) % n
+            if (r % 2 == 1) c = n - 1 - c
+            r = n - 1 - r
+            return Pair(r, c)
+        }
+
+        while (queue.isNotEmpty()) {
+            val square = queue.removeFirst()
+
+            for (i in 1..6) {
+                var nextSquare = square + i
+                if (nextSquare > n * n) break
+
+                val (r, c) = intToPos(nextSquare)
+                if (board[r][c] != -1) {
+                    nextSquare = board[r][c]
+                }
+
+                if (dist[nextSquare] == -1) {
+                    dist[nextSquare] = dist[square] + 1
+                    if (nextSquare == n * n) {
+                        return dist[nextSquare]
+                    }
+                    queue.add(nextSquare)
+                }
+            }
+        }
+
+        return -1
+    }
+}
+```
+
+```swift
+class Solution {
+    func snakesAndLadders(_ board: [[Int]]) -> Int {
+        let n = board.count
+        var dist = [Int](repeating: -1, count: n * n + 1)
+        var queue = [1]
+        dist[1] = 0
+        var index = 0
+
+        func intToPos(_ square: Int) -> (Int, Int) {
+            var r = (square - 1) / n
+            var c = (square - 1) % n
+            if r % 2 == 1 {
+                c = n - 1 - c
+            }
+            r = n - 1 - r
+            return (r, c)
+        }
+
+        while index < queue.count {
+            let square = queue[index]
+            index += 1
+
+            for i in 1...6 {
+                var nextSquare = square + i
+                if nextSquare > n * n { break }
+
+                let (r, c) = intToPos(nextSquare)
+                if board[r][c] != -1 {
+                    nextSquare = board[r][c]
+                }
+
+                if dist[nextSquare] == -1 {
+                    dist[nextSquare] = dist[square] + 1
+                    if nextSquare == n * n {
+                        return dist[nextSquare]
+                    }
+                    queue.append(nextSquare)
+                }
+            }
+        }
+
+        return -1
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn snakes_and_ladders(board: Vec<Vec<i32>>) -> i32 {
+        let n = board.len();
+
+        let int_to_pos = |square: usize| -> (usize, usize) {
+            let mut r = (square - 1) / n;
+            let mut c = (square - 1) % n;
+            if r % 2 == 1 {
+                c = n - 1 - c;
+            }
+            r = n - 1 - r;
+            (r, c)
+        };
+
+        let mut dist = vec![-1i32; n * n + 1];
+        let mut q = VecDeque::new();
+        q.push_back(1usize);
+        dist[1] = 0;
+
+        while let Some(square) = q.pop_front() {
+            for i in 1..=6 {
+                let mut next_square = square + i;
+                if next_square > n * n {
+                    break;
+                }
+
+                let (r, c) = int_to_pos(next_square);
+                if board[r][c] != -1 {
+                    next_square = board[r][c] as usize;
+                }
+
+                if dist[next_square] == -1 {
+                    dist[next_square] = dist[square] + 1;
+                    if next_square == n * n {
+                        return dist[next_square];
+                    }
+                    q.push_back(next_square);
+                }
+            }
+        }
+
+        -1
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -365,6 +843,22 @@ class Solution {
 ---
 
 ## 3. Breadth First Search - III
+
+### Intuition
+
+This optimization modifies the board in place to track visited squares, eliminating the need for a separate visited set or distance array. By marking visited positions directly on the board with a special value (0), we reduce memory overhead while maintaining the same BFS traversal logic.
+
+### Algorithm
+
+1. Initialize a queue with square 1 and mark the starting position on the board as visited (set to `0`).
+2. Process the queue level by level, tracking the current move count.
+3. For each square in the current level:
+    - Try all dice rolls (1 to 6).
+    - Skip if the next square exceeds the board.
+    - Apply any snake or ladder at the landing position.
+    - If the board position is not marked as visited (not `0`), check for destination and enqueue.
+    - Mark the position as visited by setting it to `0`.
+4. Increment `moves` after processing each level and return `-1` if unreachable.
 
 ::tabs-start
 
@@ -564,9 +1058,275 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int SnakesAndLadders(int[][] board) {
+        int n = board.Length;
+        var queue = new Queue<int>();
+        queue.Enqueue(1);
+        board[n - 1][0] = 0;
+        int moves = 0;
+
+        while (queue.Count > 0) {
+            for (int it = queue.Count; it > 0; it--) {
+                int square = queue.Dequeue();
+                for (int i = 1; i <= 6; i++) {
+                    int nextSquare = square + i;
+                    if (nextSquare > n * n) break;
+
+                    int[] pos = IntToPos(nextSquare, n);
+                    int r = pos[0], c = pos[1];
+
+                    if (board[r][c] != -1) {
+                        nextSquare = board[r][c];
+                    }
+
+                    if (board[r][c] != 0) {
+                        if (nextSquare == n * n) {
+                            return moves + 1;
+                        }
+
+                        board[r][c] = 0;
+                        queue.Enqueue(nextSquare);
+                    }
+                }
+            }
+            moves++;
+        }
+
+        return -1;
+    }
+
+    private int[] IntToPos(int square, int n) {
+        int r = (square - 1) / n;
+        int c = (square - 1) % n;
+        if (r % 2 == 1) c = n - 1 - c;
+        r = n - 1 - r;
+        return new int[] { r, c };
+    }
+}
+```
+
+```go
+func snakesAndLadders(board [][]int) int {
+    n := len(board)
+    queue := []int{1}
+    board[n-1][0] = 0
+    moves := 0
+
+    intToPos := func(square int) (int, int) {
+        r := (square - 1) / n
+        c := (square - 1) % n
+        if r % 2 == 1 {
+            c = n - 1 - c
+        }
+        r = n - 1 - r
+        return r, c
+    }
+
+    for len(queue) > 0 {
+        size := len(queue)
+        for it := 0; it < size; it++ {
+            square := queue[0]
+            queue = queue[1:]
+            for i := 1; i <= 6; i++ {
+                nextSquare := square + i
+                if nextSquare > n*n {
+                    break
+                }
+
+                r, c := intToPos(nextSquare)
+                if board[r][c] != -1 {
+                    nextSquare = board[r][c]
+                }
+
+                if board[r][c] != 0 {
+                    if nextSquare == n*n {
+                        return moves + 1
+                    }
+
+                    board[r][c] = 0
+                    queue = append(queue, nextSquare)
+                }
+            }
+        }
+        moves++
+    }
+
+    return -1
+}
+```
+
+```kotlin
+class Solution {
+    fun snakesAndLadders(board: Array<IntArray>): Int {
+        val n = board.size
+        val queue = ArrayDeque<Int>()
+        queue.add(1)
+        board[n - 1][0] = 0
+        var moves = 0
+
+        fun intToPos(square: Int): Pair<Int, Int> {
+            var r = (square - 1) / n
+            var c = (square - 1) % n
+            if (r % 2 == 1) c = n - 1 - c
+            r = n - 1 - r
+            return Pair(r, c)
+        }
+
+        while (queue.isNotEmpty()) {
+            repeat(queue.size) {
+                val square = queue.removeFirst()
+                for (i in 1..6) {
+                    var nextSquare = square + i
+                    if (nextSquare > n * n) break
+
+                    val (r, c) = intToPos(nextSquare)
+                    if (board[r][c] != -1) {
+                        nextSquare = board[r][c]
+                    }
+
+                    if (board[r][c] != 0) {
+                        if (nextSquare == n * n) {
+                            return moves + 1
+                        }
+
+                        board[r][c] = 0
+                        queue.add(nextSquare)
+                    }
+                }
+            }
+            moves++
+        }
+
+        return -1
+    }
+}
+```
+
+```swift
+class Solution {
+    func snakesAndLadders(_ board: [[Int]]) -> Int {
+        var board = board
+        let n = board.count
+        var queue = [1]
+        board[n - 1][0] = 0
+        var moves = 0
+        var index = 0
+
+        func intToPos(_ square: Int) -> (Int, Int) {
+            var r = (square - 1) / n
+            var c = (square - 1) % n
+            if r % 2 == 1 {
+                c = n - 1 - c
+            }
+            r = n - 1 - r
+            return (r, c)
+        }
+
+        while index < queue.count {
+            let size = queue.count - index
+            for _ in 0..<size {
+                let square = queue[index]
+                index += 1
+                for i in 1...6 {
+                    var nextSquare = square + i
+                    if nextSquare > n * n { break }
+
+                    let (r, c) = intToPos(nextSquare)
+                    if board[r][c] != -1 {
+                        nextSquare = board[r][c]
+                    }
+
+                    if board[r][c] != 0 {
+                        if nextSquare == n * n {
+                            return moves + 1
+                        }
+
+                        board[r][c] = 0
+                        queue.append(nextSquare)
+                    }
+                }
+            }
+            moves += 1
+        }
+
+        return -1
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn snakes_and_ladders(board: Vec<Vec<i32>>) -> i32 {
+        let mut board = board;
+        let n = board.len();
+
+        let int_to_pos = |square: usize| -> (usize, usize) {
+            let mut r = (square - 1) / n;
+            let mut c = (square - 1) % n;
+            if r % 2 == 1 {
+                c = n - 1 - c;
+            }
+            r = n - 1 - r;
+            (r, c)
+        };
+
+        let mut q = VecDeque::new();
+        q.push_back(1usize);
+        board[n - 1][0] = 0;
+        let mut moves = 0;
+
+        while !q.is_empty() {
+            for _ in 0..q.len() {
+                let square = q.pop_front().unwrap();
+                for i in 1..=6 {
+                    let mut next_square = square + i;
+                    if next_square > n * n {
+                        break;
+                    }
+
+                    let (r, c) = int_to_pos(next_square);
+                    if board[r][c] != -1 {
+                        next_square = board[r][c] as usize;
+                    }
+
+                    if board[r][c] != 0 {
+                        if next_square == n * n {
+                            return moves + 1;
+                        }
+                        board[r][c] = 0;
+                        q.push_back(next_square);
+                    }
+                }
+            }
+            moves += 1;
+        }
+
+        -1
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n ^ 2)$
 - Space complexity: $O(n ^ 2)$
+
+---
+
+## Common Pitfalls
+
+### Incorrect Square-to-Coordinate Conversion
+
+The board uses a boustrophedon (zigzag) pattern starting from the bottom-left, with alternating row directions. A common mistake is not flipping the column index for odd rows or forgetting that row 0 in the board array corresponds to the top of the visual board. Always verify your conversion function with examples from different rows.
+
+### Marking the Wrong Square as Visited
+
+After taking a snake or ladder, you land on a different square than where you initially rolled to. The visited check should be based on the final destination after any snake/ladder, but the board position to check for snakes/ladders is the intermediate square. Confusing these leads to revisiting squares or missing valid paths.
+
+### Not Handling Squares Beyond the Board
+
+When rolling dice from a square close to the end, some rolls may exceed `n * n`. These rolls are invalid and should be skipped, not treated as reaching the destination. Always check `nextSquare > n * n` before processing a dice roll.

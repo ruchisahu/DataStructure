@@ -1,4 +1,35 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Graph Representation** - Building adjacency lists from equations where variables are nodes and ratios are edge weights
+- **BFS/DFS Graph Traversal** - Finding paths between nodes while accumulating products of edge weights
+- **Union-Find (Disjoint Set Union)** - Advanced technique for tracking connected components with weighted relationships
+- **Hash Maps** - Storing graph edges and tracking visited nodes during traversal
+- **Floyd-Warshall Algorithm** - All-pairs shortest path concept adapted for computing transitive ratios
+
+---
+
 ## 1. Breadth First Search
+
+### Intuition
+
+We can think of each equation `a / b = value` as a directed edge from `a` to `b` with weight `value`, and an edge from `b` to `a` with weight `1/value`. This transforms the problem into a graph traversal: to evaluate `x / y`, we need to find a path from `x` to `y` and multiply the edge weights along that path.
+
+BFS works well here because we explore all neighbors at the current distance before moving further. Starting from the source variable, we track the accumulated product as we traverse. When we reach the target, that accumulated product gives us the answer.
+
+### Algorithm
+
+1. Build an adjacency list where each variable maps to a list of `(neighbor, weight)` pairs. For each equation `a / b = value`, add edges `a -> b` with weight `value` and `b -> a` with weight `1/value`.
+2. For each query `(src, target)`:
+    - If either variable is not in the graph, return `-1`.
+    - Initialize a queue with `(src, 1.0)` and a visited set.
+    - While the queue is not empty:
+        - Dequeue a node and its accumulated weight.
+        - If this node equals `target`, return the accumulated weight.
+        - For each unvisited neighbor, enqueue it with the updated weight (current weight multiplied by edge weight).
+    - If `target` is never reached, return `-1`.
+3. Return the results for all queries.
 
 ::tabs-start
 
@@ -249,6 +280,187 @@ public class Solution {
 }
 ```
 
+```go
+func calcEquation(equations [][]string, values []float64, queries [][]string) []float64 {
+    adj := make(map[string][][2]interface{})
+
+    for i, eq := range equations {
+        a, b := eq[0], eq[1]
+        adj[a] = append(adj[a], [2]interface{}{b, values[i]})
+        adj[b] = append(adj[b], [2]interface{}{a, 1.0 / values[i]})
+    }
+
+    bfs := func(src, target string) float64 {
+        if _, ok := adj[src]; !ok {
+            return -1.0
+        }
+        if _, ok := adj[target]; !ok {
+            return -1.0
+        }
+
+        queue := [][2]interface{}{{src, 1.0}}
+        visited := make(map[string]bool)
+        visited[src] = true
+
+        for len(queue) > 0 {
+            node := queue[0][0].(string)
+            weight := queue[0][1].(float64)
+            queue = queue[1:]
+
+            if node == target {
+                return weight
+            }
+
+            for _, nei := range adj[node] {
+                neiNode := nei[0].(string)
+                neiWeight := nei[1].(float64)
+                if !visited[neiNode] {
+                    visited[neiNode] = true
+                    queue = append(queue, [2]interface{}{neiNode, weight * neiWeight})
+                }
+            }
+        }
+
+        return -1.0
+    }
+
+    res := make([]float64, len(queries))
+    for i, q := range queries {
+        res[i] = bfs(q[0], q[1])
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun calcEquation(equations: List<List<String>>, values: DoubleArray, queries: List<List<String>>): DoubleArray {
+        val adj = HashMap<String, MutableList<Pair<String, Double>>>()
+
+        for (i in equations.indices) {
+            val (a, b) = equations[i]
+            adj.getOrPut(a) { mutableListOf() }.add(Pair(b, values[i]))
+            adj.getOrPut(b) { mutableListOf() }.add(Pair(a, 1.0 / values[i]))
+        }
+
+        fun bfs(src: String, target: String): Double {
+            if (src !in adj || target !in adj) return -1.0
+
+            val queue: ArrayDeque<Pair<String, Double>> = ArrayDeque()
+            val visited = HashSet<String>()
+            queue.add(Pair(src, 1.0))
+            visited.add(src)
+
+            while (queue.isNotEmpty()) {
+                val (node, weight) = queue.removeFirst()
+
+                if (node == target) return weight
+
+                for ((nei, neiWeight) in adj[node]!!) {
+                    if (nei !in visited) {
+                        visited.add(nei)
+                        queue.add(Pair(nei, weight * neiWeight))
+                    }
+                }
+            }
+
+            return -1.0
+        }
+
+        return queries.map { (src, target) -> bfs(src, target) }.toDoubleArray()
+    }
+}
+```
+
+```swift
+class Solution {
+    func calcEquation(_ equations: [[String]], _ values: [Double], _ queries: [[String]]) -> [Double] {
+        var adj = [String: [(String, Double)]]()
+
+        for i in 0..<equations.count {
+            let a = equations[i][0]
+            let b = equations[i][1]
+            adj[a, default: []].append((b, values[i]))
+            adj[b, default: []].append((a, 1.0 / values[i]))
+        }
+
+        func bfs(_ src: String, _ target: String) -> Double {
+            guard adj[src] != nil, adj[target] != nil else { return -1.0 }
+
+            var queue = [(src, 1.0)]
+            var visited = Set<String>()
+            visited.insert(src)
+
+            while !queue.isEmpty {
+                let (node, weight) = queue.removeFirst()
+
+                if node == target {
+                    return weight
+                }
+
+                for (nei, neiWeight) in adj[node]! {
+                    if !visited.contains(nei) {
+                        visited.insert(nei)
+                        queue.append((nei, weight * neiWeight))
+                    }
+                }
+            }
+
+            return -1.0
+        }
+
+        return queries.map { bfs($0[0], $0[1]) }
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn calc_equation(
+        equations: Vec<Vec<String>>,
+        values: Vec<f64>,
+        queries: Vec<Vec<String>>,
+    ) -> Vec<f64> {
+        let mut adj: HashMap<String, Vec<(String, f64)>> = HashMap::new();
+
+        for (i, eq) in equations.iter().enumerate() {
+            let a = &eq[0];
+            let b = &eq[1];
+            adj.entry(a.clone()).or_default().push((b.clone(), values[i]));
+            adj.entry(b.clone()).or_default().push((a.clone(), 1.0 / values[i]));
+        }
+
+        let bfs = |src: &str, target: &str| -> f64 {
+            if !adj.contains_key(src) || !adj.contains_key(target) {
+                return -1.0;
+            }
+            let mut queue = VecDeque::new();
+            let mut visited = HashSet::new();
+            queue.push_back((src.to_string(), 1.0));
+            visited.insert(src.to_string());
+
+            while let Some((node, weight)) = queue.pop_front() {
+                if node == target {
+                    return weight;
+                }
+                if let Some(neighbors) = adj.get(&node) {
+                    for (nei, nei_weight) in neighbors {
+                        if !visited.contains(nei) {
+                            visited.insert(nei.clone());
+                            queue.push_back((nei.clone(), weight * nei_weight));
+                        }
+                    }
+                }
+            }
+            -1.0
+        };
+
+        queries.iter().map(|q| bfs(&q[0], &q[1])).collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -261,6 +473,24 @@ public class Solution {
 ---
 
 ## 2. Depth First Search
+
+### Intuition
+
+Like BFS, DFS also explores paths through the graph, but it goes deep before backtracking. We recursively explore from the source, multiplying edge weights as we go. The first complete path we find from source to target gives us the answer.
+
+DFS is often simpler to implement recursively. At each step, we check if we have reached the target. If not, we try all unvisited neighbors, and if any recursive call succeeds (returns a non-negative result), we multiply by the current edge weight and return.
+
+### Algorithm
+
+1. Build the same adjacency list as in BFS.
+2. For each query `(src, target)`:
+    - Initialize an empty visited set shared by all recursive calls for this query.
+    - If either variable is not in the graph, return `-1`.
+    - If `src == target`, return `1.0` (any variable divided by itself is `1`).
+    - Mark `src` as visited and explore all neighbors recursively.
+    - For each unvisited neighbor, recursively search for `target`. If found, multiply the result by the edge weight and return.
+    - If no path is found, return `-1`.
+3. Return the results for all queries.
 
 ::tabs-start
 
@@ -368,14 +598,15 @@ public:
         for (const auto& query : queries) {
             string src = query[0];
             string target = query[1];
-            res.push_back(dfs(src, target, adj, unordered_set<string>()));
+            unordered_set<string> visited;
+            res.push_back(dfs(src, target, adj, visited));
         }
 
         return res;
     }
 
 private:
-    double dfs(const string& src, const string& target, unordered_map<string, vector<pair<string, double>>>& adj, unordered_set<string> visited) {
+    double dfs(const string& src, const string& target, unordered_map<string, vector<pair<string, double>>>& adj, unordered_set<string>& visited) {
         if (!adj.count(src) || !adj.count(target)) {
             return -1.0;
         }
@@ -486,18 +717,207 @@ public class Solution {
 }
 ```
 
+```go
+func calcEquation(equations [][]string, values []float64, queries [][]string) []float64 {
+    adj := make(map[string][][2]interface{})
+
+    for i, eq := range equations {
+        a, b := eq[0], eq[1]
+        adj[a] = append(adj[a], [2]interface{}{b, values[i]})
+        adj[b] = append(adj[b], [2]interface{}{a, 1.0 / values[i]})
+    }
+
+    var dfs func(src, target string, visited map[string]bool) float64
+    dfs = func(src, target string, visited map[string]bool) float64 {
+        if _, ok := adj[src]; !ok {
+            return -1.0
+        }
+        if _, ok := adj[target]; !ok {
+            return -1.0
+        }
+        if src == target {
+            return 1.0
+        }
+
+        visited[src] = true
+
+        for _, nei := range adj[src] {
+            neiNode := nei[0].(string)
+            weight := nei[1].(float64)
+            if !visited[neiNode] {
+                result := dfs(neiNode, target, visited)
+                if result != -1.0 {
+                    return weight * result
+                }
+            }
+        }
+
+        return -1.0
+    }
+
+    res := make([]float64, len(queries))
+    for i, q := range queries {
+        visited := make(map[string]bool)
+        res[i] = dfs(q[0], q[1], visited)
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun calcEquation(equations: List<List<String>>, values: DoubleArray, queries: List<List<String>>): DoubleArray {
+        val adj = HashMap<String, MutableList<Pair<String, Double>>>()
+
+        for (i in equations.indices) {
+            val (a, b) = equations[i]
+            adj.getOrPut(a) { mutableListOf() }.add(Pair(b, values[i]))
+            adj.getOrPut(b) { mutableListOf() }.add(Pair(a, 1.0 / values[i]))
+        }
+
+        fun dfs(src: String, target: String, visited: HashSet<String>): Double {
+            if (src !in adj || target !in adj) return -1.0
+            if (src == target) return 1.0
+
+            visited.add(src)
+
+            for ((nei, weight) in adj[src]!!) {
+                if (nei !in visited) {
+                    val result = dfs(nei, target, visited)
+                    if (result != -1.0) {
+                        return weight * result
+                    }
+                }
+            }
+
+            return -1.0
+        }
+
+        return queries.map { (src, target) -> dfs(src, target, HashSet()) }.toDoubleArray()
+    }
+}
+```
+
+```swift
+class Solution {
+    func calcEquation(_ equations: [[String]], _ values: [Double], _ queries: [[String]]) -> [Double] {
+        var adj = [String: [(String, Double)]]()
+
+        for i in 0..<equations.count {
+            let a = equations[i][0]
+            let b = equations[i][1]
+            adj[a, default: []].append((b, values[i]))
+            adj[b, default: []].append((a, 1.0 / values[i]))
+        }
+
+        func dfs(_ src: String, _ target: String, _ visited: inout Set<String>) -> Double {
+            guard adj[src] != nil, adj[target] != nil else { return -1.0 }
+            if src == target { return 1.0 }
+
+            visited.insert(src)
+
+            for (nei, weight) in adj[src]! {
+                if !visited.contains(nei) {
+                    let result = dfs(nei, target, &visited)
+                    if result != -1.0 {
+                        return weight * result
+                    }
+                }
+            }
+
+            return -1.0
+        }
+
+        return queries.map { query -> Double in
+            var visited = Set<String>()
+            return dfs(query[0], query[1], &visited)
+        }
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn calc_equation(
+        equations: Vec<Vec<String>>,
+        values: Vec<f64>,
+        queries: Vec<Vec<String>>,
+    ) -> Vec<f64> {
+        let mut adj: HashMap<String, Vec<(String, f64)>> = HashMap::new();
+
+        for (i, eq) in equations.iter().enumerate() {
+            let a = &eq[0];
+            let b = &eq[1];
+            adj.entry(a.clone()).or_default().push((b.clone(), values[i]));
+            adj.entry(b.clone()).or_default().push((a.clone(), 1.0 / values[i]));
+        }
+
+        fn dfs(
+            src: &str,
+            target: &str,
+            adj: &HashMap<String, Vec<(String, f64)>>,
+            visited: &mut HashSet<String>,
+        ) -> f64 {
+            if !adj.contains_key(src) || !adj.contains_key(target) {
+                return -1.0;
+            }
+            if src == target {
+                return 1.0;
+            }
+            visited.insert(src.to_string());
+            if let Some(neighbors) = adj.get(src) {
+                for (nei, weight) in neighbors {
+                    if !visited.contains(nei) {
+                        let result = dfs(nei, target, adj, visited);
+                        if result != -1.0 {
+                            return weight * result;
+                        }
+                    }
+                }
+            }
+            -1.0
+        }
+
+        queries
+            .iter()
+            .map(|q| {
+                let mut visited = HashSet::new();
+                dfs(&q[0], &q[1], &adj, &mut visited)
+            })
+            .collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
-- Time complexity: $O(m * n)$
-- Space complexity: $O(n + m)$
+- Time complexity: $O(e + m * (n + e))$
+- Space complexity: $O(n + e + m)$
 
-> Where $n$ is the number of unique strings and $m$ is the number of queries.
+> Where $n$ is the number of unique strings, $e$ is the number of equations, and $m$ is the number of queries.
 
 ---
 
 ## 3. Disjoint Set Union
+
+### Intuition
+
+Union-Find can track connected components, but here we need to track ratios between variables. The key insight is to store each variable's weight relative to its root. When we union two variables `x` and `y` with ratio `x/y = value`, we connect their roots and adjust weights so that the ratio relationship is preserved.
+
+To query `x/y`, we find both roots. If they differ, no path exists. If they match, the answer is `weight[x] / weight[y]`, since both weights are relative to the same root.
+
+### Algorithm
+
+1. Initialize `parent` and `weight` maps. Each variable starts as its own parent with weight `1.0`.
+2. The `find` operation uses path compression: while finding the root, update the weight to be relative to the root by multiplying along the path.
+3. The `union` operation connects two variables: find both roots, and if different, set one root's parent to the other and adjust the weight to maintain the given ratio.
+4. Process all equations by calling `union` for each pair.
+5. For each query `(x, y)`:
+    - If either variable is unknown or they have different roots, return `-1`.
+    - Otherwise, return `weight[x] / weight[y]`.
 
 ::tabs-start
 
@@ -834,6 +1254,253 @@ public class Solution {
 }
 ```
 
+```go
+type UnionFind struct {
+    parent map[string]string
+    weight map[string]float64
+}
+
+func NewUnionFind() *UnionFind {
+    return &UnionFind{
+        parent: make(map[string]string),
+        weight: make(map[string]float64),
+    }
+}
+
+func (uf *UnionFind) Add(x string) {
+    if _, ok := uf.parent[x]; !ok {
+        uf.parent[x] = x
+        uf.weight[x] = 1.0
+    }
+}
+
+func (uf *UnionFind) Find(x string) string {
+    if uf.parent[x] != x {
+        origParent := uf.parent[x]
+        uf.parent[x] = uf.Find(origParent)
+        uf.weight[x] *= uf.weight[origParent]
+    }
+    return uf.parent[x]
+}
+
+func (uf *UnionFind) Union(x, y string, value float64) {
+    uf.Add(x)
+    uf.Add(y)
+    rootX := uf.Find(x)
+    rootY := uf.Find(y)
+
+    if rootX != rootY {
+        uf.parent[rootX] = rootY
+        uf.weight[rootX] = value * uf.weight[y] / uf.weight[x]
+    }
+}
+
+func (uf *UnionFind) GetRatio(x, y string) float64 {
+    _, okX := uf.parent[x]
+    _, okY := uf.parent[y]
+    if !okX || !okY || uf.Find(x) != uf.Find(y) {
+        return -1.0
+    }
+    return uf.weight[x] / uf.weight[y]
+}
+
+func calcEquation(equations [][]string, values []float64, queries [][]string) []float64 {
+    uf := NewUnionFind()
+
+    for i, eq := range equations {
+        uf.Union(eq[0], eq[1], values[i])
+    }
+
+    res := make([]float64, len(queries))
+    for i, q := range queries {
+        res[i] = uf.GetRatio(q[0], q[1])
+    }
+
+    return res
+}
+```
+
+```kotlin
+class UnionFind {
+    private val parent = HashMap<String, String>()
+    private val weight = HashMap<String, Double>()
+
+    fun add(x: String) {
+        if (x !in parent) {
+            parent[x] = x
+            weight[x] = 1.0
+        }
+    }
+
+    fun find(x: String): String {
+        if (parent[x] != x) {
+            val origParent = parent[x]!!
+            parent[x] = find(origParent)
+            weight[x] = weight[x]!! * weight[origParent]!!
+        }
+        return parent[x]!!
+    }
+
+    fun union(x: String, y: String, value: Double) {
+        add(x)
+        add(y)
+        val rootX = find(x)
+        val rootY = find(y)
+
+        if (rootX != rootY) {
+            parent[rootX] = rootY
+            weight[rootX] = value * weight[y]!! / weight[x]!!
+        }
+    }
+
+    fun getRatio(x: String, y: String): Double {
+        if (x !in parent || y !in parent || find(x) != find(y)) {
+            return -1.0
+        }
+        return weight[x]!! / weight[y]!!
+    }
+}
+
+class Solution {
+    fun calcEquation(equations: List<List<String>>, values: DoubleArray, queries: List<List<String>>): DoubleArray {
+        val uf = UnionFind()
+
+        for (i in equations.indices) {
+            val (a, b) = equations[i]
+            uf.union(a, b, values[i])
+        }
+
+        return queries.map { (a, b) -> uf.getRatio(a, b) }.toDoubleArray()
+    }
+}
+```
+
+```swift
+class UnionFind {
+    private var parent = [String: String]()
+    private var weight = [String: Double]()
+
+    func add(_ x: String) {
+        if parent[x] == nil {
+            parent[x] = x
+            weight[x] = 1.0
+        }
+    }
+
+    func find(_ x: String) -> String {
+        if parent[x] != x {
+            let origParent = parent[x]!
+            parent[x] = find(origParent)
+            weight[x] = weight[x]! * weight[origParent]!
+        }
+        return parent[x]!
+    }
+
+    func union(_ x: String, _ y: String, _ value: Double) {
+        add(x)
+        add(y)
+        let rootX = find(x)
+        let rootY = find(y)
+
+        if rootX != rootY {
+            parent[rootX] = rootY
+            weight[rootX] = value * weight[y]! / weight[x]!
+        }
+    }
+
+    func getRatio(_ x: String, _ y: String) -> Double {
+        if parent[x] == nil || parent[y] == nil || find(x) != find(y) {
+            return -1.0
+        }
+        return weight[x]! / weight[y]!
+    }
+}
+
+class Solution {
+    func calcEquation(_ equations: [[String]], _ values: [Double], _ queries: [[String]]) -> [Double] {
+        let uf = UnionFind()
+
+        for i in 0..<equations.count {
+            let a = equations[i][0]
+            let b = equations[i][1]
+            uf.union(a, b, values[i])
+        }
+
+        return queries.map { uf.getRatio($0[0], $0[1]) }
+    }
+}
+```
+
+```rust
+struct UnionFind {
+    parent: HashMap<String, String>,
+    weight: HashMap<String, f64>,
+}
+
+impl UnionFind {
+    fn new() -> Self {
+        UnionFind {
+            parent: HashMap::new(),
+            weight: HashMap::new(),
+        }
+    }
+
+    fn add(&mut self, x: &str) {
+        if !self.parent.contains_key(x) {
+            self.parent.insert(x.to_string(), x.to_string());
+            self.weight.insert(x.to_string(), 1.0);
+        }
+    }
+
+    fn find(&mut self, x: &str) -> String {
+        if self.parent[x] != x {
+            let orig_parent = self.parent[x].clone();
+            let root = self.find(&orig_parent);
+            let w = self.weight[x] * self.weight[&orig_parent];
+            self.parent.insert(x.to_string(), root);
+            self.weight.insert(x.to_string(), w);
+        }
+        self.parent[x].clone()
+    }
+
+    fn union(&mut self, x: &str, y: &str, value: f64) {
+        self.add(x);
+        self.add(y);
+        let root_x = self.find(x);
+        let root_y = self.find(y);
+        if root_x != root_y {
+            let w = value * self.weight[y] / self.weight[x];
+            self.parent.insert(root_x.clone(), root_y);
+            self.weight.insert(root_x, w);
+        }
+    }
+
+    fn get_ratio(&mut self, x: &str, y: &str) -> f64 {
+        if !self.parent.contains_key(x)
+            || !self.parent.contains_key(y)
+            || self.find(x) != self.find(y)
+        {
+            return -1.0;
+        }
+        self.weight[x] / self.weight[y]
+    }
+}
+
+impl Solution {
+    pub fn calc_equation(
+        equations: Vec<Vec<String>>,
+        values: Vec<f64>,
+        queries: Vec<Vec<String>>,
+    ) -> Vec<f64> {
+        let mut uf = UnionFind::new();
+        for (i, eq) in equations.iter().enumerate() {
+            uf.union(&eq[0], &eq[1], values[i]);
+        }
+        queries.iter().map(|q| uf.get_ratio(&q[0], &q[1])).collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -846,6 +1513,20 @@ public class Solution {
 ---
 
 ## 4. Floyd Warshall
+
+### Intuition
+
+Floyd-Warshall computes shortest paths between all pairs of nodes. Here, instead of distances, we compute the product of ratios. If we know `a/b` and `b/c`, then `a/c = (a/b) * (b/c)`. We precompute all such transitive ratios.
+
+This approach trades query time for preprocessing time. After running Floyd-Warshall, each query becomes a simple lookup.
+
+### Algorithm
+
+1. Build a graph where `graph[a][b] = value` for equation `a/b = value`, and `graph[b][a] = 1/value`.
+2. Run Floyd-Warshall: for each intermediate node `k`, and for each pair of nodes `(i, j)` connected through `k`, compute `graph[i][j] = graph[i][k] * graph[k][j]` if this path does not already exist.
+3. For each query `(a, b)`:
+    - If `a` is in the graph and `b` is reachable from `a`, return `graph[a][b]`.
+    - Otherwise, return `-1`.
 
 ::tabs-start
 
@@ -1039,6 +1720,168 @@ public class Solution {
 }
 ```
 
+```go
+func calcEquation(equations [][]string, values []float64, queries [][]string) []float64 {
+    graph := make(map[string]map[string]float64)
+
+    for i, eq := range equations {
+        a, b := eq[0], eq[1]
+        if graph[a] == nil {
+            graph[a] = make(map[string]float64)
+        }
+        if graph[b] == nil {
+            graph[b] = make(map[string]float64)
+        }
+        graph[a][b] = values[i]
+        graph[b][a] = 1.0 / values[i]
+    }
+
+    for k := range graph {
+        for i := range graph[k] {
+            for j := range graph[k] {
+                if _, ok := graph[i][j]; !ok {
+                    graph[i][j] = graph[i][k] * graph[k][j]
+                }
+            }
+        }
+    }
+
+    result := make([]float64, len(queries))
+    for i, q := range queries {
+        a, b := q[0], q[1]
+        if graph[a] != nil {
+            if val, ok := graph[a][b]; ok {
+                result[i] = val
+            } else {
+                result[i] = -1.0
+            }
+        } else {
+            result[i] = -1.0
+        }
+    }
+
+    return result
+}
+```
+
+```kotlin
+class Solution {
+    fun calcEquation(equations: List<List<String>>, values: DoubleArray, queries: List<List<String>>): DoubleArray {
+        val graph = HashMap<String, HashMap<String, Double>>()
+
+        for (i in equations.indices) {
+            val (a, b) = equations[i]
+            val value = values[i]
+            graph.getOrPut(a) { HashMap() }[b] = value
+            graph.getOrPut(b) { HashMap() }[a] = 1.0 / value
+        }
+
+        for (k in graph.keys) {
+            for (i in graph[k]!!.keys) {
+                for (j in graph[k]!!.keys) {
+                    if (j !in graph[i]!!) {
+                        graph[i]!![j] = graph[i]!![k]!! * graph[k]!![j]!!
+                    }
+                }
+            }
+        }
+
+        return queries.map { (a, b) ->
+            if (graph[a]?.containsKey(b) == true) {
+                graph[a]!![b]!!
+            } else {
+                -1.0
+            }
+        }.toDoubleArray()
+    }
+}
+```
+
+```swift
+class Solution {
+    func calcEquation(_ equations: [[String]], _ values: [Double], _ queries: [[String]]) -> [Double] {
+        var graph = [String: [String: Double]]()
+
+        for i in 0..<equations.count {
+            let a = equations[i][0]
+            let b = equations[i][1]
+            let value = values[i]
+            graph[a, default: [:]][b] = value
+            graph[b, default: [:]][a] = 1.0 / value
+        }
+
+        let keys = Array(graph.keys)
+        for k in keys {
+            for i in graph[k]!.keys {
+                for j in graph[k]!.keys {
+                    if graph[i]![j] == nil {
+                        graph[i]![j] = graph[i]![k]! * graph[k]![j]!
+                    }
+                }
+            }
+        }
+
+        return queries.map { query -> Double in
+            let a = query[0]
+            let b = query[1]
+            if let val = graph[a]?[b] {
+                return val
+            } else {
+                return -1.0
+            }
+        }
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn calc_equation(
+        equations: Vec<Vec<String>>,
+        values: Vec<f64>,
+        queries: Vec<Vec<String>>,
+    ) -> Vec<f64> {
+        let mut graph: HashMap<String, HashMap<String, f64>> = HashMap::new();
+
+        for (i, eq) in equations.iter().enumerate() {
+            let a = &eq[0];
+            let b = &eq[1];
+            let value = values[i];
+            graph.entry(a.clone()).or_default().insert(b.clone(), value);
+            graph.entry(b.clone()).or_default().insert(a.clone(), 1.0 / value);
+        }
+
+        let keys: Vec<String> = graph.keys().cloned().collect();
+        for k in &keys {
+            let k_neighbors: Vec<String> = graph.get(k).unwrap().keys().cloned().collect();
+            for i in &k_neighbors {
+                for j in &k_neighbors {
+                    let has_ij = graph.get(i).map_or(true, |m| !m.contains_key(j));
+                    if has_ij {
+                        let ik = graph[i][k];
+                        let kj = graph[k][j];
+                        graph.entry(i.clone()).or_default().insert(j.clone(), ik * kj);
+                    }
+                }
+            }
+        }
+
+        queries
+            .iter()
+            .map(|q| {
+                let a = &q[0];
+                let b = &q[1];
+                graph
+                    .get(a)
+                    .and_then(|m| m.get(b))
+                    .copied()
+                    .unwrap_or(-1.0)
+            })
+            .collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1047,3 +1890,19 @@ public class Solution {
 - Space complexity: $O(n ^ 2 + m)$
 
 > Where $n$ is the number of unique strings and $m$ is the number of queries.
+
+---
+
+## Common Pitfalls
+
+### Forgetting to Add Reciprocal Edges
+
+When building the graph, each equation `a / b = value` must create two edges: `a -> b` with weight `value` AND `b -> a` with weight `1/value`. Forgetting the reciprocal edge means you can only traverse the relationship in one direction, causing valid queries to return `-1` when the path exists in reverse.
+
+### Not Handling Unknown Variables
+
+A query might contain variables that never appeared in any equation. Before starting BFS/DFS, you must check if both the source and target variables exist in the graph. Attempting to traverse from a non-existent node will cause null pointer errors or infinite loops depending on your implementation.
+
+### Incorrect Weight Multiplication Order in Union-Find
+
+In the weighted Union-Find approach, the weight calculation during union is subtle: when connecting `rootX` to `rootY`, the new weight for `rootX` must be `value * weight[y] / weight[x]`. Getting this formula wrong (such as dividing instead of multiplying, or using the wrong variables) will produce incorrect ratios for subsequent queries.

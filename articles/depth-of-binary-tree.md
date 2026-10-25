@@ -1,4 +1,37 @@
+## Prerequisites
+Before attempting this problem, you should be comfortable with:
+- **Binary Trees** - Understanding tree node structure with left/right children
+- **Recursion** - Writing functions that call themselves with smaller subproblems
+- **Depth-First Search (DFS)** - Traversing trees by exploring as deep as possible before backtracking
+- **Breadth-First Search (BFS)** - Traversing trees level by level using a queue
+
+---
+
 ## 1. Recursive DFS
+
+### **Intuition**
+
+Recursive DFS computes the maximum depth of a binary tree by exploring every node.  
+The idea is simple:
+
+- The depth of a tree = **1 + maximum depth of its left and right subtrees**.
+- If a node is `None`, its depth is `0`.
+
+So for each node:
+1. Recursively compute the depth of the left subtree.
+2. Recursively compute the depth of the right subtree.
+3. Take the maximum of the two.
+4. Add `1` for the current node.
+
+---
+
+### **Algorithm**
+
+1. If `root` is `null`, return `0`.
+2. Otherwise:
+   - Recursively compute `leftDepth = maxDepth(root.left)`.
+   - Recursively compute `rightDepth = maxDepth(root.right)`.
+3. Return `1 + max(leftDepth, rightDepth)`.
 
 ::tabs-start
 
@@ -195,6 +228,32 @@ class Solution {
 }
 ```
 
+
+```rust
+// Definition for a binary tree node.
+// #[derive(Debug, PartialEq, Eq)]
+// pub struct TreeNode {
+//   pub val: i32,
+//   pub left: Option<Rc<RefCell<TreeNode>>>,
+//   pub right: Option<Rc<RefCell<TreeNode>>>,
+// }
+
+impl Solution {
+    pub fn max_depth(root: Option<Rc<RefCell<TreeNode>>>) -> i32 {
+        match root {
+            None => 0,
+            Some(node) => {
+                let node = node.borrow();
+                1 + std::cmp::max(
+                    Self::max_depth(node.left.clone()),
+                    Self::max_depth(node.right.clone()),
+                )
+            }
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -209,6 +268,36 @@ class Solution {
 ---
 
 ## 2. Iterative DFS (Stack)
+
+### **Intuition**
+
+Instead of relying on recursion to explore the tree, we can simulate DFS explicitly using a stack.  
+The stack will store pairs of:
+
+- the current node  
+- the depth of that node in the tree  
+
+Every time we pop a node from the stack:
+
+- We update the maximum depth seen so far.
+- We push its left and right children onto the stack with depth + 1.
+
+This approach works like a manual DFS where we keep track of depth ourselves.  
+It avoids recursion and is useful when recursion depth may become too large.
+
+---
+
+### **Algorithm**
+
+1. If the `root` is `null`, return `0`.
+2. Initialize a stack with the pair `(root, 1)` to represent depth `1`.
+3. Initialize `maxDepth = 0`.
+4. While the stack is not empty:
+   - Pop `(node, depth)`.
+   - Update `maxDepth = max(maxDepth, depth)`.
+   - Push `(node.left, depth + 1)` onto the stack if left child exists.
+   - Push `(node.right, depth + 1)` onto the stack if right child exists.
+5. When the stack becomes empty, return `maxDepth`.
 
 ::tabs-start
 
@@ -499,6 +588,34 @@ class Solution {
 }
 ```
 
+
+```rust
+// Definition for a binary tree node.
+// #[derive(Debug, PartialEq, Eq)]
+// pub struct TreeNode {
+//   pub val: i32,
+//   pub left: Option<Rc<RefCell<TreeNode>>>,
+//   pub right: Option<Rc<RefCell<TreeNode>>>,
+// }
+
+impl Solution {
+    pub fn max_depth(root: Option<Rc<RefCell<TreeNode>>>) -> i32 {
+        let mut stack: Vec<(Option<Rc<RefCell<TreeNode>>>, i32)> = vec![(root, 1)];
+        let mut res = 0;
+
+        while let Some((node, depth)) = stack.pop() {
+            if let Some(n) = node {
+                let n = n.borrow();
+                res = res.max(depth);
+                stack.push((n.left.clone(), depth + 1));
+                stack.push((n.right.clone(), depth + 1));
+            }
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -509,6 +626,40 @@ class Solution {
 ---
 
 ## 3. Breadth First Search
+
+### **Intuition**
+
+Breadth-First Search (BFS) processes the tree level by level.  
+This makes it a perfect fit for computing the **maximum depth** because:
+
+- Every iteration of BFS processes one entire level of the tree.
+- So each completed level corresponds to increasing the depth by 1.
+
+We simply count **how many levels** we traverse until the queue becomes empty.
+
+Think of the queue like a moving frontier:
+
+- Start with the root → depth = 1  
+- Add its children → depth = 2  
+- Add their children → depth = 3  
+- Continue until no nodes remain.
+
+The number of BFS layers processed is exactly the depth of the tree.
+
+---
+
+### **Algorithm**
+
+1. If the tree is empty (`root == null`), return `0`.
+2. Initialize a queue and push the `root`.
+3. Initialize `level = 0`.
+4. While the queue is not empty:
+   - Determine the number of nodes at the current level (`size = len(queue)`).
+   - Process all `size` nodes:
+     - Pop from the queue.
+     - Push their left and right children if they exist.
+   - After processing the entire level, increment `level`.
+5. Return `level` when the queue becomes empty.
 
 ::tabs-start
 
@@ -719,22 +870,21 @@ func maxDepth(root *TreeNode) int {
        return 0
    }
 
-   q := linkedlistqueue.New()
-   q.Enqueue(root)
+   q := []*TreeNode{root}
    level := 0
 
-   for !q.Empty() {
-       size := q.Size()
+   for len(q) > 0 {
+       size := len(q)
 
        for i := 0; i < size; i++ {
-           val, _ := q.Dequeue()
-           node := val.(*TreeNode)
+           node := q[0]
+           q = q[1:]
 
            if node.Left != nil {
-               q.Enqueue(node.Left)
+               q = append(q, node.Left)
            }
            if node.Right != nil {
-               q.Enqueue(node.Right)
+               q = append(q, node.Right)
            }
        }
        level++
@@ -823,9 +973,78 @@ class Solution {
 }
 ```
 
+
+```rust
+// Definition for a binary tree node.
+// #[derive(Debug, PartialEq, Eq)]
+// pub struct TreeNode {
+//   pub val: i32,
+//   pub left: Option<Rc<RefCell<TreeNode>>>,
+//   pub right: Option<Rc<RefCell<TreeNode>>>,
+// }
+
+impl Solution {
+    pub fn max_depth(root: Option<Rc<RefCell<TreeNode>>>) -> i32 {
+        let mut queue = VecDeque::new();
+        if let Some(r) = root {
+            queue.push_back(r);
+        }
+
+        let mut level = 0;
+        while !queue.is_empty() {
+            let size = queue.len();
+            for _ in 0..size {
+                let node = queue.pop_front().unwrap();
+                let node = node.borrow();
+                if let Some(ref left) = node.left {
+                    queue.push_back(left.clone());
+                }
+                if let Some(ref right) = node.right {
+                    queue.push_back(right.clone());
+                }
+            }
+            level += 1;
+        }
+        level
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(n)$
+
+## Common Pitfalls
+
+### Confusing Depth with Height
+
+Depth is measured from the root down (root has depth 1 or 0 depending on convention), while height is measured from the leaves up. The maximum depth of a tree equals its height when counting from root. Be consistent with whether you start counting at 0 or 1.
+
+```python
+# If root is None, depth is 0 (no nodes)
+# If root exists with no children, depth is 1 (one node)
+def maxDepth(self, root):
+    if not root:
+        return 0  # Base case: empty tree has depth 0
+    return 1 + max(self.maxDepth(root.left), self.maxDepth(root.right))
+```
+
+### Forgetting to Handle the Empty Tree Case
+
+An empty tree (null root) has a depth of 0. Failing to check for this base case before accessing node properties will cause a null pointer exception.
+
+```python
+# Wrong: No null check
+def maxDepth(self, root):
+    return 1 + max(self.maxDepth(root.left), self.maxDepth(root.right))
+    # Crashes when root is None
+
+# Correct: Handle empty tree first
+def maxDepth(self, root):
+    if not root:
+        return 0
+    return 1 + max(self.maxDepth(root.left), self.maxDepth(root.right))
+```

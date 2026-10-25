@@ -1,4 +1,33 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **String Manipulation** - Building justified lines requires precise string concatenation and padding
+- **Greedy Algorithms** - Words are greedily packed into each line until no more fit
+- **Modular Arithmetic** - Space distribution uses division and remainder to spread spaces evenly among gaps
+
+---
+
 ## 1. Iteration
+
+### Intuition
+
+Text justification requires packing words into lines of fixed width, distributing extra spaces as evenly as possible between words. The challenge is handling three distinct cases: regular lines with multiple words (distribute spaces evenly, with extra spaces going to the left gaps), single-word lines (pad with trailing spaces), and the last line (left-justified with trailing spaces).
+
+The key is to greedily fit as many words as possible on each line, then calculate how to distribute the remaining space among the gaps between words.
+
+### Algorithm
+
+1. Initialize an empty `result` list and track the current `line`'s words and total character `length`.
+2. For each word, check if it fits on the current `line` (considering at least one space between words):
+    - If it fits, add it to the current `line`.
+    - If not, justify the current `line`:
+        - Calculate total extra spaces needed (`maxWidth - length`).
+        - Divide spaces evenly among gaps. Distribute remaining spaces one extra each to leftmost gaps.
+        - For single-word `lines`, add all spaces after the word.
+        - Join words and add to `result`. Start a new `line`.
+3. Handle the last `line` separately: left-justify (single space between words) and pad with trailing spaces.
+4. Return the `result`.
 
 ::tabs-start
 
@@ -218,6 +247,181 @@ public class Solution {
 }
 ```
 
+```go
+func fullJustify(words []string, maxWidth int) []string {
+    res := []string{}
+    line := []string{}
+    length := 0
+    i := 0
+
+    for i < len(words) {
+        if length+len(words[i])+len(line) <= maxWidth {
+            line = append(line, words[i])
+            length += len(words[i])
+            i++
+        } else {
+            // Line complete
+            extraSpace := maxWidth - length
+            gaps := max(1, len(line)-1)
+            remainder := extraSpace % gaps
+            space := extraSpace / gaps
+
+            for j := 0; j < max(1, len(line)-1); j++ {
+                line[j] += strings.Repeat(" ", space)
+                if remainder > 0 {
+                    line[j] += " "
+                    remainder--
+                }
+            }
+
+            res = append(res, strings.Join(line, ""))
+            line = []string{}
+            length = 0
+        }
+    }
+
+    // Handling last line
+    lastLine := strings.Join(line, " ")
+    trailSpace := maxWidth - len(lastLine)
+    res = append(res, lastLine+strings.Repeat(" ", trailSpace))
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun fullJustify(words: Array<String>, maxWidth: Int): List<String> {
+        val res = mutableListOf<String>()
+        val line = mutableListOf<String>()
+        var length = 0
+        var i = 0
+
+        while (i < words.size) {
+            if (length + words[i].length + line.size <= maxWidth) {
+                line.add(words[i])
+                length += words[i].length
+                i++
+            } else {
+                // Line complete
+                val extraSpace = maxWidth - length
+                val gaps = maxOf(1, line.size - 1)
+                var remainder = extraSpace % gaps
+                val space = extraSpace / gaps
+
+                for (j in 0 until maxOf(1, line.size - 1)) {
+                    line[j] = line[j] + " ".repeat(space)
+                    if (remainder > 0) {
+                        line[j] = line[j] + " "
+                        remainder--
+                    }
+                }
+
+                res.add(line.joinToString(""))
+                line.clear()
+                length = 0
+            }
+        }
+
+        // Handling last line
+        val lastLine = line.joinToString(" ")
+        val trailSpace = maxWidth - lastLine.length
+        res.add(lastLine + " ".repeat(trailSpace))
+
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func fullJustify(_ words: [String], _ maxWidth: Int) -> [String] {
+        var res = [String]()
+        var line = [String]()
+        var length = 0
+        var i = 0
+
+        while i < words.count {
+            if length + words[i].count + line.count <= maxWidth {
+                line.append(words[i])
+                length += words[i].count
+                i += 1
+            } else {
+                // Line complete
+                let extraSpace = maxWidth - length
+                let gaps = max(1, line.count - 1)
+                var remainder = extraSpace % gaps
+                let space = extraSpace / gaps
+
+                for j in 0..<max(1, line.count - 1) {
+                    line[j] += String(repeating: " ", count: space)
+                    if remainder > 0 {
+                        line[j] += " "
+                        remainder -= 1
+                    }
+                }
+
+                res.append(line.joined())
+                line = []
+                length = 0
+            }
+        }
+
+        // Handling last line
+        let lastLine = line.joined(separator: " ")
+        let trailSpace = maxWidth - lastLine.count
+        res.append(lastLine + String(repeating: " ", count: trailSpace))
+
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn full_justify(words: Vec<String>, max_width: i32) -> Vec<String> {
+        let max_width = max_width as usize;
+        let mut res: Vec<String> = Vec::new();
+        let mut line: Vec<String> = Vec::new();
+        let mut length = 0usize;
+        let mut i = 0;
+
+        while i < words.len() {
+            if length + words[i].len() + line.len() <= max_width {
+                line.push(words[i].clone());
+                length += words[i].len();
+                i += 1;
+            } else {
+                // Line complete
+                let extra_space = max_width - length;
+                let gaps = 1.max(line.len() - 1);
+                let mut remainder = extra_space % gaps;
+                let space = extra_space / gaps;
+
+                for j in 0..1.max(line.len() - 1) {
+                    line[j].push_str(&" ".repeat(space));
+                    if remainder > 0 {
+                        line[j].push(' ');
+                        remainder -= 1;
+                    }
+                }
+
+                res.push(line.concat());
+                line.clear();
+                length = 0;
+            }
+        }
+
+        // Handling last line
+        let last_line = line.join(" ");
+        let trail_space = max_width - last_line.len();
+        res.push(format!("{}{}", last_line, " ".repeat(trail_space)));
+
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -226,3 +430,27 @@ public class Solution {
 - Space complexity: $O(n * m)$
 
 > Where $n$ is the number of words and $m$ is the average length of the words.
+
+---
+
+## Common Pitfalls
+
+### Forgetting to Account for Spaces When Checking Line Capacity
+
+When determining if a word fits on the current line, you must include the mandatory spaces between words. The check should be `length + word.length + numberOfWordsOnLine <= maxWidth`, not just `length + word.length <= maxWidth`. Forgetting the space count causes lines to exceed the maximum width.
+
+### Division by Zero with Single-Word Lines
+
+When a line contains only one word, there are zero gaps between words, leading to division by zero when calculating space distribution. Always use `max(1, gaps)` when dividing to handle single-word lines, where all extra spaces go after the word.
+
+### Incorrect Handling of the Last Line
+
+The last line follows different rules: it should be left-justified with single spaces between words and trailing spaces to reach `maxWidth`. A common mistake is applying the same full-justification logic to the last line, resulting in incorrectly distributed spaces.
+
+### Uneven Space Distribution Going to Wrong Gaps
+
+Extra spaces that cannot be evenly distributed must go to the leftmost gaps first. A mistake is distributing remainder spaces to the rightmost gaps or distributing them randomly. The remainder should decrement as you add one extra space to each gap from left to right.
+
+### Not Padding Lines to Exact Width
+
+Every line must be exactly `maxWidth` characters. For single-word lines or the last line, forgetting to append trailing spaces results in lines shorter than required. Always calculate and append `maxWidth - currentLineLength` spaces at the end.

@@ -1,4 +1,44 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Graph Representation** - Building adjacency lists from edge pairs to represent directed graphs
+- **Depth-First Search (DFS)** - Recursive graph traversal for exploring dependencies and detecting cycles
+- **Topological Sort (Kahn's Algorithm)** - BFS-based approach using indegree to determine if a valid ordering exists
+- **Cycle Detection** - Tracking nodes in the current recursion path to identify back edges indicating cycles
+
+---
+
 ## 1. Cycle Detection (DFS)
+
+### Intuition
+
+Each course is a node, and each prerequisite is a **directed edge**.  
+You can finish all courses **only if there is no cycle** in this directed graph.
+
+A cycle means:
+
+- Course A needs B
+- B needs C
+- C needs A  
+  So you’re stuck forever.
+
+We use **DFS with cycle detection**:
+
+- While doing DFS, keep track of courses in the **current recursion path**.
+- If we visit a course already in the current path → **cycle found**.
+- If a course has no prerequisites left, it’s safe.
+
+### Algorithm
+
+1. Build a graph where each course points to its prerequisites.
+2. Use a `visiting` set to track the current DFS path.
+3. For each course:
+    - Run DFS.
+    - If the course is already in `visiting`, return `false` (cycle).
+    - Recursively DFS its prerequisites.
+4. After successfully processing a course, clear its prerequisite list (mark as done).
+5. If all courses are processed without cycles, return `true`.
 
 ::tabs-start
 
@@ -355,6 +395,47 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn can_finish(num_courses: i32, prerequisites: Vec<Vec<i32>>) -> bool {
+        let n = num_courses as usize;
+        let mut pre_map = vec![vec![]; n];
+        for pair in &prerequisites {
+            pre_map[pair[0] as usize].push(pair[1] as usize);
+        }
+
+        let mut visiting = vec![false; n];
+
+        fn dfs(crs: usize, pre_map: &mut Vec<Vec<usize>>, visiting: &mut Vec<bool>) -> bool {
+            if visiting[crs] {
+                return false;
+            }
+            if pre_map[crs].is_empty() {
+                return true;
+            }
+
+            visiting[crs] = true;
+            let prereqs: Vec<usize> = pre_map[crs].clone();
+            for pre in prereqs {
+                if !dfs(pre, pre_map, visiting) {
+                    return false;
+                }
+            }
+            visiting[crs] = false;
+            pre_map[crs].clear();
+            true
+        }
+
+        for c in 0..n {
+            if !dfs(c, &mut pre_map, &mut visiting) {
+                return false;
+            }
+        }
+        true
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -367,6 +448,30 @@ class Solution {
 ---
 
 ## 2. Topological Sort (Kahn's Algorithm)
+
+### Intuition
+
+Treat each course as a **node** and each prerequisite as a **directed edge**.
+If a course has no prerequisites, it can be taken immediately.
+
+Kahn's Algorithm repeatedly takes courses that have **zero prerequisites**.
+When we finish a course, we remove its dependency effect from other courses.
+
+- If all courses can be taken this way - **no cycle**, return `true`
+- If some courses are never taken - **cycle exists**, return `false`
+
+### Algorithm
+
+1. Build a graph and compute `indegree` (number of prerequisites) for each course.
+2. Add all courses with `indegree = 0` into a queue.
+3. While the queue is not empty:
+    - Remove a course from the queue.
+    - Mark it as finished.
+    - Reduce the `indegree` of its dependent courses.
+    - If any dependent course reaches `indegree = 0`, add it to the queue.
+4. After processing:
+    - If finished courses == total courses - return `true`
+    - Else - return `false`
 
 ::tabs-start
 
@@ -657,6 +762,42 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn can_finish(num_courses: i32, prerequisites: Vec<Vec<i32>>) -> bool {
+        let n = num_courses as usize;
+        let mut indegree = vec![0i32; n];
+        let mut adj = vec![vec![]; n];
+
+        for pre in &prerequisites {
+            let (src, dst) = (pre[0] as usize, pre[1] as usize);
+            indegree[dst] += 1;
+            adj[src].push(dst);
+        }
+
+        let mut queue = VecDeque::new();
+        for i in 0..n {
+            if indegree[i] == 0 {
+                queue.push_back(i);
+            }
+        }
+
+        let mut finish = 0;
+        while let Some(node) = queue.pop_front() {
+            finish += 1;
+            for &nei in &adj[node] {
+                indegree[nei] -= 1;
+                if indegree[nei] == 0 {
+                    queue.push_back(nei);
+                }
+            }
+        }
+
+        finish == n
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -665,3 +806,58 @@ class Solution {
 - Space complexity: $O(V + E)$
 
 > Where $V$ is the number of courses and $E$ is the number of prerequisites.
+
+---
+
+## Common Pitfalls
+
+### Using a Single Visited Set Instead of Tracking the Current Path
+
+A single `visited` set marks nodes as seen globally, but cycle detection requires knowing if a node is in the **current DFS path**. Without tracking the recursion path separately, you may miss cycles or falsely detect them.
+
+```python
+# Wrong: single visited set
+visited = set()
+def dfs(node):
+    if node in visited:
+        return False  # This doesn't distinguish "finished" from "in current path"
+    visited.add(node)
+    for nei in adj[node]:
+        if not dfs(nei):
+            return False
+    return True
+
+# Correct: track visiting (current path) and visited (finished)
+visiting = set()
+def dfs(node):
+    if node in visiting:
+        return False  # Cycle: node is in current recursion path
+    if preMap[node] == []:
+        return True   # Already processed, no cycle
+    visiting.add(node)
+    for nei in preMap[node]:
+        if not dfs(nei):
+            return False
+    visiting.remove(node)
+    preMap[node] = []  # Mark as processed
+    return True
+```
+
+### Forgetting to Handle Disconnected Components
+
+If you only start DFS from one node, you may miss cycles in disconnected parts of the graph. Always iterate through all courses and run DFS from each unvisited node.
+
+```python
+# Wrong: only check from course 0
+return dfs(0)
+
+# Correct: check all courses
+for c in range(numCourses):
+    if not dfs(c):
+        return False
+return True
+```
+
+### Incorrectly Building the Adjacency List
+
+The prerequisite `[a, b]` means "to take course `a`, you must first take course `b`". Mixing up which course maps to which leads to checking the wrong dependencies and missing or falsely reporting cycles.

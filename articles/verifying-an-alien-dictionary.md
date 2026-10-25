@@ -1,4 +1,27 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Hash Maps** - Used to map alien characters to their index positions for O(1) lookups
+- **Custom Comparators** - Defining custom sorting logic to compare strings based on non-standard ordering
+- **String Comparison** - Comparing strings character by character, including handling prefix cases
+
+---
+
 ## 1. Sorting
+
+### Intuition
+
+If the words are sorted according to the alien dictionary order, they should remain in the same order after sorting. The key insight is that we can create a mapping from each character to its position in the alien alphabet, then use this mapping to define a custom comparator for sorting.
+
+### Algorithm
+
+1. Create a mapping from each character to its index position in the `order` string.
+2. Define a comparison function that compares two words character by character using the alien order indices.
+3. For characters that differ, the word with the smaller index character comes first.
+4. If all compared characters are equal, the shorter word comes first.
+5. Sort a copy of the `words` array using this custom comparator.
+6. Compare the sorted array with the original array and return `true` if they are identical.
 
 ::tabs-start
 
@@ -116,18 +139,147 @@ public class Solution {
 }
 ```
 
+```go
+func isAlienSorted(words []string, order string) bool {
+    orderIndex := make([]int, 26)
+    for i, c := range order {
+        orderIndex[c-'a'] = i
+    }
+
+    compare := func(w1, w2 string) bool {
+        for i := 0; i < len(w1) && i < len(w2); i++ {
+            if w1[i] != w2[i] {
+                return orderIndex[w1[i]-'a'] < orderIndex[w2[i]-'a']
+            }
+        }
+        return len(w1) <= len(w2)
+    }
+
+    sortedWords := make([]string, len(words))
+    copy(sortedWords, words)
+    sort.Slice(sortedWords, func(i, j int) bool {
+        return compare(sortedWords[i], sortedWords[j])
+    })
+
+    for i := range words {
+        if words[i] != sortedWords[i] {
+            return false
+        }
+    }
+    return true
+}
+```
+
+```kotlin
+class Solution {
+    fun isAlienSorted(words: Array<String>, order: String): Boolean {
+        val orderIndex = IntArray(26)
+        for (i in order.indices) {
+            orderIndex[order[i] - 'a'] = i
+        }
+
+        val compare = Comparator<String> { w1, w2 ->
+            for (i in 0 until minOf(w1.length, w2.length)) {
+                if (w1[i] != w2[i]) {
+                    return@Comparator orderIndex[w1[i] - 'a'] - orderIndex[w2[i] - 'a']
+                }
+            }
+            w1.length - w2.length
+        }
+
+        val sortedWords = words.clone()
+        sortedWords.sortWith(compare)
+
+        for (i in words.indices) {
+            if (words[i] != sortedWords[i]) {
+                return false
+            }
+        }
+        return true
+    }
+}
+```
+
+```swift
+class Solution {
+    func isAlienSorted(_ words: [String], _ order: String) -> Bool {
+        var orderIndex = [Int](repeating: 0, count: 26)
+        for (i, c) in order.enumerated() {
+            orderIndex[Int(c.asciiValue! - Character("a").asciiValue!)] = i
+        }
+
+        let sortedWords = words.sorted { w1, w2 in
+            let arr1 = Array(w1), arr2 = Array(w2)
+            for i in 0..<min(arr1.count, arr2.count) {
+                if arr1[i] != arr2[i] {
+                    let idx1 = Int(arr1[i].asciiValue! - Character("a").asciiValue!)
+                    let idx2 = Int(arr2[i].asciiValue! - Character("a").asciiValue!)
+                    return orderIndex[idx1] < orderIndex[idx2]
+                }
+            }
+            return arr1.count < arr2.count
+        }
+
+        return words == sortedWords
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn is_alien_sorted(words: Vec<String>, order: String) -> bool {
+        let mut order_index = [0usize; 26];
+        for (i, b) in order.bytes().enumerate() {
+            order_index[(b - b'a') as usize] = i;
+        }
+
+        let mut sorted_words = words.clone();
+        sorted_words.sort_by(|w1, w2| {
+            let b1 = w1.as_bytes();
+            let b2 = w2.as_bytes();
+            for i in 0..b1.len().min(b2.len()) {
+                if b1[i] != b2[i] {
+                    return order_index[(b1[i] - b'a') as usize]
+                        .cmp(&order_index[(b2[i] - b'a') as usize]);
+                }
+            }
+            b1.len().cmp(&b2.len())
+        });
+
+        words == sorted_words
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
-- Time complexity: $O(n * m\log n)$
-- Space complexity: $O(n * m)$
+- Time complexity:
+    - $O(n * m\log n)$
+    - $O(n * m)$ in C++, since `is_sorted` compares adjacent words directly without sorting the array.
+- Space complexity:
+    - $O(n * m)$
+    - $O(1)$ in C++.
 
 > Where $n$ is the number of words and $m$ is the average length of a word.
 
 ---
 
 ## 2. Comparing adjacent words
+
+### Intuition
+
+For a list to be sorted, each adjacent pair must be in the correct order. Instead of sorting, we can directly verify that each word is lexicographically less than or equal to the next word according to the alien order. This avoids the overhead of sorting.
+
+### Algorithm
+
+1. Create a mapping from each character to its index position in the `order` string.
+2. Iterate through adjacent pairs of words (`w1`, `w2`) in the array.
+3. Compare characters at each position until a difference is found or one word ends.
+4. If `w1` is longer than `w2` and all compared characters match, return `false` (prefix violation).
+5. If characters differ, check that `w1`'s character has a smaller index than `w2`'s character in alien order. If not, return `false`.
+6. If all adjacent pairs pass validation, return `true`.
 
 ::tabs-start
 
@@ -185,7 +337,7 @@ public:
             orderIndex[order[i] - 'a'] = i;
 
         for (int i = 0; i < words.size() - 1; ++i) {
-            string w1 = words[i], w2 = words[i + 1];
+            const string &w1 = words[i], &w2 = words[i + 1];
             int j = 0;
 
             for (; j < w1.size(); ++j) {
@@ -268,6 +420,127 @@ public class Solution {
 }
 ```
 
+```go
+func isAlienSorted(words []string, order string) bool {
+    orderIndex := make([]int, 26)
+    for i, c := range order {
+        orderIndex[c-'a'] = i
+    }
+
+    for i := 0; i < len(words)-1; i++ {
+        w1, w2 := words[i], words[i+1]
+
+        for j := 0; j < len(w1); j++ {
+            if j == len(w2) {
+                return false
+            }
+
+            if w1[j] != w2[j] {
+                if orderIndex[w1[j]-'a'] > orderIndex[w2[j]-'a'] {
+                    return false
+                }
+                break
+            }
+        }
+    }
+    return true
+}
+```
+
+```kotlin
+class Solution {
+    fun isAlienSorted(words: Array<String>, order: String): Boolean {
+        val orderIndex = IntArray(26)
+        for (i in order.indices) {
+            orderIndex[order[i] - 'a'] = i
+        }
+
+        for (i in 0 until words.size - 1) {
+            val w1 = words[i]
+            val w2 = words[i + 1]
+
+            for (j in w1.indices) {
+                if (j == w2.length) {
+                    return false
+                }
+
+                if (w1[j] != w2[j]) {
+                    if (orderIndex[w1[j] - 'a'] > orderIndex[w2[j] - 'a']) {
+                        return false
+                    }
+                    break
+                }
+            }
+        }
+        return true
+    }
+}
+```
+
+```swift
+class Solution {
+    func isAlienSorted(_ words: [String], _ order: String) -> Bool {
+        var orderIndex = [Int](repeating: 0, count: 26)
+        for (i, c) in order.enumerated() {
+            orderIndex[Int(c.asciiValue! - Character("a").asciiValue!)] = i
+        }
+
+        for i in 0..<words.count - 1 {
+            let w1 = Array(words[i])
+            let w2 = Array(words[i + 1])
+
+            for j in 0..<w1.count {
+                if j == w2.count {
+                    return false
+                }
+
+                if w1[j] != w2[j] {
+                    let idx1 = Int(w1[j].asciiValue! - Character("a").asciiValue!)
+                    let idx2 = Int(w2[j].asciiValue! - Character("a").asciiValue!)
+                    if orderIndex[idx1] > orderIndex[idx2] {
+                        return false
+                    }
+                    break
+                }
+            }
+        }
+        return true
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn is_alien_sorted(words: Vec<String>, order: String) -> bool {
+        let mut order_index = [0usize; 26];
+        for (i, b) in order.bytes().enumerate() {
+            order_index[(b - b'a') as usize] = i;
+        }
+
+        for i in 0..words.len() - 1 {
+            let w1 = words[i].as_bytes();
+            let w2 = words[i + 1].as_bytes();
+
+            for j in 0..w1.len() {
+                if j == w2.len() {
+                    return false;
+                }
+
+                if w1[j] != w2[j] {
+                    if order_index[(w1[j] - b'a') as usize]
+                        > order_index[(w2[j] - b'a') as usize]
+                    {
+                        return false;
+                    }
+                    break;
+                }
+            }
+        }
+        true
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -276,3 +549,15 @@ public class Solution {
 - Space complexity: $O(1)$ since we have $26$ different characters.
 
 > Where $n$ is the number of words and $m$ is the average length of a word.
+
+---
+
+## Common Pitfalls
+
+### Ignoring the Prefix Case
+
+When comparing two words where one is a prefix of the other (e.g., "apple" and "app"), the shorter word must come first. If the longer word appears before its prefix in the list, the order is invalid. Many solutions forget to check this case and only compare differing characters.
+
+### Breaking Too Early or Too Late in Character Comparison
+
+When comparing adjacent words character by character, you must break out of the loop as soon as you find the first differing character. Continuing to compare after finding a difference can lead to incorrect conclusions, as only the first difference determines the relative order of two words.

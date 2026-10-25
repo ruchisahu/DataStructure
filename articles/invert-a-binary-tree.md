@@ -1,4 +1,42 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Binary Trees** - Understanding tree node structure with left and right children
+- **Breadth-First Search (BFS)** - Level-by-level traversal using a queue
+- **Depth-First Search (DFS)** - Recursive traversal of tree structures
+- **Stack-based Iteration** - Converting recursive DFS to iterative form using an explicit stack
+
+---
+
 ## 1. Breadth First Search
+
+### **Intuition**
+
+To invert (mirror) a binary tree, every node must swap its **left** and **right** children. Using **Breadth-First Search (BFS)**, we process the tree level-by-level:
+
+- Start from the root.
+- For each node, **swap** its children.
+- Then push the (new) left and right children into the queue.
+- Continue until every node has been processed.
+
+This approach ensures that every node is visited exactly once and inverted immediately when encountered.
+
+---
+
+### **Algorithm**
+
+1. If the tree is empty, return `null`.
+2. Initialize a queue and insert the `root` node.
+3. While the queue is not empty:
+    - Remove the front node.
+    - Swap its `left` and `right` children.
+    - If the `left` child exists, add it to the queue.
+    - If the `right` child exists, add it to the queue.
+4. After all nodes are processed, return the `root` as the inverted tree.
+
+
+<br>
 
 ::tabs-start
 
@@ -174,19 +212,18 @@ func invertTree(root *TreeNode) *TreeNode {
     if root == nil {
         return nil
     }
-    queue := arrayqueue.New()
-    queue.Enqueue(root)
+    queue := []*TreeNode{root}
 
-    for queue.Size() > 0 {
-        node, _ := queue.Dequeue()
-        current := node.(*TreeNode)
+    for len(queue) > 0 {
+        current := queue[0]
+        queue = queue[1:]
         current.Left, current.Right = current.Right, current.Left
 
         if current.Left != nil {
-            queue.Enqueue(current.Left)
+            queue = append(queue, current.Left)
         }
         if current.Right != nil {
-            queue.Enqueue(current.Right)
+            queue = append(queue, current.Right)
         }
     }
     return root
@@ -228,21 +265,6 @@ class Solution {
 ```
 
 ```swift
-/**
- * Definition for a binary tree node.
- * public class TreeNode {
- *     public var val: Int
- *     public var left: TreeNode?
- *     public var right: TreeNode?
- *     public init() { self.val = 0; self.left = nil; self.right = nil; }
- *     public init(_ val: Int) { self.val = val; self.left = nil; self.right = nil; }
- *     public init(_ val: Int, _ left: TreeNode?, _ right: TreeNode?) {
- *         self.val = val
- *         self.left = left
- *         self.right = right
- *     }
- * }
- */
 class Solution {
     func invertTree(_ root: TreeNode?) -> TreeNode? {
         guard let root = root else { return nil }
@@ -265,6 +287,32 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn invert_tree(root: Option<Rc<RefCell<TreeNode>>>) -> Option<Rc<RefCell<TreeNode>>> {
+        if root.is_none() {
+            return None;
+        }
+        let mut queue = VecDeque::new();
+        queue.push_back(root.clone().unwrap());
+        while let Some(node) = queue.pop_front() {
+            let mut node_ref = node.borrow_mut();
+            let left = node_ref.left.take();
+            let right = node_ref.right.take();
+            node_ref.left = right;
+            node_ref.right = left;
+            if let Some(ref l) = node_ref.left {
+                queue.push_back(l.clone());
+            }
+            if let Some(ref r) = node_ref.right {
+                queue.push_back(r.clone());
+            }
+        }
+        root
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -275,6 +323,31 @@ class Solution {
 ---
 
 ## 2. Depth First Search
+
+### **Intuition**
+
+Inverting a binary tree means swapping every node’s left and right subtree.  
+With **Depth-First Search (DFS)**, we use recursion to invert the tree in a **top-down** manner:
+
+- At each node, **swap** the left and right children.
+- Then recursively invert the left subtree.
+- Recursively invert the right subtree.
+
+Because every subtree is itself a smaller binary tree, recursion naturally handles this structure.  
+The inversion happens during the descent of the recursion, and each subtree becomes correctly mirrored.
+
+---
+
+### **Algorithm**
+
+1. If the current node is `null`, return `null`.
+2. Swap the node's `left` and `right` pointers.
+3. Recursively call `dfs` on the new `left` child.
+4. Recursively call `dfs` on the new `right` child.
+5. Return the current node (now inverted).
+
+
+<br>
 
 ::tabs-start
 
@@ -499,6 +572,23 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn invert_tree(root: Option<Rc<RefCell<TreeNode>>>) -> Option<Rc<RefCell<TreeNode>>> {
+        if let Some(node) = root.as_ref() {
+            let mut node_ref = node.borrow_mut();
+            let left = node_ref.left.take();
+            let right = node_ref.right.take();
+            node_ref.left = right;
+            node_ref.right = left;
+            Self::invert_tree(node_ref.left.clone());
+            Self::invert_tree(node_ref.right.clone());
+        }
+        root
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -509,6 +599,42 @@ class Solution {
 ---
 
 ## 3. Iterative DFS
+
+### **Intuition**
+
+Iterative DFS inverts a binary tree using an explicit stack instead of recursion.  
+The idea is the same as recursive DFS:
+
+- Visit a node.
+- Swap its left and right children.
+- Continue the process for its children.
+
+But instead of the call stack, we use our own **stack data structure**.
+
+The process is:
+
+1. Push the root into the stack.
+2. Pop the top node, **swap its children**.
+3. Push its children onto the stack (if they exist).
+4. Continue until the stack is empty.
+
+This simulates the recursive DFS in an iterative manner and works well when recursion depth may be too large.
+
+---
+
+### **Algorithm**
+
+1. If `root` is `null`, return `null`.
+2. Initialize a stack with `root`.
+3. While stack is not empty:
+    - Pop a node.
+    - Swap its `left` and `right` pointers.
+    - If the `left` child exists, push it to the stack.
+    - If the `right` child exists, push it to the stack.
+4. Return the `root`.
+
+
+<br>
 
 ::tabs-start
 
@@ -750,9 +876,50 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn invert_tree(root: Option<Rc<RefCell<TreeNode>>>) -> Option<Rc<RefCell<TreeNode>>> {
+        if root.is_none() {
+            return None;
+        }
+        let mut stack = vec![root.clone().unwrap()];
+        while let Some(node) = stack.pop() {
+            let mut node_ref = node.borrow_mut();
+            let left = node_ref.left.take();
+            let right = node_ref.right.take();
+            node_ref.left = right;
+            node_ref.right = left;
+            if let Some(ref l) = node_ref.left {
+                stack.push(l.clone());
+            }
+            if let Some(ref r) = node_ref.right {
+                stack.push(r.clone());
+            }
+        }
+        root
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(n)$
+
+---
+
+## Common Pitfalls
+
+### Not Handling Null Root
+
+Forgetting to check for a null root causes null pointer exceptions. Always return null immediately if the root is null.
+
+### Using Wrong References After Swap
+
+After swapping, `root.left` now points to what was previously `root.right`. When recursing, make sure you're using the correct references for the swapped children.
+
+### Modifying While Traversing Incorrectly
+
+In iterative approaches, ensure you push children to the stack after swapping, not before. Pushing before the swap means you're adding references to positions that will change.

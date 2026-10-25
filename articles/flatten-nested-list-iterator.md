@@ -1,4 +1,27 @@
-## 1. Recursion (Flatten And Store Into Global List )
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Recursion / DFS** - Traversing nested structures of arbitrary depth
+- **Stacks** - Simulating recursion iteratively and managing traversal state
+- **Iterator Pattern** - Implementing next() and hasNext() methods for lazy evaluation
+
+---
+
+## 1. Recursion (Flatten And Store Into Global List)
+
+### Intuition
+
+The nested list can contain integers or other nested lists at any depth. We can flatten the entire structure upfront using depth-first traversal. By storing all integers in a flat array during construction, subsequent `next()` and `hasNext()` calls become simple array operations.
+
+### Algorithm
+
+1. **Constructor**: Initialize an empty array and a pointer at `0`. Call `dfs()` on the nested list to populate the array.
+2. **dfs(nestedArr)**: For each element in the nested array:
+    - If it's an integer, append it to the array.
+    - If it's a list, recursively call `dfs()` on that list.
+3. **next()**: Return the element at the current pointer and increment the pointer.
+4. **hasNext()**: Return `true` if the pointer is less than the array length.
 
 ::tabs-start
 
@@ -134,6 +157,165 @@ class NestedIterator {
 }
 ```
 
+```csharp
+public class NestedIterator {
+    private List<int> arr;
+    private int ptr;
+
+    public NestedIterator(IList<NestedInteger> nestedList) {
+        arr = new List<int>();
+        ptr = 0;
+        Dfs(nestedList);
+    }
+
+    public int Next() {
+        return arr[ptr++];
+    }
+
+    public bool HasNext() {
+        return ptr < arr.Count;
+    }
+
+    private void Dfs(IList<NestedInteger> nestedArr) {
+        foreach (var num in nestedArr) {
+            if (num.IsInteger()) {
+                arr.Add(num.GetInteger());
+            } else {
+                Dfs(num.GetList());
+            }
+        }
+    }
+}
+```
+
+```go
+type NestedIterator struct {
+    arr []int
+    ptr int
+}
+
+func Constructor(nestedList []*NestedInteger) *NestedIterator {
+    it := &NestedIterator{arr: []int{}, ptr: 0}
+    it.dfs(nestedList)
+    return it
+}
+
+func (it *NestedIterator) dfs(nestedArr []*NestedInteger) {
+    for _, num := range nestedArr {
+        if num.IsInteger() {
+            it.arr = append(it.arr, num.GetInteger())
+        } else {
+            it.dfs(num.GetList())
+        }
+    }
+}
+
+func (it *NestedIterator) Next() int {
+    val := it.arr[it.ptr]
+    it.ptr++
+    return val
+}
+
+func (it *NestedIterator) HasNext() bool {
+    return it.ptr < len(it.arr)
+}
+```
+
+```kotlin
+class NestedIterator(nestedList: List<NestedInteger>) {
+    private val arr = mutableListOf<Int>()
+    private var ptr = 0
+
+    init {
+        dfs(nestedList)
+    }
+
+    fun next(): Int {
+        return arr[ptr++]
+    }
+
+    fun hasNext(): Boolean {
+        return ptr < arr.size
+    }
+
+    private fun dfs(nestedArr: List<NestedInteger>) {
+        for (num in nestedArr) {
+            if (num.isInteger()) {
+                arr.add(num.getInteger()!!)
+            } else {
+                dfs(num.getList()!!)
+            }
+        }
+    }
+}
+```
+
+```swift
+class NestedIterator {
+    private var arr: [Int] = []
+    private var ptr: Int = 0
+
+    init(_ nestedList: [NestedInteger]) {
+        dfs(nestedList)
+    }
+
+    func next() -> Int {
+        let val = arr[ptr]
+        ptr += 1
+        return val
+    }
+
+    func hasNext() -> Bool {
+        return ptr < arr.count
+    }
+
+    private func dfs(_ nestedArr: [NestedInteger]) {
+        for num in nestedArr {
+            if num.isInteger() {
+                arr.append(num.getInteger())
+            } else {
+                dfs(num.getList())
+            }
+        }
+    }
+}
+```
+
+```rust
+struct NestedIterator {
+    arr: Vec<i32>,
+    ptr: usize,
+}
+
+impl NestedIterator {
+    fn new(nested_list: Vec<NestedInteger>) -> Self {
+        let mut arr = Vec::new();
+        Self::dfs(&nested_list, &mut arr);
+        NestedIterator { arr, ptr: 0 }
+    }
+
+    fn dfs(nested_arr: &[NestedInteger], arr: &mut Vec<i32>) {
+        for num in nested_arr {
+            if num.is_integer() {
+                arr.push(num.get_integer());
+            } else {
+                Self::dfs(&num.get_list(), arr);
+            }
+        }
+    }
+
+    fn next(&mut self) -> i32 {
+        let val = self.arr[self.ptr];
+        self.ptr += 1;
+        val
+    }
+
+    fn has_next(&self) -> bool {
+        self.ptr < self.arr.len()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -146,6 +328,20 @@ class NestedIterator {
 ---
 
 ## 2. Recursion (Flatten And Return)
+
+### Intuition
+
+This is a variation of the first approach where the recursive function returns a flattened list instead of modifying a global variable. Each recursive call builds and returns its own list, which gets merged into the parent's result.
+
+### Algorithm
+
+1. **Constructor**: Call `dfs()` on the nested list and store the returned array. Initialize pointer to `0`.
+2. **dfs(nestedArr)**: Create an empty result list. For each element:
+    - If it's an integer, append it to the result.
+    - If it's a list, recursively call `dfs()` and extend the result with the returned list.
+    - Return the result.
+3. **next()**: Return the element at the current pointer and increment it.
+4. **hasNext()**: Return `true` if the pointer is less than the array length.
 
 ::tabs-start
 
@@ -286,6 +482,173 @@ class NestedIterator {
 }
 ```
 
+```csharp
+public class NestedIterator {
+    private List<int> arr;
+    private int ptr;
+
+    public NestedIterator(IList<NestedInteger> nestedList) {
+        arr = Dfs(nestedList);
+        ptr = 0;
+    }
+
+    private List<int> Dfs(IList<NestedInteger> nestedArr) {
+        List<int> res = new List<int>();
+        foreach (var num in nestedArr) {
+            if (num.IsInteger()) {
+                res.Add(num.GetInteger());
+            } else {
+                res.AddRange(Dfs(num.GetList()));
+            }
+        }
+        return res;
+    }
+
+    public int Next() {
+        return arr[ptr++];
+    }
+
+    public bool HasNext() {
+        return ptr < arr.Count;
+    }
+}
+```
+
+```go
+type NestedIterator struct {
+    arr []int
+    ptr int
+}
+
+func Constructor(nestedList []*NestedInteger) *NestedIterator {
+    it := &NestedIterator{ptr: 0}
+    it.arr = it.dfs(nestedList)
+    return it
+}
+
+func (it *NestedIterator) dfs(nestedArr []*NestedInteger) []int {
+    res := []int{}
+    for _, num := range nestedArr {
+        if num.IsInteger() {
+            res = append(res, num.GetInteger())
+        } else {
+            res = append(res, it.dfs(num.GetList())...)
+        }
+    }
+    return res
+}
+
+func (it *NestedIterator) Next() int {
+    val := it.arr[it.ptr]
+    it.ptr++
+    return val
+}
+
+func (it *NestedIterator) HasNext() bool {
+    return it.ptr < len(it.arr)
+}
+```
+
+```kotlin
+class NestedIterator(nestedList: List<NestedInteger>) {
+    private val arr: List<Int>
+    private var ptr = 0
+
+    init {
+        arr = dfs(nestedList)
+    }
+
+    private fun dfs(nestedArr: List<NestedInteger>): List<Int> {
+        val res = mutableListOf<Int>()
+        for (num in nestedArr) {
+            if (num.isInteger()) {
+                res.add(num.getInteger()!!)
+            } else {
+                res.addAll(dfs(num.getList()!!))
+            }
+        }
+        return res
+    }
+
+    fun next(): Int {
+        return arr[ptr++]
+    }
+
+    fun hasNext(): Boolean {
+        return ptr < arr.size
+    }
+}
+```
+
+```swift
+class NestedIterator {
+    private var arr: [Int]
+    private var ptr: Int = 0
+
+    init(_ nestedList: [NestedInteger]) {
+        arr = NestedIterator.dfs(nestedList)
+    }
+
+    private static func dfs(_ nestedArr: [NestedInteger]) -> [Int] {
+        var res = [Int]()
+        for num in nestedArr {
+            if num.isInteger() {
+                res.append(num.getInteger())
+            } else {
+                res.append(contentsOf: dfs(num.getList()))
+            }
+        }
+        return res
+    }
+
+    func next() -> Int {
+        let val = arr[ptr]
+        ptr += 1
+        return val
+    }
+
+    func hasNext() -> Bool {
+        return ptr < arr.count
+    }
+}
+```
+
+```rust
+struct NestedIterator {
+    arr: Vec<i32>,
+    ptr: usize,
+}
+
+impl NestedIterator {
+    fn new(nested_list: Vec<NestedInteger>) -> Self {
+        let arr = Self::dfs(&nested_list);
+        NestedIterator { arr, ptr: 0 }
+    }
+
+    fn dfs(nested_arr: &[NestedInteger]) -> Vec<i32> {
+        let mut res = Vec::new();
+        for num in nested_arr {
+            if num.is_integer() {
+                res.push(num.get_integer());
+            } else {
+                res.extend(Self::dfs(&num.get_list()));
+            }
+        }
+        res
+    }
+
+    fn next(&mut self) -> i32 {
+        let val = self.arr[self.ptr];
+        self.ptr += 1;
+        val
+    }
+
+    fn has_next(&self) -> bool {
+        self.ptr < self.arr.len()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -298,6 +661,19 @@ class NestedIterator {
 ---
 
 ## 3. Recursion + Stack
+
+### Intuition
+
+We can use recursion to flatten the list and store the integers in a stack. By reversing the stack after flattening, we can pop elements in the correct order. This combines recursive traversal with stack-based iteration.
+
+### Algorithm
+
+1. **Constructor**: Initialize an empty stack. Call `dfs()` on the nested list, then reverse the stack.
+2. **dfs(nested)**: For each element:
+    - If it's an integer, push it onto the stack.
+    - If it's a list, recursively call `dfs()` on it.
+3. **next()**: Pop and return the top element from the stack.
+4. **hasNext()**: Return `true` if the stack is not empty.
 
 ::tabs-start
 
@@ -430,6 +806,170 @@ class NestedIterator {
 }
 ```
 
+```csharp
+public class NestedIterator {
+    private Stack<int> stack;
+
+    public NestedIterator(IList<NestedInteger> nestedList) {
+        stack = new Stack<int>();
+        List<int> temp = new List<int>();
+        Dfs(nestedList, temp);
+        temp.Reverse();
+        foreach (var num in temp) {
+            stack.Push(num);
+        }
+    }
+
+    private void Dfs(IList<NestedInteger> nested, List<int> temp) {
+        foreach (var num in nested) {
+            if (num.IsInteger()) {
+                temp.Add(num.GetInteger());
+            } else {
+                Dfs(num.GetList(), temp);
+            }
+        }
+    }
+
+    public int Next() {
+        return stack.Pop();
+    }
+
+    public bool HasNext() {
+        return stack.Count > 0;
+    }
+}
+```
+
+```go
+type NestedIterator struct {
+    stack []int
+}
+
+func Constructor(nestedList []*NestedInteger) *NestedIterator {
+    it := &NestedIterator{stack: []int{}}
+    it.dfs(nestedList)
+    for i, j := 0, len(it.stack)-1; i < j; i, j = i+1, j-1 {
+        it.stack[i], it.stack[j] = it.stack[j], it.stack[i]
+    }
+    return it
+}
+
+func (it *NestedIterator) dfs(nested []*NestedInteger) {
+    for _, num := range nested {
+        if num.IsInteger() {
+            it.stack = append(it.stack, num.GetInteger())
+        } else {
+            it.dfs(num.GetList())
+        }
+    }
+}
+
+func (it *NestedIterator) Next() int {
+    val := it.stack[len(it.stack)-1]
+    it.stack = it.stack[:len(it.stack)-1]
+    return val
+}
+
+func (it *NestedIterator) HasNext() bool {
+    return len(it.stack) > 0
+}
+```
+
+```kotlin
+class NestedIterator(nestedList: List<NestedInteger>) {
+    private val stack = ArrayDeque<Int>()
+
+    init {
+        val temp = mutableListOf<Int>()
+        dfs(nestedList, temp)
+        temp.reverse()
+        for (num in temp) {
+            stack.addLast(num)
+        }
+    }
+
+    private fun dfs(nested: List<NestedInteger>, temp: MutableList<Int>) {
+        for (num in nested) {
+            if (num.isInteger()) {
+                temp.add(num.getInteger()!!)
+            } else {
+                dfs(num.getList()!!, temp)
+            }
+        }
+    }
+
+    fun next(): Int {
+        return stack.removeLast()
+    }
+
+    fun hasNext(): Boolean {
+        return stack.isNotEmpty()
+    }
+}
+```
+
+```swift
+class NestedIterator {
+    private var stack: [Int] = []
+
+    init(_ nestedList: [NestedInteger]) {
+        dfs(nestedList)
+        stack.reverse()
+    }
+
+    private func dfs(_ nested: [NestedInteger]) {
+        for num in nested {
+            if num.isInteger() {
+                stack.append(num.getInteger())
+            } else {
+                dfs(num.getList())
+            }
+        }
+    }
+
+    func next() -> Int {
+        return stack.removeLast()
+    }
+
+    func hasNext() -> Bool {
+        return !stack.isEmpty
+    }
+}
+```
+
+```rust
+struct NestedIterator {
+    stack: Vec<i32>,
+}
+
+impl NestedIterator {
+    fn new(nested_list: Vec<NestedInteger>) -> Self {
+        let mut stack = Vec::new();
+        Self::dfs(&nested_list, &mut stack);
+        stack.reverse();
+        NestedIterator { stack }
+    }
+
+    fn dfs(nested: &[NestedInteger], stack: &mut Vec<i32>) {
+        for num in nested {
+            if num.is_integer() {
+                stack.push(num.get_integer());
+            } else {
+                Self::dfs(&num.get_list(), stack);
+            }
+        }
+    }
+
+    fn next(&mut self) -> i32 {
+        self.stack.pop().unwrap()
+    }
+
+    fn has_next(&self) -> bool {
+        !self.stack.is_empty()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -442,6 +982,19 @@ class NestedIterator {
 ---
 
 ## 4. Stack
+
+### Intuition
+
+Instead of flattening everything upfront, we can flatten lazily using a stack. We push the `NestedInteger` objects themselves onto the stack (in reverse order). When checking `hasNext()`, we unpack nested lists on demand until we find an integer at the top. This approach is more memory-efficient when we don't need to iterate through all elements.
+
+### Algorithm
+
+1. **Constructor**: Copy the nested list to a stack in reverse order (so the first element is on top).
+2. **next()**: Pop the top element and return its integer value.
+3. **hasNext()**: While the stack is not empty:
+    - If the top element is an integer, return `true`.
+    - Otherwise, pop the nested list, reverse it, and push its elements back onto the stack.
+    - Return `false` if the stack becomes empty.
 
 ::tabs-start
 
@@ -569,6 +1122,158 @@ class NestedIterator {
 }
 ```
 
+```csharp
+public class NestedIterator {
+    private List<NestedInteger> stack;
+
+    public NestedIterator(IList<NestedInteger> nestedList) {
+        stack = new List<NestedInteger>(nestedList);
+        stack.Reverse();
+    }
+
+    public int Next() {
+        var val = stack[stack.Count - 1].GetInteger();
+        stack.RemoveAt(stack.Count - 1);
+        return val;
+    }
+
+    public bool HasNext() {
+        while (stack.Count > 0) {
+            var top = stack[stack.Count - 1];
+            if (top.IsInteger()) {
+                return true;
+            }
+            stack.RemoveAt(stack.Count - 1);
+            var nestedList = top.GetList().ToList();
+            nestedList.Reverse();
+            stack.AddRange(nestedList);
+        }
+        return false;
+    }
+}
+```
+
+```go
+type NestedIterator struct {
+    stack []*NestedInteger
+}
+
+func Constructor(nestedList []*NestedInteger) *NestedIterator {
+    stack := make([]*NestedInteger, len(nestedList))
+    copy(stack, nestedList)
+    for i, j := 0, len(stack)-1; i < j; i, j = i+1, j-1 {
+        stack[i], stack[j] = stack[j], stack[i]
+    }
+    return &NestedIterator{stack: stack}
+}
+
+func (it *NestedIterator) Next() int {
+    val := it.stack[len(it.stack)-1].GetInteger()
+    it.stack = it.stack[:len(it.stack)-1]
+    return val
+}
+
+func (it *NestedIterator) HasNext() bool {
+    for len(it.stack) > 0 {
+        top := it.stack[len(it.stack)-1]
+        if top.IsInteger() {
+            return true
+        }
+        it.stack = it.stack[:len(it.stack)-1]
+        nestedList := top.GetList()
+        for i := len(nestedList) - 1; i >= 0; i-- {
+            it.stack = append(it.stack, nestedList[i])
+        }
+    }
+    return false
+}
+```
+
+```kotlin
+class NestedIterator(nestedList: List<NestedInteger>) {
+    private val stack = mutableListOf<NestedInteger>()
+
+    init {
+        stack.addAll(nestedList.reversed())
+    }
+
+    fun next(): Int {
+        return stack.removeAt(stack.size - 1).getInteger()!!
+    }
+
+    fun hasNext(): Boolean {
+        while (stack.isNotEmpty()) {
+            val top = stack.last()
+            if (top.isInteger()) {
+                return true
+            }
+            stack.removeAt(stack.size - 1)
+            val nestedList = top.getList()!!.reversed()
+            stack.addAll(nestedList)
+        }
+        return false
+    }
+}
+```
+
+```swift
+class NestedIterator {
+    private var stack: [NestedInteger] = []
+
+    init(_ nestedList: [NestedInteger]) {
+        stack = nestedList.reversed()
+    }
+
+    func next() -> Int {
+        return stack.removeLast().getInteger()
+    }
+
+    func hasNext() -> Bool {
+        while !stack.isEmpty {
+            let top = stack.last!
+            if top.isInteger() {
+                return true
+            }
+            stack.removeLast()
+            let nestedList = top.getList()
+            stack.append(contentsOf: nestedList.reversed())
+        }
+        return false
+    }
+}
+```
+
+```rust
+struct NestedIterator {
+    stack: Vec<NestedInteger>,
+}
+
+impl NestedIterator {
+    fn new(nested_list: Vec<NestedInteger>) -> Self {
+        let mut stack: Vec<NestedInteger> = nested_list;
+        stack.reverse();
+        NestedIterator { stack }
+    }
+
+    fn next(&mut self) -> i32 {
+        self.stack.pop().unwrap().get_integer()
+    }
+
+    fn has_next(&mut self) -> bool {
+        while let Some(top) = self.stack.last() {
+            if top.is_integer() {
+                return true;
+            }
+            let top = self.stack.pop().unwrap();
+            let mut nested_list = top.get_list();
+            nested_list.reverse();
+            self.stack.extend(nested_list);
+        }
+        false
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -577,3 +1282,19 @@ class NestedIterator {
 - Space complexity: $O(n)$
 
 > Where $n$ is the number of integers and $d$ is the nesting depth.
+
+---
+
+## Common Pitfalls
+
+### Calling next() Without Checking hasNext() First
+
+The iterator contract requires calling `hasNext()` before `next()`. In lazy evaluation approaches, `hasNext()` is responsible for ensuring an integer is at the top of the stack. Calling `next()` without first calling `hasNext()` may return a nested list object instead of an integer, or cause an exception when the stack is empty.
+
+### Not Handling Empty Nested Lists
+
+A nested list can contain empty lists like `[[]]` or `[[], [1, []], 2]`. Failing to handle these causes `hasNext()` to return `true` when no integers remain, or `next()` to fail. The lazy approach must continue unpacking until it finds an actual integer or the stack becomes empty.
+
+### Forgetting to Reverse When Pushing to Stack
+
+When using a stack for lazy evaluation, elements must be pushed in reverse order so the first element ends up on top. Pushing in forward order reverses the iteration order. Similarly, when popping a nested list and pushing its contents, those contents must also be reversed to maintain correct order.

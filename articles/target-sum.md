@@ -1,4 +1,41 @@
+## Prerequisites
+Before attempting this problem, you should be comfortable with:
+- **Recursion / Backtracking** - Exploring all possible combinations by making choices at each step
+- **Dynamic Programming (Memoization)** - Caching results of subproblems defined by index and running sum
+- **Dynamic Programming (Tabulation)** - Building solutions bottom-up using hash maps to track reachable sums
+
+---
+
 ## 1. Recursion
+
+### Intuition
+
+This problem asks us to count how many different ways we can assign a `+` or `-` sign to each number so that the final sum equals the target.
+
+At every index, we have **two independent choices**:
+- add the current number to the total
+- subtract the current number from the total
+
+Using recursion, we try all possible sign assignments.  
+The recursive function represents:
+**"How many ways can we reach the target starting from index `i` with the current sum `total`?"**
+
+When all numbers are processed, we simply check whether the accumulated sum equals the target.
+
+### Algorithm
+
+1. Define a recursive function `backtrack(i, total)`:
+   - `i` is the current index in the array
+   - `total` is the sum formed so far
+2. If `i` reaches the end of the array:
+   - Return `1` if `total` equals the target
+   - Otherwise, return `0`
+3. For the current index:
+   - Recurse by adding the current number to `total`
+   - Recurse by subtracting the current number from `total`
+4. Add the results of both recursive calls
+5. Start the recursion from index `0` with an initial sum of `0`
+6. Return the final count of valid ways
 
 ::tabs-start
 
@@ -135,6 +172,23 @@ class Solution {
 }
 ```
 
+
+```rust
+impl Solution {
+    pub fn find_target_sum_ways(nums: Vec<i32>, target: i32) -> i32 {
+        fn backtrack(nums: &[i32], i: usize, total: i32, target: i32) -> i32 {
+            if i == nums.len() {
+                return if total == target { 1 } else { 0 };
+            }
+            backtrack(nums, i + 1, total + nums[i], target)
+                + backtrack(nums, i + 1, total - nums[i], target)
+        }
+
+        backtrack(&nums, 0, 0, target)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -145,6 +199,41 @@ class Solution {
 ---
 
 ## 2. Dynamic Programming (Top-Down)
+
+### Intuition
+
+This problem asks us to count the number of ways to assign a `+` or `-` sign to each number so that the final sum equals the target.
+
+The recursive solution tries all possible sign combinations, but many subproblems repeat. To avoid recomputing the same states, we use **top-down dynamic programming (memoization)**.
+
+Each state is uniquely defined by:
+- the current index `i`
+- the current accumulated sum `total`
+
+The recursive function answers the question:
+**"How many ways can we reach the target starting from index `i` with the current sum `total`?"**
+
+By caching results for each state, we significantly improve efficiency.
+
+### Algorithm
+
+1. Create a memoization map `dp` where:
+   - the key is `(i, total)`
+   - the value is the number of ways to reach the target from that state
+2. Define a recursive function `backtrack(i, total)`:
+   - `i` represents the current index in the array
+   - `total` represents the sum formed so far
+3. If `i` reaches the end of the array:
+   - Return `1` if `total` equals the target
+   - Otherwise, return `0`
+4. If the current state `(i, total)` is already in `dp`:
+   - Return the stored value to avoid recomputation
+5. Compute the result by exploring both choices:
+   - Add the current number to `total`
+   - Subtract the current number from `total`
+6. Store the computed result in `dp[(i, total)]`
+7. Start the recursion from index `0` with an initial sum of `0`
+8. Return the final result
 
 ::tabs-start
 
@@ -371,6 +460,33 @@ class Solution {
 }
 ```
 
+
+```rust
+impl Solution {
+    pub fn find_target_sum_ways(nums: Vec<i32>, target: i32) -> i32 {
+        let mut memo = HashMap::new();
+
+        fn backtrack(
+            nums: &[i32], i: usize, total: i32, target: i32,
+            memo: &mut HashMap<(usize, i32), i32>,
+        ) -> i32 {
+            if i == nums.len() {
+                return if total == target { 1 } else { 0 };
+            }
+            if let Some(&val) = memo.get(&(i, total)) {
+                return val;
+            }
+            let res = backtrack(nums, i + 1, total + nums[i], target, memo)
+                + backtrack(nums, i + 1, total - nums[i], target, memo);
+            memo.insert((i, total), res);
+            res
+        }
+
+        backtrack(&nums, 0, 0, target, &mut memo)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -383,6 +499,32 @@ class Solution {
 ---
 
 ## 3. Dynamic Programming (Bottom-Up)
+
+### Intuition
+
+We need to count how many ways we can assign a `+` or `-` sign to each number so that the final sum equals the target.
+
+Instead of using recursion, we can solve this using **bottom-up dynamic programming**, where we build solutions step by step as we process each number.
+
+At each position, we keep track of:
+- all possible sums we can form
+- how many ways each sum can be formed
+
+As we move forward, each existing sum can branch into two new sums by adding or subtracting the current number.
+
+### Algorithm
+
+1. Let `n` be the length of the input array.
+2. Create a list of maps `dp` of size `n + 1`:
+   - `dp[i]` stores how many ways each sum can be formed using the first `i` numbers
+3. Initialize the base case:
+   - `dp[0][0] = 1` since there is exactly one way to form sum `0` using no numbers
+4. Iterate through the numbers from index `0` to `n - 1`:
+5. For each existing `(sum, count)` in `dp[i]`:
+   - Add the current number → update `dp[i + 1][sum + nums[i]]`
+   - Subtract the current number → update `dp[i + 1][sum - nums[i]]`
+6. After processing all numbers, `dp[n][target]` gives the number of valid ways
+7. Return `dp[n][target]`
 
 ::tabs-start
 
@@ -562,6 +704,28 @@ class Solution {
 }
 ```
 
+
+```rust
+impl Solution {
+    pub fn find_target_sum_ways(nums: Vec<i32>, target: i32) -> i32 {
+        let n = nums.len();
+        let mut dp: Vec<HashMap<i32, i32>> =
+            vec![HashMap::new(); n + 1];
+        dp[0].insert(0, 1);
+
+        for i in 0..n {
+            let cur = dp[i].clone();
+            for (&total, &count) in &cur {
+                *dp[i + 1].entry(total + nums[i]).or_insert(0) += count;
+                *dp[i + 1].entry(total - nums[i]).or_insert(0) += count;
+            }
+        }
+
+        *dp[n].get(&target).unwrap_or(&0)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -574,6 +738,29 @@ class Solution {
 ---
 
 ## 4. Dynamic Programming (Space Optimized)
+
+### Intuition
+
+We want to count the number of ways to assign `+` and `-` signs to the numbers so that their final sum equals the target.
+
+In the bottom-up DP approach, we used a separate data structure for each index. However, at each step, the new states depend **only on the previous step**, not on all earlier steps.
+
+This means we can **reuse a single data structure** to keep track of all possible sums and how many ways each sum can be formed, updating it as we process each number.
+
+### Algorithm
+
+1. Create a map `dp` where:
+   - the key represents a possible sum
+   - the value represents the number of ways to form that sum
+2. Initialize `dp[0] = 1` since there is exactly one way to reach sum `0` before using any numbers
+3. For each number in the array:
+   - Create a new map `next_dp` to store updated sums
+4. For every `(total, count)` in `dp`:
+   - Add the current number → update `next_dp[total + num]`
+   - Subtract the current number → update `next_dp[total - num]`
+5. Replace `dp` with `next_dp` after processing the current number
+6. After all numbers are processed, `dp[target]` gives the number of valid ways
+7. Return `dp[target]`
 
 ::tabs-start
 
@@ -747,6 +934,27 @@ class Solution {
 }
 ```
 
+
+```rust
+impl Solution {
+    pub fn find_target_sum_ways(nums: Vec<i32>, target: i32) -> i32 {
+        let mut dp: HashMap<i32, i32> = HashMap::new();
+        dp.insert(0, 1);
+
+        for &num in &nums {
+            let mut next_dp: HashMap<i32, i32> = HashMap::new();
+            for (&total, &count) in &dp {
+                *next_dp.entry(total + num).or_insert(0) += count;
+                *next_dp.entry(total - num).or_insert(0) += count;
+            }
+            dp = next_dp;
+        }
+
+        *dp.get(&target).unwrap_or(&0)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -755,3 +963,19 @@ class Solution {
 - Space complexity: $O(m)$
 
 > Where $n$ is the length of the array $nums$ and $m$ is the sum of all the elements in the array.
+
+---
+
+## Common Pitfalls
+
+### Incorrect Memoization Key
+
+When using top-down DP, the state must include both the current index and the running sum. Forgetting to include one of these in the memoization key will cause incorrect caching and wrong results. The key should be `(index, total)` not just `index` or just `total`.
+
+### Not Handling Negative Sums in Array-Based DP
+
+When using an array instead of a hashmap for memoization, the running sum can become negative. You must offset the sum by the total sum of all elements to convert it to a valid non-negative index. For example, use `dp[i][total + totalSum]` where `totalSum` is the sum of all numbers.
+
+### Modifying Map While Iterating (Space-Optimized DP)
+
+In the space-optimized bottom-up approach, you cannot update `dp` while iterating over it. You must create a new map `next_dp` for the next state and then replace `dp` with `next_dp` after processing each number. Modifying `dp` in place leads to using updated values in the same iteration.

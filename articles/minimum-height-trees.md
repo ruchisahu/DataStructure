@@ -1,4 +1,29 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Tree/Graph Representation** - Understanding how to represent trees using adjacency lists
+- **Depth First Search (DFS)** - Ability to traverse trees recursively while computing subtree properties like height
+- **Breadth First Search (BFS) / Topological Sort** - Understanding level-by-level processing and leaf removal techniques
+- **Tree Properties** - Familiarity with concepts like tree diameter, centroids, and the relationship between tree structure and height
+
+---
+
 ## 1. Brute Force (DFS)
+
+### Intuition
+
+The most straightforward approach is to try each node as a potential root and measure the resulting tree height. The height of a tree rooted at any node is the maximum distance to any other node, which we can find using `dfs`.
+
+By computing the height for every possible root, we can identify which nodes produce the minimum height. While simple to understand, this repeats a lot of work since we recompute distances from scratch for each candidate root.
+
+### Algorithm
+
+1. Build an adjacency list from the edges.
+2. Define a `dfs` function that computes the height of the tree when rooted at a given node.
+3. For each node from `0` to `n-1`, run `dfs` to get its tree height.
+4. Track the minimum height seen and collect all nodes that achieve this minimum.
+5. Return the list of nodes with minimum height.
 
 ::tabs-start
 
@@ -191,6 +216,151 @@ public class Solution {
 }
 ```
 
+```go
+func findMinHeightTrees(n int, edges [][]int) []int {
+    adj := make([][]int, n)
+    for i := range adj {
+        adj[i] = []int{}
+    }
+    for _, edge := range edges {
+        adj[edge[0]] = append(adj[edge[0]], edge[1])
+        adj[edge[1]] = append(adj[edge[1]], edge[0])
+    }
+
+    var dfs func(node, parent int) int
+    dfs = func(node, parent int) int {
+        hgt := 0
+        for _, nei := range adj[node] {
+            if nei == parent {
+                continue
+            }
+            hgt = max(hgt, 1+dfs(nei, node))
+        }
+        return hgt
+    }
+
+    minHgt := n
+    result := []int{}
+    for i := 0; i < n; i++ {
+        curHgt := dfs(i, -1)
+        if curHgt == minHgt {
+            result = append(result, i)
+        } else if curHgt < minHgt {
+            result = []int{i}
+            minHgt = curHgt
+        }
+    }
+    return result
+}
+```
+
+```kotlin
+class Solution {
+    private lateinit var adj: Array<MutableList<Int>>
+
+    fun findMinHeightTrees(n: Int, edges: Array<IntArray>): List<Int> {
+        adj = Array(n) { mutableListOf() }
+        for (edge in edges) {
+            adj[edge[0]].add(edge[1])
+            adj[edge[1]].add(edge[0])
+        }
+
+        var minHgt = n
+        var result = mutableListOf<Int>()
+        for (i in 0 until n) {
+            val curHgt = dfs(i, -1)
+            if (curHgt == minHgt) {
+                result.add(i)
+            } else if (curHgt < minHgt) {
+                result = mutableListOf(i)
+                minHgt = curHgt
+            }
+        }
+        return result
+    }
+
+    private fun dfs(node: Int, parent: Int): Int {
+        var hgt = 0
+        for (nei in adj[node]) {
+            if (nei == parent) continue
+            hgt = maxOf(hgt, 1 + dfs(nei, node))
+        }
+        return hgt
+    }
+}
+```
+
+```swift
+class Solution {
+    func findMinHeightTrees(_ n: Int, _ edges: [[Int]]) -> [Int] {
+        var adj = [[Int]](repeating: [], count: n)
+        for edge in edges {
+            adj[edge[0]].append(edge[1])
+            adj[edge[1]].append(edge[0])
+        }
+
+        func dfs(_ node: Int, _ parent: Int) -> Int {
+            var hgt = 0
+            for nei in adj[node] {
+                if nei == parent { continue }
+                hgt = max(hgt, 1 + dfs(nei, node))
+            }
+            return hgt
+        }
+
+        var minHgt = n
+        var result = [Int]()
+        for i in 0..<n {
+            let curHgt = dfs(i, -1)
+            if curHgt == minHgt {
+                result.append(i)
+            } else if curHgt < minHgt {
+                result = [i]
+                minHgt = curHgt
+            }
+        }
+        return result
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn find_min_height_trees(n: i32, edges: Vec<Vec<i32>>) -> Vec<i32> {
+        let n = n as usize;
+        let mut adj = vec![vec![]; n];
+        for edge in &edges {
+            adj[edge[0] as usize].push(edge[1] as usize);
+            adj[edge[1] as usize].push(edge[0] as usize);
+        }
+
+        fn dfs(node: usize, parent: i32, adj: &Vec<Vec<usize>>) -> i32 {
+            let mut hgt = 0;
+            for &nei in &adj[node] {
+                if nei as i32 == parent {
+                    continue;
+                }
+                hgt = hgt.max(1 + dfs(nei, node as i32, adj));
+            }
+            hgt
+        }
+
+        let mut min_hgt = n as i32;
+        let mut result = vec![];
+        for i in 0..n {
+            let cur_hgt = dfs(i, -1, &adj);
+            if cur_hgt == min_hgt {
+                result.push(i as i32);
+            } else if cur_hgt < min_hgt {
+                result = vec![i as i32];
+                min_hgt = cur_hgt;
+            }
+        }
+        result
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -203,6 +373,20 @@ public class Solution {
 ---
 
 ## 2. Dynamic Programming On Trees (Rerooting)
+
+### Intuition
+
+Rather than recomputing everything for each root, we can reuse information. The tree height from any node depends on the longest path in two directions: down into its subtree and up through its parent to the rest of the tree.
+
+We run two `dfs` passes. The first computes the two longest downward paths for each node (we need two in case the longest path goes through the child we came from). The second pass propagates information from parent to children, combining the parent's best path with sibling subtree heights.
+
+### Algorithm
+
+1. Build an adjacency list and initialize a `dp` array storing the top two heights for each node.
+2. First `dfs` (post-order): for each node, compute the two longest paths into its children's subtrees.
+3. Second `dfs` (pre-order): propagate the "upward" height from parent to children, updating each node's best heights to include paths through the parent.
+4. After both passes, each node's maximum height (`dp[i][0]`) represents its tree height as root.
+5. Find the minimum value across all nodes and return all nodes achieving that minimum.
 
 ::tabs-start
 
@@ -514,6 +698,259 @@ public class Solution {
 }
 ```
 
+```go
+func findMinHeightTrees(n int, edges [][]int) []int {
+    adj := make([][]int, n)
+    for i := range adj {
+        adj[i] = []int{}
+    }
+    for _, edge := range edges {
+        adj[edge[0]] = append(adj[edge[0]], edge[1])
+        adj[edge[1]] = append(adj[edge[1]], edge[0])
+    }
+
+    dp := make([][2]int, n)
+
+    var dfs func(node, parent int)
+    dfs = func(node, parent int) {
+        for _, nei := range adj[node] {
+            if nei == parent {
+                continue
+            }
+            dfs(nei, node)
+            curHgt := 1 + dp[nei][0]
+            if curHgt > dp[node][0] {
+                dp[node][1] = dp[node][0]
+                dp[node][0] = curHgt
+            } else if curHgt > dp[node][1] {
+                dp[node][1] = curHgt
+            }
+        }
+    }
+
+    var dfs1 func(node, parent, topHgt int)
+    dfs1 = func(node, parent, topHgt int) {
+        if topHgt > dp[node][0] {
+            dp[node][1] = dp[node][0]
+            dp[node][0] = topHgt
+        } else if topHgt > dp[node][1] {
+            dp[node][1] = topHgt
+        }
+
+        for _, nei := range adj[node] {
+            if nei == parent {
+                continue
+            }
+            toChild := dp[node][0]
+            if dp[node][0] == 1+dp[nei][0] {
+                toChild = dp[node][1]
+            }
+            dfs1(nei, node, 1+toChild)
+        }
+    }
+
+    dfs(0, -1)
+    dfs1(0, -1, 0)
+
+    minHgt := n
+    for i := 0; i < n; i++ {
+        minHgt = min(minHgt, dp[i][0])
+    }
+    result := []int{}
+    for i := 0; i < n; i++ {
+        if dp[i][0] == minHgt {
+            result = append(result, i)
+        }
+    }
+    return result
+}
+```
+
+```kotlin
+class Solution {
+    private lateinit var adj: Array<MutableList<Int>>
+    private lateinit var dp: Array<IntArray>
+
+    fun findMinHeightTrees(n: Int, edges: Array<IntArray>): List<Int> {
+        adj = Array(n) { mutableListOf() }
+        for (edge in edges) {
+            adj[edge[0]].add(edge[1])
+            adj[edge[1]].add(edge[0])
+        }
+
+        dp = Array(n) { IntArray(2) }
+        dfs(0, -1)
+        dfs1(0, -1, 0)
+
+        var minHgt = n
+        for (i in 0 until n) {
+            minHgt = minOf(minHgt, dp[i][0])
+        }
+        val result = mutableListOf<Int>()
+        for (i in 0 until n) {
+            if (dp[i][0] == minHgt) {
+                result.add(i)
+            }
+        }
+        return result
+    }
+
+    private fun dfs(node: Int, parent: Int) {
+        for (nei in adj[node]) {
+            if (nei == parent) continue
+            dfs(nei, node)
+            val curHgt = 1 + dp[nei][0]
+            if (curHgt > dp[node][0]) {
+                dp[node][1] = dp[node][0]
+                dp[node][0] = curHgt
+            } else if (curHgt > dp[node][1]) {
+                dp[node][1] = curHgt
+            }
+        }
+    }
+
+    private fun dfs1(node: Int, parent: Int, topHgt: Int) {
+        if (topHgt > dp[node][0]) {
+            dp[node][1] = dp[node][0]
+            dp[node][0] = topHgt
+        } else if (topHgt > dp[node][1]) {
+            dp[node][1] = topHgt
+        }
+
+        for (nei in adj[node]) {
+            if (nei == parent) continue
+            val toChild = 1 + if (dp[node][0] == 1 + dp[nei][0]) dp[node][1] else dp[node][0]
+            dfs1(nei, node, toChild)
+        }
+    }
+}
+```
+
+```swift
+class Solution {
+    func findMinHeightTrees(_ n: Int, _ edges: [[Int]]) -> [Int] {
+        var adj = [[Int]](repeating: [], count: n)
+        for edge in edges {
+            adj[edge[0]].append(edge[1])
+            adj[edge[1]].append(edge[0])
+        }
+
+        var dp = [[Int]](repeating: [0, 0], count: n)
+
+        func dfs(_ node: Int, _ parent: Int) {
+            for nei in adj[node] {
+                if nei == parent { continue }
+                dfs(nei, node)
+                let curHgt = 1 + dp[nei][0]
+                if curHgt > dp[node][0] {
+                    dp[node][1] = dp[node][0]
+                    dp[node][0] = curHgt
+                } else if curHgt > dp[node][1] {
+                    dp[node][1] = curHgt
+                }
+            }
+        }
+
+        func dfs1(_ node: Int, _ parent: Int, _ topHgt: Int) {
+            if topHgt > dp[node][0] {
+                dp[node][1] = dp[node][0]
+                dp[node][0] = topHgt
+            } else if topHgt > dp[node][1] {
+                dp[node][1] = topHgt
+            }
+
+            for nei in adj[node] {
+                if nei == parent { continue }
+                let toChild = 1 + (dp[node][0] == 1 + dp[nei][0] ? dp[node][1] : dp[node][0])
+                dfs1(nei, node, toChild)
+            }
+        }
+
+        dfs(0, -1)
+        dfs1(0, -1, 0)
+
+        var minHgt = n
+        for i in 0..<n {
+            minHgt = min(minHgt, dp[i][0])
+        }
+        var result = [Int]()
+        for i in 0..<n {
+            if dp[i][0] == minHgt {
+                result.append(i)
+            }
+        }
+        return result
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn find_min_height_trees(n: i32, edges: Vec<Vec<i32>>) -> Vec<i32> {
+        let n = n as usize;
+        let mut adj = vec![vec![]; n];
+        for edge in &edges {
+            adj[edge[0] as usize].push(edge[1] as usize);
+            adj[edge[1] as usize].push(edge[0] as usize);
+        }
+
+        let mut dp = vec![[0i32; 2]; n];
+
+        fn dfs(node: usize, parent: i32, adj: &Vec<Vec<usize>>, dp: &mut Vec<[i32; 2]>) {
+            for &nei in &adj[node] {
+                if nei as i32 == parent {
+                    continue;
+                }
+                dfs(nei, node as i32, adj, dp);
+                let cur_hgt = 1 + dp[nei][0];
+                if cur_hgt > dp[node][0] {
+                    dp[node][1] = dp[node][0];
+                    dp[node][0] = cur_hgt;
+                } else if cur_hgt > dp[node][1] {
+                    dp[node][1] = cur_hgt;
+                }
+            }
+        }
+
+        fn dfs1(
+            node: usize,
+            parent: i32,
+            top_hgt: i32,
+            adj: &Vec<Vec<usize>>,
+            dp: &mut Vec<[i32; 2]>,
+        ) {
+            if top_hgt > dp[node][0] {
+                dp[node][1] = dp[node][0];
+                dp[node][0] = top_hgt;
+            } else if top_hgt > dp[node][1] {
+                dp[node][1] = top_hgt;
+            }
+            for i in 0..adj[node].len() {
+                let nei = adj[node][i];
+                if nei as i32 == parent {
+                    continue;
+                }
+                let to_child = 1 + if dp[node][0] == 1 + dp[nei][0] {
+                    dp[node][1]
+                } else {
+                    dp[node][0]
+                };
+                dfs1(nei, node as i32, to_child, adj, dp);
+            }
+        }
+
+        dfs(0, -1, &adj, &mut dp);
+        dfs1(0, -1, 0, &adj, &mut dp);
+
+        let min_hgt = dp.iter().map(|d| d[0]).min().unwrap();
+        (0..n)
+            .filter(|&i| dp[i][0] == min_hgt)
+            .map(|i| i as i32)
+            .collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -526,6 +963,20 @@ public class Solution {
 ---
 
 ## 3. Find Centroids of the Tree (DFS)
+
+### Intuition
+
+The minimum height trees are rooted at the centroid(s) of the tree. These centroids lie at the middle of the longest path (diameter) in the tree. If the diameter has odd length, there are two centroids; if even, there's exactly one.
+
+We find the diameter using two `bfs`/`dfs` passes: first find the farthest node from any starting point, then find the farthest node from that. The path between these two endpoints is the diameter, and its middle node(s) are the answer.
+
+### Algorithm
+
+1. Build an adjacency list from the edges.
+2. Run `dfs` from node `0` to find the farthest node (call it `node_a`).
+3. Run `dfs` from `node_a` to find the farthest node (`node_b`) and the diameter length.
+4. Trace the path from `node_a` to `node_b`, collecting all nodes along the way.
+5. If the diameter is even, return the single middle node; if odd, return the two middle nodes.
 
 ::tabs-start
 
@@ -832,6 +1283,254 @@ public class Solution {
 }
 ```
 
+```go
+func findMinHeightTrees(n int, edges [][]int) []int {
+    if n == 1 {
+        return []int{0}
+    }
+
+    adj := make([][]int, n)
+    for i := range adj {
+        adj[i] = []int{}
+    }
+    for _, edge := range edges {
+        adj[edge[0]] = append(adj[edge[0]], edge[1])
+        adj[edge[1]] = append(adj[edge[1]], edge[0])
+    }
+
+    var dfs func(node, parent int) (int, int)
+    dfs = func(node, parent int) (int, int) {
+        farthestNode := node
+        maxDistance := 0
+        for _, nei := range adj[node] {
+            if nei != parent {
+                neiNode, neiDist := dfs(nei, node)
+                if neiDist+1 > maxDistance {
+                    maxDistance = neiDist + 1
+                    farthestNode = neiNode
+                }
+            }
+        }
+        return farthestNode, maxDistance
+    }
+
+    nodeA, _ := dfs(0, -1)
+    nodeB, diameter := dfs(nodeA, -1)
+
+    centroids := []int{}
+    var findCentroids func(node, parent int) bool
+    findCentroids = func(node, parent int) bool {
+        if node == nodeB {
+            centroids = append(centroids, node)
+            return true
+        }
+        for _, nei := range adj[node] {
+            if nei != parent {
+                if findCentroids(nei, node) {
+                    centroids = append(centroids, node)
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    findCentroids(nodeA, -1)
+    L := len(centroids)
+    if diameter%2 == 0 {
+        return []int{centroids[L/2]}
+    }
+    return []int{centroids[L/2-1], centroids[L/2]}
+}
+```
+
+```kotlin
+class Solution {
+    private lateinit var adj: Array<MutableList<Int>>
+    private var nodeB = 0
+    private val centroids = mutableListOf<Int>()
+
+    fun findMinHeightTrees(n: Int, edges: Array<IntArray>): List<Int> {
+        if (n == 1) return listOf(0)
+
+        adj = Array(n) { mutableListOf() }
+        for (edge in edges) {
+            adj[edge[0]].add(edge[1])
+            adj[edge[1]].add(edge[0])
+        }
+
+        val nodeA = dfs(0, -1).first
+        val (nodeBVal, diameter) = dfs(nodeA, -1)
+        nodeB = nodeBVal
+
+        centroids.clear()
+        findCentroids(nodeA, -1)
+
+        val L = centroids.size
+        return if (diameter % 2 == 0) {
+            listOf(centroids[L / 2])
+        } else {
+            listOf(centroids[L / 2 - 1], centroids[L / 2])
+        }
+    }
+
+    private fun dfs(node: Int, parent: Int): Pair<Int, Int> {
+        var farthestNode = node
+        var maxDistance = 0
+        for (nei in adj[node]) {
+            if (nei != parent) {
+                val (neiNode, neiDist) = dfs(nei, node)
+                if (neiDist + 1 > maxDistance) {
+                    maxDistance = neiDist + 1
+                    farthestNode = neiNode
+                }
+            }
+        }
+        return Pair(farthestNode, maxDistance)
+    }
+
+    private fun findCentroids(node: Int, parent: Int): Boolean {
+        if (node == nodeB) {
+            centroids.add(node)
+            return true
+        }
+        for (nei in adj[node]) {
+            if (nei != parent) {
+                if (findCentroids(nei, node)) {
+                    centroids.add(node)
+                    return true
+                }
+            }
+        }
+        return false
+    }
+}
+```
+
+```swift
+class Solution {
+    func findMinHeightTrees(_ n: Int, _ edges: [[Int]]) -> [Int] {
+        if n == 1 { return [0] }
+
+        var adj = [[Int]](repeating: [], count: n)
+        for edge in edges {
+            adj[edge[0]].append(edge[1])
+            adj[edge[1]].append(edge[0])
+        }
+
+        func dfs(_ node: Int, _ parent: Int) -> (Int, Int) {
+            var farthestNode = node
+            var maxDistance = 0
+            for nei in adj[node] {
+                if nei != parent {
+                    let (neiNode, neiDist) = dfs(nei, node)
+                    if neiDist + 1 > maxDistance {
+                        maxDistance = neiDist + 1
+                        farthestNode = neiNode
+                    }
+                }
+            }
+            return (farthestNode, maxDistance)
+        }
+
+        let (nodeA, _) = dfs(0, -1)
+        let (nodeB, diameter) = dfs(nodeA, -1)
+
+        var centroids = [Int]()
+        func findCentroids(_ node: Int, _ parent: Int) -> Bool {
+            if node == nodeB {
+                centroids.append(node)
+                return true
+            }
+            for nei in adj[node] {
+                if nei != parent {
+                    if findCentroids(nei, node) {
+                        centroids.append(node)
+                        return true
+                    }
+                }
+            }
+            return false
+        }
+
+        _ = findCentroids(nodeA, -1)
+        let L = centroids.count
+        if diameter % 2 == 0 {
+            return [centroids[L / 2]]
+        } else {
+            return [centroids[L / 2 - 1], centroids[L / 2]]
+        }
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn find_min_height_trees(n: i32, edges: Vec<Vec<i32>>) -> Vec<i32> {
+        let n = n as usize;
+        if n == 1 {
+            return vec![0];
+        }
+
+        let mut adj = vec![vec![]; n];
+        for edge in &edges {
+            adj[edge[0] as usize].push(edge[1] as usize);
+            adj[edge[1] as usize].push(edge[0] as usize);
+        }
+
+        fn dfs(node: usize, parent: i32, adj: &Vec<Vec<usize>>) -> (usize, i32) {
+            let mut farthest = node;
+            let mut max_dist = 0;
+            for &nei in &adj[node] {
+                if nei as i32 != parent {
+                    let (nei_node, nei_dist) = dfs(nei, node as i32, adj);
+                    if nei_dist + 1 > max_dist {
+                        max_dist = nei_dist + 1;
+                        farthest = nei_node;
+                    }
+                }
+            }
+            (farthest, max_dist)
+        }
+
+        fn find_centroids(
+            node: usize,
+            parent: i32,
+            target: usize,
+            adj: &Vec<Vec<usize>>,
+            path: &mut Vec<usize>,
+        ) -> bool {
+            if node == target {
+                path.push(node);
+                return true;
+            }
+            for &nei in &adj[node] {
+                if nei as i32 != parent {
+                    if find_centroids(nei, node as i32, target, adj, path) {
+                        path.push(node);
+                        return true;
+                    }
+                }
+            }
+            false
+        }
+
+        let (node_a, _) = dfs(0, -1, &adj);
+        let (node_b, diameter) = dfs(node_a, -1, &adj);
+
+        let mut centroids = vec![];
+        find_centroids(node_a, -1, node_b, &adj, &mut centroids);
+
+        let l = centroids.len();
+        if diameter % 2 == 0 {
+            vec![centroids[l / 2] as i32]
+        } else {
+            vec![centroids[l / 2 - 1] as i32, centroids[l / 2] as i32]
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -844,6 +1543,22 @@ public class Solution {
 ---
 
 ## 4. Topological Sorting (BFS)
+
+### Intuition
+
+Imagine peeling the tree like an onion, removing leaves layer by layer. The nodes that remain at the very end (when only `1` or `2` nodes are left) must be the centroids, since they're the innermost points of the tree.
+
+Each round of removal brings us one step closer to the center. Since a tree can have at most `2` centroids (on a diameter of odd length), we stop when `2` or fewer nodes remain.
+
+### Algorithm
+
+1. Build an adjacency list and track each node's edge count (degree).
+2. Initialize a queue with all leaf nodes (degree = `1`), excluding the special case where `n = 1`.
+3. While more than `2` nodes remain:
+    - Remove all current leaves from the queue.
+    - For each removed leaf, decrement its neighbor's degree.
+    - If a neighbor becomes a leaf, add it to the queue.
+4. The remaining nodes in the queue are the minimum height tree roots.
 
 ::tabs-start
 
@@ -1061,6 +1776,175 @@ public class Solution {
 }
 ```
 
+```go
+func findMinHeightTrees(n int, edges [][]int) []int {
+    if n == 1 {
+        return []int{0}
+    }
+
+    adj := make([][]int, n)
+    for i := range adj {
+        adj[i] = []int{}
+    }
+    for _, edge := range edges {
+        adj[edge[0]] = append(adj[edge[0]], edge[1])
+        adj[edge[1]] = append(adj[edge[1]], edge[0])
+    }
+
+    edgeCnt := make([]int, n)
+    leaves := []int{}
+    for i := 0; i < n; i++ {
+        edgeCnt[i] = len(adj[i])
+        if len(adj[i]) == 1 {
+            leaves = append(leaves, i)
+        }
+    }
+
+    for len(leaves) > 0 {
+        if n <= 2 {
+            return leaves
+        }
+        size := len(leaves)
+        for i := 0; i < size; i++ {
+            node := leaves[0]
+            leaves = leaves[1:]
+            n--
+            for _, nei := range adj[node] {
+                edgeCnt[nei]--
+                if edgeCnt[nei] == 1 {
+                    leaves = append(leaves, nei)
+                }
+            }
+        }
+    }
+
+    return []int{}
+}
+```
+
+```kotlin
+class Solution {
+    fun findMinHeightTrees(n: Int, edges: Array<IntArray>): List<Int> {
+        if (n == 1) return listOf(0)
+
+        val adj = Array(n) { mutableListOf<Int>() }
+        for (edge in edges) {
+            adj[edge[0]].add(edge[1])
+            adj[edge[1]].add(edge[0])
+        }
+
+        val edgeCnt = IntArray(n)
+        val leaves = ArrayDeque<Int>()
+        for (i in 0 until n) {
+            edgeCnt[i] = adj[i].size
+            if (adj[i].size == 1) leaves.add(i)
+        }
+
+        var remaining = n
+        while (leaves.isNotEmpty()) {
+            if (remaining <= 2) return leaves.toList()
+            val size = leaves.size
+            repeat(size) {
+                val node = leaves.removeFirst()
+                remaining--
+                for (nei in adj[node]) {
+                    edgeCnt[nei]--
+                    if (edgeCnt[nei] == 1) leaves.add(nei)
+                }
+            }
+        }
+
+        return emptyList()
+    }
+}
+```
+
+```swift
+class Solution {
+    func findMinHeightTrees(_ n: Int, _ edges: [[Int]]) -> [Int] {
+        if n == 1 { return [0] }
+
+        var adj = [[Int]](repeating: [], count: n)
+        for edge in edges {
+            adj[edge[0]].append(edge[1])
+            adj[edge[1]].append(edge[0])
+        }
+
+        var edgeCnt = [Int](repeating: 0, count: n)
+        var leaves = [Int]()
+        for i in 0..<n {
+            edgeCnt[i] = adj[i].count
+            if adj[i].count == 1 {
+                leaves.append(i)
+            }
+        }
+
+        var remaining = n
+        while !leaves.isEmpty {
+            if remaining <= 2 { return leaves }
+            let size = leaves.count
+            for _ in 0..<size {
+                let node = leaves.removeFirst()
+                remaining -= 1
+                for nei in adj[node] {
+                    edgeCnt[nei] -= 1
+                    if edgeCnt[nei] == 1 {
+                        leaves.append(nei)
+                    }
+                }
+            }
+        }
+
+        return []
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn find_min_height_trees(n: i32, edges: Vec<Vec<i32>>) -> Vec<i32> {
+        let mut n = n as usize;
+        if n == 1 {
+            return vec![0];
+        }
+
+        let mut adj = vec![vec![]; n];
+        for edge in &edges {
+            adj[edge[0] as usize].push(edge[1] as usize);
+            adj[edge[1] as usize].push(edge[0] as usize);
+        }
+
+        let mut edge_cnt = vec![0usize; n];
+        let mut leaves = VecDeque::new();
+        for i in 0..n {
+            edge_cnt[i] = adj[i].len();
+            if adj[i].len() == 1 {
+                leaves.push_back(i);
+            }
+        }
+
+        while !leaves.is_empty() {
+            if n <= 2 {
+                return leaves.iter().map(|&x| x as i32).collect();
+            }
+            let size = leaves.len();
+            for _ in 0..size {
+                let node = leaves.pop_front().unwrap();
+                n -= 1;
+                for &nei in &adj[node].clone() {
+                    edge_cnt[nei] -= 1;
+                    if edge_cnt[nei] == 1 {
+                        leaves.push_back(nei);
+                    }
+                }
+            }
+        }
+
+        vec![]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1069,3 +1953,19 @@ public class Solution {
 - Space complexity: $O(V)$
 
 > Where $V$ is the number of vertices and $E$ is the number of edges.
+
+---
+
+## Common Pitfalls
+
+### Forgetting the Single Node Edge Case
+
+When `n = 1`, there are no edges and the only node `0` is trivially the root of a minimum height tree. Many solutions fail to handle this case, leading to empty results or index errors when trying to process an empty edge list.
+
+### Using a Visited Set Instead of Parent Tracking in DFS
+
+In tree traversal, using a full visited set is unnecessary overhead. Since trees have no cycles, simply passing the parent node to avoid revisiting the previous node is sufficient and more efficient. Using a visited set can also cause issues if not cleared properly between multiple DFS calls.
+
+### Incorrectly Implementing Leaf Removal in Topological Sort
+
+When peeling leaves layer by layer, a common mistake is modifying the degree array while iterating over the current batch of leaves. This can cause nodes to be processed prematurely or skipped entirely. Always process all current-level leaves before updating degrees for the next level.

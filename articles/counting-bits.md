@@ -1,4 +1,36 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Bit Manipulation** - Understanding binary representation and bitwise operations (AND, OR, shifts)
+- **Dynamic Programming** - Building solutions incrementally using previously computed results
+- **Binary Number System** - Understanding how integers are represented in binary and counting set bits
+
+---
+
 ## 1. Bit Manipulation - I
+
+### Intuition
+
+For every number from `0` to `n`, we want to compute how many `1` bits appear in its binary representation.
+
+This **bit manipulation** approach checks each bit position individually:
+
+- Integers are typically represented using **32 bits**
+- For each number, we test whether the bit at position `i` is set using a bit mask
+
+Although this solution is not optimal, it clearly demonstrates how bitwise operations work at a low level.
+
+### Algorithm
+
+1. Initialize an empty list `res` to store results.
+2. For every number `num` from `0` to `n`:
+    - Initialize a counter `one = 0`
+    - For each bit position `i` from `0` to `31`:
+        - Check if the `i`-th bit is set using `(1 << i) & num`
+        - If yes, increment `one`
+    - Append `one` to `res`
+3. Return the list `res`
 
 ::tabs-start
 
@@ -138,6 +170,24 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn count_bits(n: i32) -> Vec<i32> {
+        let mut res = vec![0; (n + 1) as usize];
+        for num in 0..=n as usize {
+            let mut one = 0;
+            for i in 0..32 {
+                if num & (1 << i) != 0 {
+                    one += 1;
+                }
+            }
+            res[num] = one;
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -150,6 +200,27 @@ class Solution {
 ---
 
 ## 2. Bit Manipulation - II
+
+### Intuition
+
+To count the number of `1` bits efficiently, we can use **Brian Kernighan’s Algorithm**.
+
+The key observation:
+
+- The operation `n & (n - 1)` **removes the lowest set bit** from `n`
+- Repeating this until `n` becomes `0` counts how many `1` bits are present
+
+This avoids checking all 32 bits for every number.
+
+### Algorithm
+
+1. Create an array `res` of size `n + 1` initialized with `0`.
+2. For each number `i` from `1` to `n`:
+    - Set `num = i`
+    - While `num != 0`:
+        - Increment `res[i]`
+        - Remove the lowest set bit using `num &= (num - 1)`
+3. Return `res`.
 
 ::tabs-start
 
@@ -280,6 +351,22 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn count_bits(n: i32) -> Vec<i32> {
+        let mut res = vec![0; (n + 1) as usize];
+        for i in 1..=n as usize {
+            let mut num = i;
+            while num != 0 {
+                res[i] += 1;
+                num &= num - 1;
+            }
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -292,6 +379,27 @@ class Solution {
 ---
 
 ## 3. In-Built Function
+
+### Intuition
+
+We need to compute the number of set bits (`1`s) in the binary representation of **every number from `0` to `n`**.
+
+Instead of manually counting bits using bit manipulation or dynamic programming, many programming languages provide **built-in ways to convert numbers to binary or directly count set bits**. Using these built-in features allows us to write a very concise and readable solution.
+
+This approach is especially useful when:
+
+- `n` is small to moderate
+- clarity is more important than optimal performance
+- we want a quick and reliable implementation
+
+### Algorithm
+
+1. Initialize an empty result list.
+2. For each number `i` from `0` to `n`:
+    - Convert `i` to its binary representation using a built-in utility.
+    - Count the number of `1` bits in that representation.
+    - Append the count to the result list.
+3. Return the result list.
 
 ::tabs-start
 
@@ -384,6 +492,14 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn count_bits(n: i32) -> Vec<i32> {
+        (0..=n).map(|i| i.count_ones() as i32).collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -396,6 +512,39 @@ class Solution {
 ---
 
 ## 4. Bit Manipulation (DP)
+
+### Intuition
+
+We want to compute the number of set bits (`1`s) for **all numbers from `0` to `n`** efficiently.
+
+A key observation from binary representation is:
+
+- Numbers repeat their bit patterns every time we reach a **power of two**
+- When a number is a power of two, it has **exactly one `1` bit**
+- Any number `i` can be written as:
+  **`i = highestPowerOfTwo ≤ i + remainder`**
+
+So, the number of set bits in `i` is:
+
+> **1 (for the highest power of two) + number of set bits in the remainder**
+
+This allows us to build the solution incrementally using **Dynamic Programming**, reusing results we have already computed.
+
+### Algorithm
+
+1. Create a DP array `dp` of size `n + 1`
+    - `dp[i]` will store the number of set bits in `i`
+2. Initialize:
+    - `dp[0] = 0`
+    - `offset = 1` (tracks the most recent power of two)
+3. For each number `i` from `1` to `n`:
+    - If `i` reaches the next power of two (`i == 2 * offset`):
+        - Update `offset = i`
+    - Compute:
+        ```
+        dp[i] = 1 + dp[i - offset]
+        ```
+4. Return the DP array.
 
 ::tabs-start
 
@@ -534,6 +683,24 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn count_bits(n: i32) -> Vec<i32> {
+        let n = n as usize;
+        let mut dp = vec![0; n + 1];
+        let mut offset = 1;
+
+        for i in 1..=n {
+            if offset * 2 == i {
+                offset = i;
+            }
+            dp[i] = 1 + dp[i - offset];
+        }
+        dp
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -546,6 +713,35 @@ class Solution {
 ---
 
 ## 5. Bit Manipulation (Optimal)
+
+### Intuition
+
+We want to find the number of set bits (`1`s) in every number from `0` to `n`.
+
+A very important observation from binary representation is:
+
+- Right-shifting a number by 1 (`i >> 1`) removes the **least significant bit**
+- `(i & 1)` tells us whether the last bit of `i` is `1` or `0`
+
+So, the number of set bits in `i` can be built from a **smaller number**:
+
+> **setBits(i) = setBits(i >> 1) + (i & 1)**
+
+This means each result depends only on a previously computed value, making it a perfect fit for **Dynamic Programming**.
+
+### Algorithm
+
+1. Create a DP array `dp` of size `n + 1`
+    - `dp[i]` stores the number of set bits in `i`
+2. Initialize `dp[0] = 0`
+3. For every number `i` from `1` to `n`:
+    - Right shift `i` by 1 to get `i >> 1`
+    - Check the last bit using `(i & 1)`
+    - Compute:
+        ```
+        dp[i] = dp[i >> 1] + (i & 1)
+        ```
+4. Return the DP array
 
 ::tabs-start
 
@@ -645,6 +841,19 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn count_bits(n: i32) -> Vec<i32> {
+        let n = n as usize;
+        let mut dp = vec![0i32; n + 1];
+        for i in 1..=n {
+            dp[i] = dp[i >> 1] + (i as i32 & 1);
+        }
+        dp
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -653,3 +862,39 @@ class Solution {
 - Space complexity:
     - $O(1)$ extra space.
     - $O(n)$ space for the output array.
+
+---
+
+## Common Pitfalls
+
+### Incorrect Bit Shift Operator
+
+When using the DP recurrence `dp[i] = dp[i >> 1] + (i & 1)`, a common mistake is using left shift instead of right shift, or confusing the operator precedence.
+
+```python
+# Wrong: Using left shift instead of right shift
+dp[i] = dp[i << 1] + (i & 1)  # This accesses invalid indices
+
+# Wrong: Operator precedence issue in some languages
+dp[i] = dp[i >> 1 + (i & 1)]  # Addition happens before shift
+
+# Correct
+dp[i] = dp[i >> 1] + (i & 1)
+```
+
+### Off-by-One in Loop Bounds
+
+The problem asks for bits count from `0` to `n` inclusive, meaning the result array should have `n + 1` elements. A common mistake is creating an array of size `n` or iterating up to `n - 1`.
+
+```python
+# Wrong: Array too small
+dp = [0] * n  # Missing dp[n]
+
+# Wrong: Loop doesn't include n
+for i in range(n):  # Should be range(n + 1)
+
+# Correct
+dp = [0] * (n + 1)
+for i in range(n + 1):
+    # process
+```

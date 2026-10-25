@@ -1,4 +1,30 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Backtracking** - Exploring all possible subsets by including or excluding each element
+- **Hash maps** - Tracking element counts to check for conflicts efficiently
+- **Recursion** - Building subsets through recursive decision trees
+- **Dynamic programming (optional)** - Optimized solutions use DP similar to the house robber problem
+
+---
+
 ## 1. Backtracking
+
+### Intuition
+
+A subset is beautiful if no two elements have an absolute difference of `k`. We can explore all possible subsets using backtracking. For each element, we decide whether to include it or skip it. Before including an element, we check if adding it would create a conflict with any element already in our current subset.
+
+A hash map tracks the count of each number in the current subset. When considering `nums[i]`, we check if `nums[i] + k` or `nums[i] - k` exists in the map. If neither exists, we can safely include the element and recurse deeper.
+
+### Algorithm
+
+1. Use a recursive helper function starting at index `0` with an empty count map.
+2. Base case: when index equals the array length, return `1` to count this valid subset.
+3. For each index, first count subsets that skip the current element by recursing to `i + 1`.
+4. Check if including `nums[i]` is valid by verifying neither `nums[i] + k` nor `nums[i] - k` exists in the count map.
+5. If valid, increment the count for `nums[i]`, recurse, then decrement (backtrack).
+6. Subtract `1` from the final result to exclude the empty subset.
 
 ::tabs-start
 
@@ -105,6 +131,118 @@ class Solution {
 }
 ```
 
+```go
+func beautifulSubsets(nums []int, k int) int {
+    count := make(map[int]int)
+
+    var helper func(i int) int
+    helper = func(i int) int {
+        if i == len(nums) {
+            return 1
+        }
+
+        res := helper(i + 1) // Skip nums[i]
+
+        if count[nums[i]+k] == 0 && count[nums[i]-k] == 0 {
+            count[nums[i]]++
+            res += helper(i + 1)
+            count[nums[i]]--
+            if count[nums[i]] == 0 {
+                delete(count, nums[i])
+            }
+        }
+
+        return res
+    }
+
+    return helper(0) - 1
+}
+```
+
+```kotlin
+class Solution {
+    fun beautifulSubsets(nums: IntArray, k: Int): Int {
+        val count = mutableMapOf<Int, Int>()
+
+        fun helper(i: Int): Int {
+            if (i == nums.size) {
+                return 1
+            }
+
+            var res = helper(i + 1) // Skip nums[i]
+
+            if ((count[nums[i] + k] ?: 0) == 0 && (count[nums[i] - k] ?: 0) == 0) {
+                count[nums[i]] = (count[nums[i]] ?: 0) + 1
+                res += helper(i + 1)
+                count[nums[i]] = count[nums[i]]!! - 1
+                if (count[nums[i]] == 0) {
+                    count.remove(nums[i])
+                }
+            }
+
+            return res
+        }
+
+        return helper(0) - 1
+    }
+}
+```
+
+```swift
+class Solution {
+    func beautifulSubsets(_ nums: [Int], _ k: Int) -> Int {
+        var count = [Int: Int]()
+
+        func helper(_ i: Int) -> Int {
+            if i == nums.count {
+                return 1
+            }
+
+            var res = helper(i + 1) // Skip nums[i]
+
+            if (count[nums[i] + k] ?? 0) == 0 && (count[nums[i] - k] ?? 0) == 0 {
+                count[nums[i], default: 0] += 1
+                res += helper(i + 1)
+                count[nums[i]]! -= 1
+                if count[nums[i]] == 0 {
+                    count.removeValue(forKey: nums[i])
+                }
+            }
+
+            return res
+        }
+
+        return helper(0) - 1
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn beautiful_subsets(nums: Vec<i32>, k: i32) -> i32 {
+        fn helper(i: usize, count: &mut HashMap<i32, i32>, nums: &[i32], k: i32) -> i32 {
+            if i == nums.len() {
+                return 1;
+            }
+            let mut res = helper(i + 1, count, nums, k); // Skip nums[i]
+            if *count.get(&(nums[i] + k)).unwrap_or(&0) == 0
+                && *count.get(&(nums[i] - k)).unwrap_or(&0) == 0
+            {
+                *count.entry(nums[i]).or_insert(0) += 1;
+                res += helper(i + 1, count, nums, k);
+                let e = count.get_mut(&nums[i]).unwrap();
+                *e -= 1;
+                if *e == 0 {
+                    count.remove(&nums[i]);
+                }
+            }
+            res
+        }
+        helper(0, &mut HashMap::new(), &nums, k) - 1
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -115,6 +253,21 @@ class Solution {
 ---
 
 ## 2. Dynamic Programming (Top-Down)
+
+### Intuition
+
+Numbers can only conflict if their difference is exactly `k`. This means numbers that differ by `k` form chains where adjacent elements cannot both appear in a beautiful subset. By grouping numbers into these chains, we transform the problem into independent subproblems.
+
+For each chain, we solve a variation of the house robber problem: at each position, we either skip the current number or include some combination of its duplicates (if the number appears multiple times). If we include any copies of a number, we must skip the next number in the chain.
+
+### Algorithm
+
+1. Count the frequency of each number using a hash map.
+2. Build groups where each group contains numbers that form a chain differing by `k` (e.g., `[1, 3, 5]` for `k=2`).
+3. For each group, use memoized recursion starting from the smallest number.
+4. At each number `n` in a group, either skip it (recurse to `n + k`) or include some of its copies and skip the next (recurse to `n + 2k`).
+5. When including a number with count `c`, there are `2^c - 1` ways to choose which copies to include.
+6. Multiply the results from all independent groups and subtract `1` for the empty subset.
 
 ::tabs-start
 
@@ -331,6 +484,217 @@ class Solution {
 }
 ```
 
+```go
+func beautifulSubsets(nums []int, k int) int {
+    cnt := make(map[int]int)
+    for _, num := range nums {
+        cnt[num]++
+    }
+
+    groups := []map[int]int{}
+    visit := make(map[int]bool)
+
+    for n := range cnt {
+        if visit[n] {
+            continue
+        }
+        g := make(map[int]int)
+        for cnt[n-k] > 0 {
+            n -= k
+        }
+        for cnt[n] > 0 {
+            g[n] = cnt[n]
+            visit[n] = true
+            n += k
+        }
+        groups = append(groups, g)
+    }
+
+    cache := make(map[int]int)
+
+    var helper func(n int, g map[int]int) int
+    helper = func(n int, g map[int]int) int {
+        if _, ok := g[n]; !ok {
+            return 1
+        }
+        if val, ok := cache[n]; ok {
+            return val
+        }
+
+        skip := helper(n+k, g)
+        include := ((1 << g[n]) - 1) * helper(n+2*k, g)
+        cache[n] = skip + include
+        return cache[n]
+    }
+
+    res := 1
+    for _, g := range groups {
+        minN := math.MaxInt32
+        for n := range g {
+            if n < minN {
+                minN = n
+            }
+        }
+        cache = make(map[int]int)
+        res *= helper(minN, g)
+    }
+
+    return res - 1
+}
+```
+
+```kotlin
+class Solution {
+    fun beautifulSubsets(nums: IntArray, k: Int): Int {
+        val cnt = mutableMapOf<Int, Int>()
+        for (num in nums) {
+            cnt[num] = (cnt[num] ?: 0) + 1
+        }
+
+        val groups = mutableListOf<MutableMap<Int, Int>>()
+        val visit = mutableSetOf<Int>()
+
+        for (n in cnt.keys) {
+            if (n in visit) continue
+            val g = mutableMapOf<Int, Int>()
+            var num = n
+            while (cnt.containsKey(num - k)) {
+                num -= k
+            }
+            while (cnt.containsKey(num)) {
+                g[num] = cnt[num]!!
+                visit.add(num)
+                num += k
+            }
+            groups.add(g)
+        }
+
+        var res = 1
+        for (g in groups) {
+            val cache = mutableMapOf<Int, Int>()
+
+            fun helper(n: Int): Int {
+                if (!g.containsKey(n)) return 1
+                if (cache.containsKey(n)) return cache[n]!!
+
+                val skip = helper(n + k)
+                val include = ((1 shl g[n]!!) - 1) * helper(n + 2 * k)
+                cache[n] = skip + include
+                return cache[n]!!
+            }
+
+            val minN = g.keys.minOrNull()!!
+            res *= helper(minN)
+        }
+
+        return res - 1
+    }
+}
+```
+
+```swift
+class Solution {
+    func beautifulSubsets(_ nums: [Int], _ k: Int) -> Int {
+        var cnt = [Int: Int]()
+        for num in nums {
+            cnt[num, default: 0] += 1
+        }
+
+        var groups = [[Int: Int]]()
+        var visit = Set<Int>()
+
+        for n in cnt.keys {
+            if visit.contains(n) { continue }
+            var g = [Int: Int]()
+            var num = n
+            while cnt[num - k] != nil {
+                num -= k
+            }
+            while cnt[num] != nil {
+                g[num] = cnt[num]!
+                visit.insert(num)
+                num += k
+            }
+            groups.append(g)
+        }
+
+        var res = 1
+        for g in groups {
+            var cache = [Int: Int]()
+
+            func helper(_ n: Int) -> Int {
+                if g[n] == nil { return 1 }
+                if let val = cache[n] { return val }
+
+                let skip = helper(n + k)
+                let include = ((1 << g[n]!) - 1) * helper(n + 2 * k)
+                cache[n] = skip + include
+                return cache[n]!
+            }
+
+            let minN = g.keys.min()!
+            res *= helper(minN)
+        }
+
+        return res - 1
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn beautiful_subsets(nums: Vec<i32>, k: i32) -> i32 {
+        let mut cnt = HashMap::new();
+        for &num in &nums {
+            *cnt.entry(num).or_insert(0) += 1;
+        }
+
+        let mut groups: Vec<HashMap<i32, i32>> = Vec::new();
+        let mut visit = HashSet::new();
+
+        for &n in cnt.keys() {
+            if visit.contains(&n) {
+                continue;
+            }
+            let mut g = HashMap::new();
+            let mut num = n;
+            while cnt.contains_key(&(num - k)) {
+                num -= k;
+            }
+            while cnt.contains_key(&num) {
+                g.insert(num, cnt[&num]);
+                visit.insert(num);
+                num += k;
+            }
+            groups.push(g);
+        }
+
+        fn helper(n: i32, g: &HashMap<i32, i32>, k: i32, cache: &mut HashMap<i32, i32>) -> i32 {
+            if !g.contains_key(&n) {
+                return 1;
+            }
+            if let Some(&v) = cache.get(&n) {
+                return v;
+            }
+            let skip = helper(n + k, g, k, cache);
+            let include = ((1 << g[&n]) - 1) * helper(n + 2 * k, g, k, cache);
+            let result = skip + include;
+            cache.insert(n, result);
+            result
+        }
+
+        let mut res = 1;
+        for g in &groups {
+            let min_n = *g.keys().min().unwrap();
+            let mut cache = HashMap::new();
+            res *= helper(min_n, g, k, &mut cache);
+        }
+
+        res - 1
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -341,6 +705,21 @@ class Solution {
 ---
 
 ## 3. Dynamic Programming (Bottom-Up)
+
+### Intuition
+
+Instead of using recursion with memoization, we can build the solution iteratively. After grouping numbers into chains, we process each chain from smallest to largest. At each step, we track the total number of valid subsets we can form using numbers up to the current position.
+
+The key insight is that when processing a number, we need to know how many subsets were possible before the previous number (to combine with including the current number) and how many were possible including the previous number (which we cannot combine with the current number).
+
+### Algorithm
+
+1. Group numbers into chains as in the top-down approach.
+2. For each group, sort the numbers and iterate through them.
+3. Maintain a `DP` map where `dp[num]` represents the count of valid subsets ending at or before `num`.
+4. If the current number is not consecutive to the previous (differs by more than `k`), we can freely combine all previous subsets with the current number's choices.
+5. If consecutive, we can only include the current number with subsets that did not include the previous number.
+6. Multiply results from all groups and subtract `1`.
 
 ::tabs-start
 
@@ -554,6 +933,223 @@ class Solution {
 }
 ```
 
+```go
+func beautifulSubsets(nums []int, k int) int {
+    cnt := make(map[int]int)
+    for _, num := range nums {
+        cnt[num]++
+    }
+
+    groups := []map[int]int{}
+    visit := make(map[int]bool)
+
+    for n := range cnt {
+        if visit[n] {
+            continue
+        }
+        g := make(map[int]int)
+        num := n
+        for cnt[num-k] > 0 {
+            num -= k
+        }
+        for cnt[num] > 0 {
+            g[num] = cnt[num]
+            visit[num] = true
+            num += k
+        }
+        groups = append(groups, g)
+    }
+
+    res := 1
+    for _, g := range groups {
+        dp := make(map[int]int)
+        prev := -1
+
+        keys := make([]int, 0, len(g))
+        for num := range g {
+            keys = append(keys, num)
+        }
+        sort.Ints(keys)
+
+        for _, num := range keys {
+            count := g[num]
+            if prev == -1 || prev+k != num {
+                prevVal := 1
+                if prev != -1 {
+                    prevVal = dp[prev]
+                }
+                dp[num] = prevVal * (1 + (1<<count) - 1)
+            } else {
+                prevKVal := 1
+                if val, ok := dp[prev-k]; ok {
+                    prevKVal = val
+                }
+                dp[num] = dp[prev] + ((1<<count)-1)*prevKVal
+            }
+            prev = num
+        }
+
+        res *= dp[prev]
+    }
+
+    return res - 1
+}
+```
+
+```kotlin
+class Solution {
+    fun beautifulSubsets(nums: IntArray, k: Int): Int {
+        val cnt = mutableMapOf<Int, Int>()
+        for (num in nums) {
+            cnt[num] = (cnt[num] ?: 0) + 1
+        }
+
+        val groups = mutableListOf<MutableMap<Int, Int>>()
+        val visit = mutableSetOf<Int>()
+
+        for (n in cnt.keys) {
+            if (n in visit) continue
+            val g = mutableMapOf<Int, Int>()
+            var num = n
+            while (cnt.containsKey(num - k)) {
+                num -= k
+            }
+            while (cnt.containsKey(num)) {
+                g[num] = cnt[num]!!
+                visit.add(num)
+                num += k
+            }
+            groups.add(g)
+        }
+
+        var res = 1
+        for (g in groups) {
+            val dp = mutableMapOf<Int, Int>()
+            var prev: Int? = null
+
+            for (num in g.keys.sorted()) {
+                val count = g[num]!!
+                if (prev == null || prev!! + k != num) {
+                    dp[num] = (dp[prev] ?: 1) * (1 + (1 shl count) - 1)
+                } else {
+                    dp[num] = dp[prev]!! + ((1 shl count) - 1) * (dp[prev!! - k] ?: 1)
+                }
+                prev = num
+            }
+
+            res *= dp[prev]!!
+        }
+
+        return res - 1
+    }
+}
+```
+
+```swift
+class Solution {
+    func beautifulSubsets(_ nums: [Int], _ k: Int) -> Int {
+        var cnt = [Int: Int]()
+        for num in nums {
+            cnt[num, default: 0] += 1
+        }
+
+        var groups = [[Int: Int]]()
+        var visit = Set<Int>()
+
+        for n in cnt.keys {
+            if visit.contains(n) { continue }
+            var g = [Int: Int]()
+            var num = n
+            while cnt[num - k] != nil {
+                num -= k
+            }
+            while cnt[num] != nil {
+                g[num] = cnt[num]!
+                visit.insert(num)
+                num += k
+            }
+            groups.append(g)
+        }
+
+        var res = 1
+        for g in groups {
+            var dp = [Int: Int]()
+            var prev: Int? = nil
+
+            for num in g.keys.sorted() {
+                let count = g[num]!
+                if prev == nil || prev! + k != num {
+                    dp[num] = (prev != nil ? dp[prev!]! : 1) * (1 + (1 << count) - 1)
+                } else {
+                    dp[num] = dp[prev!]! + ((1 << count) - 1) * (dp[prev! - k] ?? 1)
+                }
+                prev = num
+            }
+
+            res *= dp[prev!]!
+        }
+
+        return res - 1
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn beautiful_subsets(nums: Vec<i32>, k: i32) -> i32 {
+        let mut cnt = HashMap::new();
+        for &num in &nums {
+            *cnt.entry(num).or_insert(0) += 1;
+        }
+
+        let mut groups: Vec<HashMap<i32, i32>> = Vec::new();
+        let mut visit = HashSet::new();
+
+        for &n in cnt.keys() {
+            if visit.contains(&n) {
+                continue;
+            }
+            let mut g = HashMap::new();
+            let mut num = n;
+            while cnt.contains_key(&(num - k)) {
+                num -= k;
+            }
+            while cnt.contains_key(&num) {
+                g.insert(num, cnt[&num]);
+                visit.insert(num);
+                num += k;
+            }
+            groups.push(g);
+        }
+
+        let mut res = 1;
+        for g in &groups {
+            let mut dp = HashMap::new();
+            let mut prev: Option<i32> = None;
+
+            let mut keys: Vec<i32> = g.keys().copied().collect();
+            keys.sort();
+            for &num in &keys {
+                let count = g[&num];
+                if prev.is_none() || prev.unwrap() + k != num {
+                    let prev_val = prev.map_or(1, |p| dp[&p]);
+                    dp.insert(num, prev_val * (1 + (1 << count) - 1));
+                } else {
+                    let p = prev.unwrap();
+                    let prev_k_val = dp.get(&(p - k)).copied().unwrap_or(1);
+                    dp.insert(num, dp[&p] + ((1 << count) - 1) * prev_k_val);
+                }
+                prev = Some(num);
+            }
+
+            res *= dp[&prev.unwrap()];
+        }
+
+        res - 1
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -564,6 +1160,22 @@ class Solution {
 ---
 
 ## 4. Dynamic Programming (Space Optimized)
+
+### Intuition
+
+We can optimize space by observing that we only need information from the previous two positions in each chain. Instead of storing results for all numbers in a DP map, we use two variables: one for subsets that include the previous number (`dp`) and one for subsets that do not include it (`ndp`).
+
+By grouping numbers based on their remainder when divided by `k`, we naturally partition them into non-interacting groups. Numbers with different remainders can never conflict since their difference cannot be exactly `k`.
+
+### Algorithm
+
+1. Group numbers by `num % k` to identify independent chains.
+2. For each group, sort numbers and process them with two state variables: `dp` (subsets including some copies of the previous number) and `ndp` (subsets not including the previous number).
+3. For each number with count `c`, compute `have = 2^c - 1` (ways to include at least one copy).
+4. If the current number is not adjacent to the previous in the chain, we can combine `have` with both `dp` and `ndp`.
+5. If adjacent, we can only combine `have` with `ndp`.
+6. Update `ndp` to include the old `dp` (representing subsets that skip the current number).
+7. Multiply `(dp + ndp)` across all groups and subtract `1`.
 
 ::tabs-start
 
@@ -733,6 +1345,189 @@ class Solution {
         }
 
         return res - 1;
+    }
+}
+```
+
+```go
+func beautifulSubsets(nums []int, k int) int {
+    groups := make(map[int]map[int]int)
+    cnt := make(map[int]int)
+    for _, num := range nums {
+        cnt[num]++
+    }
+
+    // Group numbers based on remainder with k
+    for _, num := range nums {
+        if groups[num%k] == nil {
+            groups[num%k] = make(map[int]int)
+        }
+        groups[num%k][num] = cnt[num]
+    }
+
+    res := 1
+    for _, g := range groups {
+        prev, dp, ndp := 0, 0, 1
+        keys := make([]int, 0, len(g))
+        for num := range g {
+            keys = append(keys, num)
+        }
+        sort.Ints(keys)
+
+        for _, num := range keys {
+            count := g[num]
+            have := (1 << count) - 1
+            tmp := ndp
+            ndp += dp
+
+            if prev == 0 || prev+k != num {
+                dp = have * (tmp + dp)
+            } else {
+                dp = tmp * have
+            }
+
+            prev = num
+        }
+
+        res *= (dp + ndp)
+    }
+
+    return res - 1
+}
+```
+
+```kotlin
+class Solution {
+    fun beautifulSubsets(nums: IntArray, k: Int): Int {
+        val groups = mutableMapOf<Int, MutableMap<Int, Int>>()
+        val cnt = mutableMapOf<Int, Int>()
+        for (num in nums) {
+            cnt[num] = (cnt[num] ?: 0) + 1
+        }
+
+        // Group numbers based on remainder with k
+        for (num in nums) {
+            groups.getOrPut(num % k) { mutableMapOf() }[num] = cnt[num]!!
+        }
+
+        var res = 1
+        for (g in groups.values) {
+            var prev = 0
+            var dp = 0
+            var ndp = 1
+            val sortedKeys = g.keys.sorted()
+
+            for (num in sortedKeys) {
+                val count = g[num]!!
+                val have = (1 shl count) - 1
+                val tmp = ndp
+                ndp += dp
+
+                dp = if (prev == 0 || prev + k != num) {
+                    have * (tmp + dp)
+                } else {
+                    tmp * have
+                }
+
+                prev = num
+            }
+
+            res *= (dp + ndp)
+        }
+
+        return res - 1
+    }
+}
+```
+
+```swift
+class Solution {
+    func beautifulSubsets(_ nums: [Int], _ k: Int) -> Int {
+        var groups = [Int: [Int: Int]]()
+        var cnt = [Int: Int]()
+        for num in nums {
+            cnt[num, default: 0] += 1
+        }
+
+        // Group numbers based on remainder with k
+        for num in nums {
+            if groups[num % k] == nil {
+                groups[num % k] = [Int: Int]()
+            }
+            groups[num % k]![num] = cnt[num]!
+        }
+
+        var res = 1
+        for g in groups.values {
+            var prev = 0
+            var dp = 0
+            var ndp = 1
+            let sortedKeys = g.keys.sorted()
+
+            for num in sortedKeys {
+                let count = g[num]!
+                let have = (1 << count) - 1
+                let tmp = ndp
+                ndp += dp
+
+                if prev == 0 || prev + k != num {
+                    dp = have * (tmp + dp)
+                } else {
+                    dp = tmp * have
+                }
+
+                prev = num
+            }
+
+            res *= (dp + ndp)
+        }
+
+        return res - 1
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn beautiful_subsets(nums: Vec<i32>, k: i32) -> i32 {
+        let mut cnt = HashMap::new();
+        for &num in &nums {
+            *cnt.entry(num).or_insert(0) += 1;
+        }
+
+        let mut groups: HashMap<i32, HashMap<i32, i32>> = HashMap::new();
+        // Group numbers based on remainder with k
+        for &num in &nums {
+            groups.entry(num % k).or_default().insert(num, cnt[&num]);
+        }
+
+        let mut res = 1;
+        for g in groups.values() {
+            let mut prev = 0;
+            let (mut dp, mut ndp) = (0, 1);
+
+            let mut keys: Vec<i32> = g.keys().copied().collect();
+            keys.sort();
+
+            for &num in &keys {
+                let count = g[&num];
+                let have = (1 << count) - 1;
+                let tmp = ndp;
+                ndp += dp;
+
+                if prev == 0 || prev + k != num {
+                    dp = have * (tmp + dp);
+                } else {
+                    dp = tmp * have;
+                }
+
+                prev = num;
+            }
+
+            res *= dp + ndp;
+        }
+
+        res - 1
     }
 }
 ```

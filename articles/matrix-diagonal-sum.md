@@ -1,4 +1,24 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **2D Array Traversal** - Understanding how to access elements in a matrix using row and column indices
+- **Diagonal Patterns** - Recognizing that primary diagonal has i==j and secondary diagonal has i+j==n-1
+
+---
+
 ## 1. Iteration
+
+### Intuition
+
+The matrix has two diagonals: the primary diagonal (top-left to bottom-right) and the secondary diagonal (top-right to bottom-left). We can collect elements from both diagonals by reversing each row after processing the primary diagonal, then processing it again. The center element appears on both diagonals for odd-sized matrices, so we subtract it once to avoid double-counting.
+
+### Algorithm
+
+1. Define a helper function that iterates through the matrix and sums elements where row index equals column index (primary diagonal), then reverses each row.
+2. Call the helper twice: first to sum the primary diagonal, then after rows are reversed, to sum what was the secondary diagonal.
+3. If the matrix dimension `n` is odd, subtract the center element (which was counted twice).
+4. Return the total sum.
 
 ::tabs-start
 
@@ -132,6 +152,116 @@ public class Solution {
 }
 ```
 
+```go
+func diagonalSum(mat [][]int) int {
+    n := len(mat)
+
+    helper := func(matrix [][]int) int {
+        res := 0
+        for i := 0; i < n; i++ {
+            for j := 0; j < n; j++ {
+                if i == j {
+                    res += matrix[i][j]
+                }
+            }
+            for l, r := 0, len(matrix[i])-1; l < r; l, r = l+1, r-1 {
+                matrix[i][l], matrix[i][r] = matrix[i][r], matrix[i][l]
+            }
+        }
+        return res
+    }
+
+    sum := helper(mat) + helper(mat)
+    if n%2 == 1 {
+        sum -= mat[n/2][n/2]
+    }
+    return sum
+}
+```
+
+```kotlin
+class Solution {
+    fun diagonalSum(mat: Array<IntArray>): Int {
+        val n = mat.size
+
+        fun helper(matrix: Array<IntArray>): Int {
+            var res = 0
+            for (i in 0 until n) {
+                for (j in 0 until n) {
+                    if (i == j) {
+                        res += matrix[i][j]
+                    }
+                }
+                matrix[i].reverse()
+            }
+            return res
+        }
+
+        var sum = helper(mat) + helper(mat)
+        if (n % 2 == 1) {
+            sum -= mat[n / 2][n / 2]
+        }
+        return sum
+    }
+}
+```
+
+```swift
+class Solution {
+    func diagonalSum(_ mat: [[Int]]) -> Int {
+        var mat = mat
+        let n = mat.count
+
+        func helper(_ matrix: inout [[Int]]) -> Int {
+            var res = 0
+            for i in 0..<n {
+                for j in 0..<n {
+                    if i == j {
+                        res += matrix[i][j]
+                    }
+                }
+                matrix[i].reverse()
+            }
+            return res
+        }
+
+        var sum = helper(&mat) + helper(&mat)
+        if n % 2 == 1 {
+            sum -= mat[n / 2][n / 2]
+        }
+        return sum
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn diagonal_sum(mat: Vec<Vec<i32>>) -> i32 {
+        let mut mat = mat;
+        let n = mat.len();
+
+        fn helper(matrix: &mut Vec<Vec<i32>>, n: usize) -> i32 {
+            let mut res = 0;
+            for i in 0..n {
+                for j in 0..n {
+                    if i == j {
+                        res += matrix[i][j];
+                    }
+                }
+                matrix[i].reverse();
+            }
+            res
+        }
+
+        let mut sum = helper(&mut mat, n) + helper(&mut mat, n);
+        if n % 2 == 1 {
+            sum -= mat[n / 2][n / 2];
+        }
+        sum
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -142,6 +272,19 @@ public class Solution {
 ---
 
 ## 2. Iteration (Optimal)
+
+### Intuition
+
+We can directly compute both diagonal sums in a single pass. For row `r`, the primary diagonal element is at column `r`, and the secondary diagonal element is at column `n - r - 1`. We simply add both for each row. When `n` is odd, the center element (at row `n / 2`, column `n / 2`) is counted twice, so we subtract it once at the end.
+
+### Algorithm
+
+1. Initialize the result sum to `0`.
+2. For each row index `r` from `0` to `n - 1`:
+    - Add `mat[r][r]` (primary diagonal element).
+    - Add `mat[r][n - r - 1]` (secondary diagonal element).
+3. If `n` is odd, subtract the center element `mat[n / 2][n / 2]` to correct for double-counting.
+4. Return the result.
 
 ::tabs-start
 
@@ -230,9 +373,99 @@ public class Solution {
 }
 ```
 
+```go
+func diagonalSum(mat [][]int) int {
+    res := 0
+    n := len(mat)
+
+    for r := 0; r < n; r++ {
+        res += mat[r][r]
+        res += mat[r][n-r-1]
+    }
+
+    if n%2 == 1 {
+        res -= mat[n/2][n/2]
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun diagonalSum(mat: Array<IntArray>): Int {
+        var res = 0
+        val n = mat.size
+
+        for (r in 0 until n) {
+            res += mat[r][r]
+            res += mat[r][n - r - 1]
+        }
+
+        if (n % 2 == 1) {
+            res -= mat[n / 2][n / 2]
+        }
+
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func diagonalSum(_ mat: [[Int]]) -> Int {
+        var res = 0
+        let n = mat.count
+
+        for r in 0..<n {
+            res += mat[r][r]
+            res += mat[r][n - r - 1]
+        }
+
+        if n % 2 == 1 {
+            res -= mat[n / 2][n / 2]
+        }
+
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn diagonal_sum(mat: Vec<Vec<i32>>) -> i32 {
+        let n = mat.len();
+        let mut res = 0;
+
+        for r in 0..n {
+            res += mat[r][r];
+            res += mat[r][n - r - 1];
+        }
+
+        if n % 2 == 1 {
+            res -= mat[n / 2][n / 2];
+        }
+
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(1)$ extra space.
+
+---
+
+## Common Pitfalls
+
+### Double-Counting the Center Element for Odd-Sized Matrices
+
+When the matrix has an odd dimension, the center element lies on both diagonals and gets added twice. You must subtract it once at the end. Forgetting this check causes incorrect results for odd-sized matrices like 3x3 or 5x5.
+
+### Using Incorrect Index Formula for Secondary Diagonal
+
+The secondary diagonal element in row `r` is at column `n - r - 1`, not `n - r`. Using the wrong formula causes an index out of bounds error or accesses the wrong elements.

@@ -1,4 +1,27 @@
+## Prerequisites
+Before attempting this problem, you should be comfortable with:
+- **Hash Maps** - Using dictionaries to map keys to values and track relationships
+- **Graph Representation** - Building adjacency lists from problem constraints
+- **DFS/BFS Traversal** - Exploring all nodes in a connected component
+- **Union-Find (Disjoint Set Union)** - Understanding how to efficiently merge and query sets (for optimal solution)
+- **Connected Components** - Recognizing when a problem is about grouping related elements
+
+---
+
 ## 1. Depth First Search
+
+### Intuition
+
+This is a graph connectivity problem in disguise. If two accounts share an email, they belong to the same person and should be merged. We can model this as a graph where emails are nodes, and emails within the same account are connected by edges. Finding all emails belonging to one person becomes finding all nodes in a connected component. `dfs` naturally explores an entire component, collecting all connected emails.
+
+### Algorithm
+
+1. Assign a unique index to each email and track which account it first appeared in.
+2. Build an adjacency list connecting consecutive emails within each account.
+3. For each unvisited email, run `dfs` to collect all emails in that connected component.
+4. Group the collected emails by the account index of the starting email.
+5. For each group, sort the emails and prepend the account name.
+6. Return the merged accounts.
 
 ::tabs-start
 
@@ -357,6 +380,274 @@ public class Solution {
 }
 ```
 
+```go
+func accountsMerge(accounts [][]string) [][]string {
+    emailIdx := make(map[string]int)
+    emails := []string{}
+    emailToAcc := make(map[int]int)
+
+    m := 0
+    for accId, account := range accounts {
+        for i := 1; i < len(account); i++ {
+            email := account[i]
+            if _, exists := emailIdx[email]; !exists {
+                emails = append(emails, email)
+                emailIdx[email] = m
+                emailToAcc[m] = accId
+                m++
+            }
+        }
+    }
+
+    adj := make([][]int, m)
+    for i := range adj {
+        adj[i] = []int{}
+    }
+    for _, account := range accounts {
+        for i := 2; i < len(account); i++ {
+            id1 := emailIdx[account[i]]
+            id2 := emailIdx[account[i-1]]
+            adj[id1] = append(adj[id1], id2)
+            adj[id2] = append(adj[id2], id1)
+        }
+    }
+
+    emailGroup := make(map[int][]string)
+    visited := make([]bool, m)
+
+    var dfs func(node, accId int)
+    dfs = func(node, accId int) {
+        visited[node] = true
+        emailGroup[accId] = append(emailGroup[accId], emails[node])
+        for _, nei := range adj[node] {
+            if !visited[nei] {
+                dfs(nei, accId)
+            }
+        }
+    }
+
+    for i := 0; i < m; i++ {
+        if !visited[i] {
+            dfs(i, emailToAcc[i])
+        }
+    }
+
+    res := [][]string{}
+    for accId, group := range emailGroup {
+        name := accounts[accId][0]
+        sort.Strings(group)
+        merged := append([]string{name}, group...)
+        res = append(res, merged)
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    private lateinit var emailIdx: MutableMap<String, Int>
+    private lateinit var emails: MutableList<String>
+    private lateinit var adj: MutableList<MutableList<Int>>
+    private lateinit var emailGroup: MutableMap<Int, MutableList<String>>
+    private lateinit var visited: BooleanArray
+
+    fun accountsMerge(accounts: List<List<String>>): List<List<String>> {
+        emailIdx = mutableMapOf()
+        emails = mutableListOf()
+        val emailToAcc = mutableMapOf<Int, Int>()
+
+        var m = 0
+        for ((accId, account) in accounts.withIndex()) {
+            for (i in 1 until account.size) {
+                val email = account[i]
+                if (email !in emailIdx) {
+                    emails.add(email)
+                    emailIdx[email] = m
+                    emailToAcc[m] = accId
+                    m++
+                }
+            }
+        }
+
+        adj = MutableList(m) { mutableListOf() }
+        for (account in accounts) {
+            for (i in 2 until account.size) {
+                val id1 = emailIdx[account[i]]!!
+                val id2 = emailIdx[account[i - 1]]!!
+                adj[id1].add(id2)
+                adj[id2].add(id1)
+            }
+        }
+
+        emailGroup = mutableMapOf()
+        visited = BooleanArray(m)
+
+        for (i in 0 until m) {
+            if (!visited[i]) {
+                emailGroup[emailToAcc[i]!!] = mutableListOf()
+                dfs(i, emailToAcc[i]!!)
+            }
+        }
+
+        val res = mutableListOf<List<String>>()
+        for ((accId, group) in emailGroup) {
+            val name = accounts[accId][0]
+            group.sort()
+            res.add(listOf(name) + group)
+        }
+
+        return res
+    }
+
+    private fun dfs(node: Int, accId: Int) {
+        visited[node] = true
+        emailGroup[accId]!!.add(emails[node])
+        for (nei in adj[node]) {
+            if (!visited[nei]) {
+                dfs(nei, accId)
+            }
+        }
+    }
+}
+```
+
+```swift
+class Solution {
+    private var emailIdx = [String: Int]()
+    private var emails = [String]()
+    private var adj = [[Int]]()
+    private var emailGroup = [Int: [String]]()
+    private var visited = [Bool]()
+
+    func accountsMerge(_ accounts: [[String]]) -> [[String]] {
+        emailIdx = [:]
+        emails = []
+        var emailToAcc = [Int: Int]()
+
+        var m = 0
+        for (accId, account) in accounts.enumerated() {
+            for i in 1..<account.count {
+                let email = account[i]
+                if emailIdx[email] == nil {
+                    emails.append(email)
+                    emailIdx[email] = m
+                    emailToAcc[m] = accId
+                    m += 1
+                }
+            }
+        }
+
+        adj = Array(repeating: [Int](), count: m)
+        for account in accounts {
+            for i in 2..<account.count {
+                let id1 = emailIdx[account[i]]!
+                let id2 = emailIdx[account[i - 1]]!
+                adj[id1].append(id2)
+                adj[id2].append(id1)
+            }
+        }
+
+        emailGroup = [:]
+        visited = Array(repeating: false, count: m)
+
+        for i in 0..<m {
+            if !visited[i] {
+                emailGroup[emailToAcc[i]!] = []
+                dfs(i, emailToAcc[i]!)
+            }
+        }
+
+        var res = [[String]]()
+        for (accId, group) in emailGroup {
+            let name = accounts[accId][0]
+            let sorted = group.sorted()
+            res.append([name] + sorted)
+        }
+
+        return res
+    }
+
+    private func dfs(_ node: Int, _ accId: Int) {
+        visited[node] = true
+        emailGroup[accId]!.append(emails[node])
+        for nei in adj[node] {
+            if !visited[nei] {
+                dfs(nei, accId)
+            }
+        }
+    }
+}
+```
+
+
+```rust
+impl Solution {
+    pub fn accounts_merge(accounts: Vec<Vec<String>>) -> Vec<Vec<String>> {
+        let n = accounts.len();
+        let mut email_idx: HashMap<String, usize> = HashMap::new();
+        let mut emails: Vec<String> = Vec::new();
+        let mut email_to_acc: HashMap<usize, usize> = HashMap::new();
+
+        let mut m = 0;
+        for (acc_id, account) in accounts.iter().enumerate() {
+            for i in 1..account.len() {
+                let email = &account[i];
+                if !email_idx.contains_key(email) {
+                    emails.push(email.clone());
+                    email_idx.insert(email.clone(), m);
+                    email_to_acc.insert(m, acc_id);
+                    m += 1;
+                }
+            }
+        }
+
+        let mut adj = vec![vec![]; m];
+        for account in &accounts {
+            for i in 2..account.len() {
+                let id1 = email_idx[&account[i]];
+                let id2 = email_idx[&account[i - 1]];
+                adj[id1].push(id2);
+                adj[id2].push(id1);
+            }
+        }
+
+        let mut email_group: HashMap<usize, Vec<String>> = HashMap::new();
+        let mut visited = vec![false; m];
+
+        fn dfs(
+            node: usize, acc_id: usize, adj: &Vec<Vec<usize>>,
+            emails: &Vec<String>, visited: &mut Vec<bool>,
+            email_group: &mut HashMap<usize, Vec<String>>,
+        ) {
+            visited[node] = true;
+            email_group.entry(acc_id).or_default().push(emails[node].clone());
+            for &nei in &adj[node] {
+                if !visited[nei] {
+                    dfs(nei, acc_id, adj, emails, visited, email_group);
+                }
+            }
+        }
+
+        for i in 0..m {
+            if !visited[i] {
+                dfs(i, email_to_acc[&i], &adj, &emails, &mut visited, &mut email_group);
+            }
+        }
+
+        let mut res = Vec::new();
+        for (acc_id, mut group) in email_group {
+            let name = accounts[acc_id][0].clone();
+            group.sort();
+            let mut merged = vec![name];
+            merged.extend(group);
+            res.push(merged);
+        }
+
+        res
+    }
+}
+```
 ::tabs-end
 
 ### Time & Space Complexity
@@ -369,6 +660,21 @@ public class Solution {
 ---
 
 ## 2. Breadth First Search
+
+### Intuition
+
+`bfs` provides an alternative way to explore connected components. Starting from any unvisited email, we use a queue to visit all reachable emails level by level. Each email we dequeue gets added to the current component, and its unvisited neighbors are enqueued. The result is the same as `dfs`, but `bfs` uses iteration with a queue instead of recursion.
+
+### Algorithm
+
+1. Assign a unique index to each email and track which account it first appeared in.
+2. Build an adjacency list connecting consecutive emails within each account.
+3. For each unvisited email, start `bfs`:
+   - Initialize a queue with the starting email and mark it visited.
+   - While the queue is not empty, dequeue an email, add it to the current group, and enqueue its unvisited neighbors.
+4. Group the collected emails by the account index of the starting email.
+5. For each group, sort the emails and prepend the account name.
+6. Return the merged accounts.
 
 ::tabs-start
 
@@ -759,6 +1065,280 @@ public class Solution {
 }
 ```
 
+```go
+func accountsMerge(accounts [][]string) [][]string {
+    emailIdx := make(map[string]int)
+    emails := []string{}
+    emailToAcc := make(map[int]int)
+
+    m := 0
+    for accId, account := range accounts {
+        for i := 1; i < len(account); i++ {
+            email := account[i]
+            if _, exists := emailIdx[email]; !exists {
+                emails = append(emails, email)
+                emailIdx[email] = m
+                emailToAcc[m] = accId
+                m++
+            }
+        }
+    }
+
+    adj := make([][]int, m)
+    for i := range adj {
+        adj[i] = []int{}
+    }
+    for _, account := range accounts {
+        for i := 2; i < len(account); i++ {
+            id1 := emailIdx[account[i]]
+            id2 := emailIdx[account[i-1]]
+            adj[id1] = append(adj[id1], id2)
+            adj[id2] = append(adj[id2], id1)
+        }
+    }
+
+    emailGroup := make(map[int][]string)
+    visited := make([]bool, m)
+
+    bfs := func(start, accId int) {
+        queue := []int{start}
+        visited[start] = true
+        for len(queue) > 0 {
+            node := queue[0]
+            queue = queue[1:]
+            emailGroup[accId] = append(emailGroup[accId], emails[node])
+            for _, nei := range adj[node] {
+                if !visited[nei] {
+                    visited[nei] = true
+                    queue = append(queue, nei)
+                }
+            }
+        }
+    }
+
+    for i := 0; i < m; i++ {
+        if !visited[i] {
+            bfs(i, emailToAcc[i])
+        }
+    }
+
+    res := [][]string{}
+    for accId, group := range emailGroup {
+        name := accounts[accId][0]
+        sort.Strings(group)
+        merged := append([]string{name}, group...)
+        res = append(res, merged)
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun accountsMerge(accounts: List<List<String>>): List<List<String>> {
+        val emailIdx = mutableMapOf<String, Int>()
+        val emails = mutableListOf<String>()
+        val emailToAcc = mutableMapOf<Int, Int>()
+
+        var m = 0
+        for ((accId, account) in accounts.withIndex()) {
+            for (i in 1 until account.size) {
+                val email = account[i]
+                if (email !in emailIdx) {
+                    emails.add(email)
+                    emailIdx[email] = m
+                    emailToAcc[m] = accId
+                    m++
+                }
+            }
+        }
+
+        val adj = MutableList(m) { mutableListOf<Int>() }
+        for (account in accounts) {
+            for (i in 2 until account.size) {
+                val id1 = emailIdx[account[i]]!!
+                val id2 = emailIdx[account[i - 1]]!!
+                adj[id1].add(id2)
+                adj[id2].add(id1)
+            }
+        }
+
+        val emailGroup = mutableMapOf<Int, MutableList<String>>()
+        val visited = BooleanArray(m)
+
+        fun bfs(start: Int, accId: Int) {
+            val queue = ArrayDeque<Int>()
+            queue.add(start)
+            visited[start] = true
+            emailGroup[accId] = mutableListOf()
+
+            while (queue.isNotEmpty()) {
+                val node = queue.removeFirst()
+                emailGroup[accId]!!.add(emails[node])
+                for (nei in adj[node]) {
+                    if (!visited[nei]) {
+                        visited[nei] = true
+                        queue.add(nei)
+                    }
+                }
+            }
+        }
+
+        for (i in 0 until m) {
+            if (!visited[i]) {
+                bfs(i, emailToAcc[i]!!)
+            }
+        }
+
+        val res = mutableListOf<List<String>>()
+        for ((accId, group) in emailGroup) {
+            val name = accounts[accId][0]
+            group.sort()
+            res.add(listOf(name) + group)
+        }
+
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func accountsMerge(_ accounts: [[String]]) -> [[String]] {
+        var emailIdx = [String: Int]()
+        var emails = [String]()
+        var emailToAcc = [Int: Int]()
+
+        var m = 0
+        for (accId, account) in accounts.enumerated() {
+            for i in 1..<account.count {
+                let email = account[i]
+                if emailIdx[email] == nil {
+                    emails.append(email)
+                    emailIdx[email] = m
+                    emailToAcc[m] = accId
+                    m += 1
+                }
+            }
+        }
+
+        var adj = Array(repeating: [Int](), count: m)
+        for account in accounts {
+            for i in 2..<account.count {
+                let id1 = emailIdx[account[i]]!
+                let id2 = emailIdx[account[i - 1]]!
+                adj[id1].append(id2)
+                adj[id2].append(id1)
+            }
+        }
+
+        var emailGroup = [Int: [String]]()
+        var visited = Array(repeating: false, count: m)
+
+        func bfs(_ start: Int, _ accId: Int) {
+            var queue = [start]
+            visited[start] = true
+            emailGroup[accId] = []
+
+            while !queue.isEmpty {
+                let node = queue.removeFirst()
+                emailGroup[accId]!.append(emails[node])
+                for nei in adj[node] {
+                    if !visited[nei] {
+                        visited[nei] = true
+                        queue.append(nei)
+                    }
+                }
+            }
+        }
+
+        for i in 0..<m {
+            if !visited[i] {
+                bfs(i, emailToAcc[i]!)
+            }
+        }
+
+        var res = [[String]]()
+        for (accId, group) in emailGroup {
+            let name = accounts[accId][0]
+            let sorted = group.sorted()
+            res.append([name] + sorted)
+        }
+
+        return res
+    }
+}
+```
+
+
+```rust
+impl Solution {
+    pub fn accounts_merge(accounts: Vec<Vec<String>>) -> Vec<Vec<String>> {
+        let n = accounts.len();
+        let mut email_idx: HashMap<String, usize> = HashMap::new();
+        let mut emails: Vec<String> = Vec::new();
+        let mut email_to_acc: HashMap<usize, usize> = HashMap::new();
+
+        let mut m = 0;
+        for (acc_id, account) in accounts.iter().enumerate() {
+            for i in 1..account.len() {
+                let email = &account[i];
+                if !email_idx.contains_key(email) {
+                    emails.push(email.clone());
+                    email_idx.insert(email.clone(), m);
+                    email_to_acc.insert(m, acc_id);
+                    m += 1;
+                }
+            }
+        }
+
+        let mut adj = vec![vec![]; m];
+        for account in &accounts {
+            for i in 2..account.len() {
+                let id1 = email_idx[&account[i]];
+                let id2 = email_idx[&account[i - 1]];
+                adj[id1].push(id2);
+                adj[id2].push(id1);
+            }
+        }
+
+        let mut email_group: HashMap<usize, Vec<String>> = HashMap::new();
+        let mut visited = vec![false; m];
+
+        for i in 0..m {
+            if !visited[i] {
+                let acc_id = email_to_acc[&i];
+                let mut queue = VecDeque::new();
+                queue.push_back(i);
+                visited[i] = true;
+                email_group.entry(acc_id).or_default();
+
+                while let Some(node) = queue.pop_front() {
+                    email_group.get_mut(&acc_id).unwrap().push(emails[node].clone());
+                    for &nei in &adj[node] {
+                        if !visited[nei] {
+                            visited[nei] = true;
+                            queue.push_back(nei);
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut res = Vec::new();
+        for (acc_id, mut group) in email_group {
+            let name = accounts[acc_id][0].clone();
+            group.sort();
+            let mut merged = vec![name];
+            merged.extend(group);
+            res.push(merged);
+        }
+
+        res
+    }
+}
+```
 ::tabs-end
 
 ### Time & Space Complexity
@@ -771,6 +1351,21 @@ public class Solution {
 ---
 
 ## 3. Disjoint Set Union
+
+### Intuition
+
+Union-Find (Disjoint Set Union) is designed for exactly this type of problem: grouping elements into disjoint sets and merging sets efficiently. Instead of building a graph and traversing it, we assign each account an ID and union accounts that share an email. When we see an email for the first time, we record which account it belongs to. If we see it again, we union the current account with the one that first owned it. After processing all accounts, we group emails by their account's root representative.
+
+### Algorithm
+
+1. Initialize Union-Find with one node per account.
+2. Create a map from email to the first account index that contains it.
+3. For each account's emails:
+   - If the email was seen before, union the current account with the previous owner.
+   - Otherwise, record the current account as the owner.
+4. For each email, find the root of its owning account and group emails by `root`.
+5. For each group, sort the emails and prepend the account name.
+6. Return the merged accounts.
 
 ::tabs-start
 
@@ -1155,6 +1750,280 @@ public class Solution {
 }
 ```
 
+```go
+type UnionFind struct {
+    parent []int
+    rank   []int
+}
+
+func NewUnionFind(n int) *UnionFind {
+    parent := make([]int, n)
+    rank := make([]int, n)
+    for i := 0; i < n; i++ {
+        parent[i] = i
+        rank[i] = 1
+    }
+    return &UnionFind{parent, rank}
+}
+
+func (uf *UnionFind) Find(x int) int {
+    if x != uf.parent[x] {
+        uf.parent[x] = uf.Find(uf.parent[x])
+    }
+    return uf.parent[x]
+}
+
+func (uf *UnionFind) Union(x, y int) bool {
+    px, py := uf.Find(x), uf.Find(y)
+    if px == py {
+        return false
+    }
+    if uf.rank[px] > uf.rank[py] {
+        uf.parent[py] = px
+        uf.rank[px] += uf.rank[py]
+    } else {
+        uf.parent[px] = py
+        uf.rank[py] += uf.rank[px]
+    }
+    return true
+}
+
+func accountsMerge(accounts [][]string) [][]string {
+    n := len(accounts)
+    uf := NewUnionFind(n)
+    emailToAcc := make(map[string]int)
+
+    for i, account := range accounts {
+        for j := 1; j < len(account); j++ {
+            email := account[j]
+            if idx, exists := emailToAcc[email]; exists {
+                uf.Union(i, idx)
+            } else {
+                emailToAcc[email] = i
+            }
+        }
+    }
+
+    emailGroup := make(map[int][]string)
+    for email, accId := range emailToAcc {
+        leader := uf.Find(accId)
+        emailGroup[leader] = append(emailGroup[leader], email)
+    }
+
+    res := [][]string{}
+    for accId, emails := range emailGroup {
+        name := accounts[accId][0]
+        sort.Strings(emails)
+        merged := append([]string{name}, emails...)
+        res = append(res, merged)
+    }
+
+    return res
+}
+```
+
+```kotlin
+class UnionFind(n: Int) {
+    private val parent = IntArray(n) { it }
+    private val rank = IntArray(n) { 1 }
+
+    fun find(x: Int): Int {
+        if (x != parent[x]) {
+            parent[x] = find(parent[x])
+        }
+        return parent[x]
+    }
+
+    fun union(x: Int, y: Int): Boolean {
+        val px = find(x)
+        val py = find(y)
+        if (px == py) return false
+        if (rank[px] > rank[py]) {
+            parent[py] = px
+            rank[px] += rank[py]
+        } else {
+            parent[px] = py
+            rank[py] += rank[px]
+        }
+        return true
+    }
+}
+
+class Solution {
+    fun accountsMerge(accounts: List<List<String>>): List<List<String>> {
+        val n = accounts.size
+        val uf = UnionFind(n)
+        val emailToAcc = mutableMapOf<String, Int>()
+
+        for (i in 0 until n) {
+            for (j in 1 until accounts[i].size) {
+                val email = accounts[i][j]
+                if (email in emailToAcc) {
+                    uf.union(i, emailToAcc[email]!!)
+                } else {
+                    emailToAcc[email] = i
+                }
+            }
+        }
+
+        val emailGroup = mutableMapOf<Int, MutableList<String>>()
+        for ((email, accId) in emailToAcc) {
+            val leader = uf.find(accId)
+            emailGroup.getOrPut(leader) { mutableListOf() }.add(email)
+        }
+
+        val res = mutableListOf<List<String>>()
+        for ((accId, emails) in emailGroup) {
+            val name = accounts[accId][0]
+            emails.sort()
+            res.add(listOf(name) + emails)
+        }
+
+        return res
+    }
+}
+```
+
+```swift
+class UnionFind {
+    private var parent: [Int]
+    private var rank: [Int]
+
+    init(_ n: Int) {
+        parent = Array(0..<n)
+        rank = Array(repeating: 1, count: n)
+    }
+
+    func find(_ x: Int) -> Int {
+        if x != parent[x] {
+            parent[x] = find(parent[x])
+        }
+        return parent[x]
+    }
+
+    func union(_ x: Int, _ y: Int) -> Bool {
+        let px = find(x)
+        let py = find(y)
+        if px == py { return false }
+        if rank[px] > rank[py] {
+            parent[py] = px
+            rank[px] += rank[py]
+        } else {
+            parent[px] = py
+            rank[py] += rank[px]
+        }
+        return true
+    }
+}
+
+class Solution {
+    func accountsMerge(_ accounts: [[String]]) -> [[String]] {
+        let n = accounts.count
+        let uf = UnionFind(n)
+        var emailToAcc = [String: Int]()
+
+        for i in 0..<n {
+            for j in 1..<accounts[i].count {
+                let email = accounts[i][j]
+                if let idx = emailToAcc[email] {
+                    _ = uf.union(i, idx)
+                } else {
+                    emailToAcc[email] = i
+                }
+            }
+        }
+
+        var emailGroup = [Int: [String]]()
+        for (email, accId) in emailToAcc {
+            let leader = uf.find(accId)
+            emailGroup[leader, default: []].append(email)
+        }
+
+        var res = [[String]]()
+        for (accId, emails) in emailGroup {
+            let name = accounts[accId][0]
+            let sorted = emails.sorted()
+            res.append([name] + sorted)
+        }
+
+        return res
+    }
+}
+```
+
+
+```rust
+struct UnionFind {
+    parent: Vec<usize>,
+    rank: Vec<usize>,
+}
+
+impl UnionFind {
+    fn new(n: usize) -> Self {
+        Self {
+            parent: (0..n).collect(),
+            rank: vec![1; n],
+        }
+    }
+
+    fn find(&mut self, x: usize) -> usize {
+        if x != self.parent[x] {
+            self.parent[x] = self.find(self.parent[x]);
+        }
+        self.parent[x]
+    }
+
+    fn union(&mut self, x: usize, y: usize) -> bool {
+        let px = self.find(x);
+        let py = self.find(y);
+        if px == py { return false; }
+        if self.rank[px] > self.rank[py] {
+            self.parent[py] = px;
+            self.rank[px] += self.rank[py];
+        } else {
+            self.parent[px] = py;
+            self.rank[py] += self.rank[px];
+        }
+        true
+    }
+}
+
+impl Solution {
+    pub fn accounts_merge(accounts: Vec<Vec<String>>) -> Vec<Vec<String>> {
+        let n = accounts.len();
+        let mut uf = UnionFind::new(n);
+        let mut email_to_acc: HashMap<String, usize> = HashMap::new();
+
+        for i in 0..n {
+            for j in 1..accounts[i].len() {
+                let email = &accounts[i][j];
+                if let Some(&acc) = email_to_acc.get(email) {
+                    uf.union(i, acc);
+                } else {
+                    email_to_acc.insert(email.clone(), i);
+                }
+            }
+        }
+
+        let mut email_group: HashMap<usize, Vec<String>> = HashMap::new();
+        for (email, acc_id) in &email_to_acc {
+            let leader = uf.find(*acc_id);
+            email_group.entry(leader).or_default().push(email.clone());
+        }
+
+        let mut res = Vec::new();
+        for (acc_id, mut emails) in email_group {
+            let name = accounts[acc_id][0].clone();
+            emails.sort();
+            let mut merged = vec![name];
+            merged.extend(emails);
+            res.push(merged);
+        }
+
+        res
+    }
+}
+```
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1163,3 +2032,24 @@ public class Solution {
 - Space complexity: $O(n * m)$
 
 > Where $n$ is the number of accounts and $m$ is the number of emails.
+
+---
+
+## Common Pitfalls
+
+### Treating Same Name as Same Person
+Two accounts with the same name are NOT necessarily the same person. They are only the same person if they share at least one email. Merging accounts based solely on name will produce incorrect results.
+```python
+# Wrong: merging by name
+if accounts[i][0] == accounts[j][0]:
+    merge(i, j)
+# Correct: merge only when emails overlap
+if email in emailToAccount:
+    union(i, emailToAccount[email])
+```
+
+### Forgetting to Sort Emails in Output
+The problem requires emails in each merged account to be sorted in lexicographical order. Forgetting this step will produce results in arbitrary order that may fail validation.
+
+### Using Wrong Account Name After Merging
+When merging accounts, you must use the name from one of the original accounts in the merged group. A common mistake is losing track of which account's name to use, especially in Union-Find where you need to get the name from the representative's original account.

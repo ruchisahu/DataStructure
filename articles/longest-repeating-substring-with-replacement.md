@@ -1,4 +1,35 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Sliding Window** - The optimal solution uses a variable-size window that expands and contracts based on validity conditions
+- **Hash Map / Frequency Counting** - Tracking character frequencies within the current window to determine the most frequent character
+- **Two Pointers** - Managing left and right pointers to define and adjust the window boundaries
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+The brute-force idea is to try every possible substring starting at every index.
+For each start point, we expand the substring and keep track of how many times each character appears.
+A substring is valid if we can make all its characters the same by replacing at most `k` of them.
+To check this, we track the **most frequent character** inside the substring — everything else would need to be replaced.
+If the number of replacements needed is within `k`, we update the answer.
+This works but is slow because it checks many overlapping substrings.
+
+### Algorithm
+
+1. Initialize `res = 0` to store the longest valid window.
+2. For each starting index `i`:
+    - Create an empty frequency map and set `maxf = 0`.
+    - Extend the substring by increasing `j` from `i` to the end:
+        - Update the frequency of `s[j]`.
+        - Update `maxf` (most frequent character in the current window).
+        - If the window size minus `maxf` is `<= k`, it is valid.
+            - Update `res` with the window size.
+3. Return `res` after testing all starting positions.
 
 ::tabs-start
 
@@ -175,6 +206,31 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn character_replacement(s: String, k: i32) -> i32 {
+        let s = s.as_bytes();
+        let k = k as usize;
+        let mut res = 0;
+
+        for i in 0..s.len() {
+            let mut count = HashMap::new();
+            let mut maxf = 0;
+            for j in i..s.len() {
+                let e = count.entry(s[j]).or_insert(0);
+                *e += 1;
+                maxf = maxf.max(*e);
+                if (j - i + 1) - maxf <= k {
+                    res = res.max(j - i + 1);
+                }
+            }
+        }
+
+        res as i32
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -187,6 +243,32 @@ class Solution {
 ---
 
 ## 2. Sliding Window
+
+### Intuition
+
+We try to make a valid window where **all characters become the same**, but instead of checking every substring, we fix a target character `c` and ask:
+
+"How long can the window be if we want the entire window to become `c` using at most `k` replacements?"
+
+We slide a window across the string and count how many characters inside it already match `c`.
+If the number of characters that **don't** match `c` is more than `k`, the window is invalid, so we shrink it from the left.
+By doing this for every possible character, we find the longest valid window.
+
+This idea is simple and beginner-friendly because we only track:
+
+- how many characters match `c`
+- how many replacements are needed
+
+### Algorithm
+
+1. Put all unique characters of the string into a set `charSet`.
+2. For each character `c` in `charSet`:
+    - Set `l = 0` and `count = 0` (count of `c` inside the window).
+    - Slide the right pointer `r` across the string:
+        - Increase `count` when `s[r] == c`.
+        - If the window needs more than `k` replacements, move `l` forward and adjust `count`.
+        - Update `res` with the current valid window size.
+3. Return the maximum window size found.
 
 ::tabs-start
 
@@ -431,6 +513,35 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn character_replacement(s: String, k: i32) -> i32 {
+        let s = s.as_bytes();
+        let k = k as usize;
+        let mut res = 0;
+        let char_set: HashSet<u8> = s.iter().copied().collect();
+
+        for &c in &char_set {
+            let (mut count, mut l) = (0, 0);
+            for r in 0..s.len() {
+                if s[r] == c {
+                    count += 1;
+                }
+                while (r - l + 1) - count > k {
+                    if s[l] == c {
+                        count -= 1;
+                    }
+                    l += 1;
+                }
+                res = res.max(r - l + 1);
+            }
+        }
+
+        res as i32
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -443,6 +554,39 @@ class Solution {
 ---
 
 ## 3. Sliding Window (Optimal)
+
+### Intuition
+
+We want the longest window where we can make all characters the same using at most `k` replacements.
+Using the true current maximum frequency, the window is valid as long as:
+
+**window size – count of the most frequent character ≤ k**
+
+Why?
+Because the characters that _aren't_ the most frequent are the ones we would need to replace.
+
+So while expanding the window, we track:
+
+- the frequency of each character,
+- the highest frequency we have seen in the window as it grows (`maxf`).
+
+After we shrink from the left, `maxf` may be stale because we do not decrease it.
+That can temporarily make the current window look valid even when its true current maximum frequency is smaller.
+This is still correct because such a stale value never increases the answer beyond a window length that was already achievable when `maxf` was accurate.
+
+If the window is too large under this tracked `maxf`, we shrink it from the left.
+This gives us one clean sliding window pass.
+
+### Algorithm
+
+1. Create a frequency map `count` and initialize `l = 0`, `maxf = 0`, and `res = 0`.
+2. Move the right pointer `r` across the string:
+    - Update the frequency of `s[r]`.
+    - Update `maxf` with the highest frequency seen so far.
+3. If the tracked condition is violated (`window size - maxf > k`):
+    - Shrink the window from the left and adjust counts.
+4. Update the result with the current window size.
+5. Return `res` at the end.
 
 ::tabs-start
 
@@ -643,6 +787,34 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn character_replacement(s: String, k: i32) -> i32 {
+        let s = s.as_bytes();
+        let k = k as usize;
+        let mut count = HashMap::new();
+        let mut res = 0;
+        let mut l = 0;
+        let mut maxf = 0;
+
+        for r in 0..s.len() {
+            let e = count.entry(s[r]).or_insert(0usize);
+            *e += 1;
+            maxf = maxf.max(*e);
+
+            while (r - l + 1) - maxf > k {
+                let e = count.get_mut(&s[l]).unwrap();
+                *e -= 1;
+                l += 1;
+            }
+            res = res.max(r - l + 1);
+        }
+
+        res as i32
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -651,3 +823,19 @@ class Solution {
 - Space complexity: $O(m)$
 
 > Where $n$ is the length of the string and $m$ is the total number of unique characters in the string.
+
+---
+
+## Common Pitfalls
+
+### Not Updating maxf Correctly
+
+The variable `maxf` tracks the highest frequency seen while expanding the window, not necessarily the exact maximum frequency after every shrink. A common mistake is recalculating the maximum by iterating through all counts after moving the left pointer. In the optimal solution, you do not need to decrease `maxf` when shrinking. A stale, higher `maxf` can temporarily make the validity check more permissive and allow an actually invalid current window, but it does not affect correctness because it cannot make the algorithm record a length larger than one that was achievable when `maxf` was accurate.
+
+### Shrinking the Window Too Aggressively
+
+When the tracked condition is violated (`window size - maxf > k`), you only need to shrink until that condition passes again. A common error is resetting the left pointer too far or not updating character counts properly when moving the left pointer. Make sure to decrement the count of `s[l]` before incrementing `l`.
+
+### Confusing Window Size Calculation
+
+The window size is `r - l + 1`, not `r - l`. This off-by-one error is frequent and leads to incorrect validity checks. For example, if `l = 0` and `r = 2`, the window contains 3 characters, not 2. Always double-check your window size formula in the condition `(r - l + 1) - maxf <= k`.

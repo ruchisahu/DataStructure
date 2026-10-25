@@ -1,4 +1,30 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Sliding Window Technique** - Understanding how to maintain a fixed-size window while iterating through an array
+- **Deque (Double-Ended Queue)** - Efficiently adding/removing elements from both ends in O(1) time
+- **Monotonic Queue** - Maintaining elements in sorted order within a queue for range queries
+- **Heap/Priority Queue** - Finding maximum/minimum elements efficiently with lazy deletion
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+For every possible window of size `k`, we simply look at all `k` elements and pick the maximum.  
+We slide the window one step at a time, and each time we scan all elements inside it to find the max.  
+This method is very easy to understand but slow, because we repeatedly re-scan many of the same elements.
+
+### Algorithm
+
+1. Create an empty list `output` to store the maximum of each window.
+2. For each starting index `i` from `0` to `len(nums) - k`:
+    - Set `maxi` to `nums[i]`.
+    - Scan all elements from `i` to `i + k - 1` and update `maxi`.
+    - Append `maxi` to `output`.
+3. Return `output` after checking all windows.
 
 ::tabs-start
 
@@ -151,6 +177,26 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn max_sliding_window(nums: Vec<i32>, k: i32) -> Vec<i32> {
+        let k = k as usize;
+        let n = nums.len();
+        let mut output = Vec::with_capacity(n - k + 1);
+
+        for i in 0..=n - k {
+            let mut maxi = nums[i];
+            for j in i..i + k {
+                maxi = maxi.max(nums[j]);
+            }
+            output.push(maxi);
+        }
+
+        output
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -165,6 +211,48 @@ class Solution {
 ---
 
 ## 2. Segment Tree
+
+### Intuition
+
+The brute-force solution recomputes the maximum for every window by scanning all `k` elements each time, which is slow.  
+A **Segment Tree** helps us answer “what is the maximum in this range?” much faster after some preprocessing.
+
+Think of the segment tree as a special structure built on top of the array where:
+
+- Each node stores the **maximum** of a segment (range) of the array.
+- The root stores the maximum of the whole array.
+- Its children store the maximum of left half and right half, and so on.
+
+Once we build this tree:
+
+- We can query the maximum for any range `[L, R]` (our sliding window) in `O(log n)` time.
+- We just slide the window and ask the segment tree for the max in each range.
+
+So the process is:
+**build once → query many times efficiently.**
+
+### Algorithm
+
+1. **Build the Segment Tree**
+    - Start with an array `tree` big enough to store a full binary tree.
+    - Place the original elements in the leaves (second half of `tree`).
+    - For each internal node, store the maximum of its two children.
+    - After this step, `tree[1]` (the root) holds the maximum of the entire array.
+
+2. **Range Maximum Query (Segment Tree `query(l, r)`):**
+    - Shift `l` and `r` to point to the leaves representing those indices.
+    - While `l <= r` in the tree:
+        - If `l` is a right child, consider `tree[l]` in the answer and move `l` to the next segment.
+        - If `r` is a left child, consider `tree[r]` in the answer and move `r` to the previous segment.
+        - Move both `l` and `r` up one level by dividing by `2`.
+    - Return the maximum found.
+
+3. **Sliding Window using the Segment Tree**
+    - For each window starting at index `i` (from `0` to `n - k`):
+        - Query the segment tree for the range `[i, i + k - 1]`.
+        - Append this maximum to the `output` list.
+
+4. Return the `output` list containing the maximum for each sliding window.
 
 ::tabs-start
 
@@ -615,6 +703,62 @@ class Solution {
 }
 ```
 
+```rust
+struct SegmentTree {
+    n: usize,
+    tree: Vec<i32>,
+}
+
+impl SegmentTree {
+    fn new(size: usize, a: &[i32]) -> Self {
+        let mut n = size;
+        while n & (n - 1) != 0 {
+            n += 1;
+        }
+        let mut tree = vec![i32::MIN; 2 * n];
+        for i in 0..size {
+            tree[n + i] = a[i];
+        }
+        for i in (1..n).rev() {
+            tree[i] = tree[i << 1].max(tree[i << 1 | 1]);
+        }
+        Self { n, tree }
+    }
+
+    fn query(&self, l: usize, r: usize) -> i32 {
+        let mut res = i32::MIN;
+        let mut l = l + self.n;
+        let mut r = r + self.n + 1;
+        while l < r {
+            if l & 1 == 1 {
+                res = res.max(self.tree[l]);
+                l += 1;
+            }
+            if r & 1 == 1 {
+                r -= 1;
+                res = res.max(self.tree[r]);
+            }
+            l >>= 1;
+            r >>= 1;
+        }
+        res
+    }
+}
+
+impl Solution {
+    pub fn max_sliding_window(nums: Vec<i32>, k: i32) -> Vec<i32> {
+        let k = k as usize;
+        let n = nums.len();
+        let seg_tree = SegmentTree::new(n, &nums);
+        let mut output = Vec::with_capacity(n - k + 1);
+        for i in 0..=n - k {
+            output.push(seg_tree.query(i, i + k - 1));
+        }
+        output
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -625,6 +769,30 @@ class Solution {
 ---
 
 ## 3. Heap
+
+### Intuition
+
+We want to quickly get the maximum value inside a sliding window that moves across the array.  
+A **max-heap** is perfect for this because it always lets us access the largest element instantly.
+
+As we slide the window:
+
+- We keep inserting new elements into the heap.
+- Some old elements will fall out of the left side of the window.
+- If the largest element in the heap is no longer inside the window, we remove it.
+- The top of the heap always represents the current maximum for the window.
+
+This way, we efficiently maintain the maximum even as the window moves.
+
+### Algorithm
+
+1. Use a max-heap to store pairs of `(value, index)` for all elements we encounter.
+2. Expand the window by inserting each new element into the heap.
+3. Once the window size becomes `k`:
+    - Remove elements from the heap if their `index` is outside the current window.
+    - The top of the heap now gives the maximum for the window.
+4. Add this maximum to the `result` list.
+5. Continue sliding the window until the end of the array and return all collected maximums.
 
 ::tabs-start
 
@@ -737,22 +905,32 @@ public class Solution {
 ```
 
 ```go
+type MaxHeap [][2]int
+
+func (h MaxHeap) Len() int            { return len(h) }
+func (h MaxHeap) Less(i, j int) bool  { return h[i][0] > h[j][0] }
+func (h MaxHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
+func (h *MaxHeap) Push(x interface{}) { *h = append(*h, x.([2]int)) }
+func (h *MaxHeap) Pop() interface{} {
+   old := *h
+   n := len(old)
+   x := old[n-1]
+   *h = old[:n-1]
+   return x
+}
+
 func maxSlidingWindow(nums []int, k int) []int {
-   heap := priorityqueue.NewWith(func(a, b interface{}) int {
-       return b.([2]int)[0] - a.([2]int)[0]
-   })
+   maxHeap := &MaxHeap{}
+   heap.Init(maxHeap)
 
    output := []int{}
    for i := 0; i < len(nums); i++ {
-       heap.Enqueue([2]int{nums[i], i})
+       heap.Push(maxHeap, [2]int{nums[i], i})
        if i >= k - 1 {
-           peek, _ := heap.Peek()
-           for peek.([2]int)[1] <= i - k {
-               heap.Dequeue()
-               peek, _ = heap.Peek()
+           for (*maxHeap)[0][1] <= i - k {
+               heap.Pop(maxHeap)
            }
-           val, _ := heap.Peek()
-           output = append(output, val.([2]int)[0])
+           output = append(output, (*maxHeap)[0][0])
        }
    }
    return output
@@ -809,6 +987,28 @@ struct Item: Comparable {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn max_sliding_window(nums: Vec<i32>, k: i32) -> Vec<i32> {
+        let k = k as usize;
+        let mut heap = BinaryHeap::new();
+        let mut output = Vec::with_capacity(nums.len() - k + 1);
+
+        for i in 0..nums.len() {
+            heap.push((nums[i], i));
+            if i >= k - 1 {
+                while heap.peek().unwrap().1 + k <= i {
+                    heap.pop();
+                }
+                output.push(heap.peek().unwrap().0);
+            }
+        }
+
+        output
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -819,6 +1019,37 @@ struct Item: Comparable {
 ---
 
 ## 4. Dynamic Programming
+
+### Intuition
+
+Instead of recalculating the maximum for each sliding window, we can preprocess the array so that every window’s maximum can be answered in **O(1)** time.
+
+We divide the array into blocks of size `k`.  
+Within each block, we build:
+
+- a **leftMax** array: left-to-right maximums inside each block
+- a **rightMax** array: right-to-left maximums inside each block
+
+For any sliding window:
+
+- its left part falls inside some block, so the maximum for that region is in `rightMax[i]`
+- its right part falls inside a block, so the maximum is in `leftMax[i + k - 1]`
+
+The true window maximum is the larger of those two.  
+This lets us compute each window's maximum instantly.
+
+### Algorithm
+
+1. Split the array conceptually into blocks of size `k`.
+2. Build a `leftMax` array:
+    - Scan left to right.
+    - For each block, restart the maximum at the block boundary.
+3. Build a `rightMax` array:
+    - Scan right to left.
+    - For each block, restart the maximum at the block boundary.
+4. For each sliding window of size `k`:
+    - The maximum is `max(rightMax[window_start], leftMax[window_end])`.
+5. Return all computed maximums.
 
 ::tabs-start
 
@@ -1110,6 +1341,42 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn max_sliding_window(nums: Vec<i32>, k: i32) -> Vec<i32> {
+        let k = k as usize;
+        let n = nums.len();
+        let mut left_max = vec![0; n];
+        let mut right_max = vec![0; n];
+
+        left_max[0] = nums[0];
+        right_max[n - 1] = nums[n - 1];
+
+        for i in 1..n {
+            left_max[i] = if i % k == 0 {
+                nums[i]
+            } else {
+                left_max[i - 1].max(nums[i])
+            };
+
+            let j = n - 1 - i;
+            right_max[j] = if j % k == 0 {
+                nums[j]
+            } else {
+                right_max[j + 1].max(nums[j])
+            };
+        }
+
+        let mut output = vec![0; n - k + 1];
+        for i in 0..n - k + 1 {
+            output[i] = left_max[i + k - 1].max(right_max[i]);
+        }
+
+        output
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1120,6 +1387,29 @@ class Solution {
 ---
 
 ## 5. Deque
+
+### Intuition
+
+A deque helps us efficiently track the maximum inside the sliding window.  
+The key idea is to keep the deque storing **indices** of elements in **decreasing order of their values**.  
+This guarantees that:
+
+- The **front** of the deque always holds the index of the current window’s maximum.
+- Smaller elements behind a bigger one are useless (they can never become the max later),  
+  so we remove them when pushing a new number.
+- If the element at the front falls out of the window, we remove it.
+
+By maintaining this structure, each element is added and removed at most once, giving an optimal solution.
+
+### Algorithm
+
+1. Use a deque to store indices of elements in decreasing order of their values.
+2. Expand the window by moving the `right` pointer:
+    - Before inserting the new index, remove indices whose values are smaller than the new value (they cannot be future maximums).
+    - Add the new index to the deque.
+3. If the `left` pointer passes the front index, remove it (it's outside the window).
+4. Once the window reaches size `k`, the front of the deque represents the maximum — add it to the `output`.
+5. Slide the window and repeat.
 
 ::tabs-start
 
@@ -1359,9 +1649,69 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn max_sliding_window(nums: Vec<i32>, k: i32) -> Vec<i32> {
+        let k = k as usize;
+        let n = nums.len();
+        let mut output = Vec::with_capacity(n - k + 1);
+        let mut q = VecDeque::new();
+        let mut l = 0;
+
+        for r in 0..n {
+            while let Some(&back) = q.back() {
+                if nums[back] < nums[r] {
+                    q.pop_back();
+                } else {
+                    break;
+                }
+            }
+            q.push_back(r);
+
+            if l > *q.front().unwrap() {
+                q.pop_front();
+            }
+
+            if r + 1 >= k {
+                output.push(nums[*q.front().unwrap()]);
+                l += 1;
+            }
+        }
+
+        output
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(n)$
+
+---
+
+## Common Pitfalls
+
+### Choosing Between Values and Indices in the Deque
+
+The deque can store either indices or values. Indices make it straightforward to detect when an element leaves the window by comparing its position with the left boundary.
+
+A value-only deque is also correct when the original array is available. Keep duplicate values by removing only strictly smaller values from the back. When the window moves, remove one value from the front if it equals the outgoing value `nums[l]`. If duplicates are discarded without storing indices or counts, the deque can remove a value that still has another occurrence inside the window.
+
+### Incorrect Window Boundary Checks
+
+Many solutions fail by using wrong conditions for when to start recording results or when to shrink the window. The first valid window exists when `right >= k - 1` (or equivalently `right + 1 >= k`). Off-by-one errors here cause either missing the first window's maximum or including results before the window is fully formed.
+
+### Not Maintaining Decreasing Order in Deque
+
+The deque must remain monotonic in decreasing order of value. For an index deque, both `<` and `<=` are correct when removing elements from the back. Using `<` retains equal values, while `<=` discards the older equal value because the newer occurrence has the same value and expires later. For a value-only deque without counts, use `<` so duplicate occurrences are retained. Forgetting to remove smaller values is the actual error because the front may no longer represent the current window's maximum.
+
+### Forgetting to Handle the Output Array Size
+
+The number of windows is `n - k + 1`, not `n` or `n - k`. Allocating an output array of the wrong size leads to index out of bounds errors or missing results. This is especially problematic when `k` equals the array length, where there should be exactly one result.
+
+### Incorrect Segment Tree Range Queries
+
+When using segment trees, a frequent mistake is confusing inclusive versus exclusive range boundaries. The query range `[i, i + k - 1]` is inclusive on both ends for a window starting at index `i`. Mixing up these boundaries causes queries to include elements outside the window or miss elements at the boundaries.

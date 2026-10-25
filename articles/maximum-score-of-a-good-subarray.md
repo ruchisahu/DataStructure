@@ -1,4 +1,28 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Two Pointers** - Expanding a window from a fixed center point while tracking the minimum element
+- **Monotonic Stack** - Finding next/previous smaller elements to determine valid ranges for each minimum value
+- **Binary Search** - Efficiently finding boundaries where elements satisfy a threshold condition
+- **Greedy Algorithms** - Making locally optimal expansion choices to maximize the global score
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+A "good" subarray must contain index `k`. The score is the minimum element multiplied by the subarray length. The straightforward approach is to try all possible subarrays that include `k`, tracking the minimum as we extend each one. For each starting point at or before `k`, we extend rightward past `k`, updating the minimum and calculating the score at each step.
+
+### Algorithm
+
+1. For each starting index `i` from `0` to `k`:
+    - Initialize `minEle` with `nums[i]`.
+    - Extend the subarray rightward from `i` to `n-1`.
+    - Update `minEle` as we encounter each new element.
+    - Once `j` reaches `k` or beyond, calculate the score and update the result.
+2. Return the maximum score found.
 
 ::tabs-start
 
@@ -81,6 +105,108 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int MaximumScore(int[] nums, int k) {
+        int n = nums.Length, res = 0;
+
+        for (int i = 0; i <= k; i++) {
+            int minEle = nums[i];
+            for (int j = i; j < n; j++) {
+                minEle = Math.Min(minEle, nums[j]);
+                if (j >= k) {
+                    res = Math.Max(res, minEle * (j - i + 1));
+                }
+            }
+        }
+        return res;
+    }
+}
+```
+
+```go
+func maximumScore(nums []int, k int) int {
+    n := len(nums)
+    res := 0
+
+    for i := 0; i <= k; i++ {
+        minEle := nums[i]
+        for j := i; j < n; j++ {
+            if nums[j] < minEle {
+                minEle = nums[j]
+            }
+            if j >= k {
+                if minEle*(j-i+1) > res {
+                    res = minEle * (j - i + 1)
+                }
+            }
+        }
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun maximumScore(nums: IntArray, k: Int): Int {
+        val n = nums.size
+        var res = 0
+
+        for (i in 0..k) {
+            var minEle = nums[i]
+            for (j in i until n) {
+                minEle = minOf(minEle, nums[j])
+                if (j >= k) {
+                    res = maxOf(res, minEle * (j - i + 1))
+                }
+            }
+        }
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func maximumScore(_ nums: [Int], _ k: Int) -> Int {
+        let n = nums.count
+        var res = 0
+
+        for i in 0...k {
+            var minEle = nums[i]
+            for j in i..<n {
+                minEle = min(minEle, nums[j])
+                if j >= k {
+                    res = max(res, minEle * (j - i + 1))
+                }
+            }
+        }
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn maximum_score(nums: Vec<i32>, k: i32) -> i32 {
+        let n = nums.len();
+        let k = k as usize;
+        let mut res = 0;
+
+        for i in 0..=k {
+            let mut min_ele = nums[i];
+            for j in i..n {
+                min_ele = min_ele.min(nums[j]);
+                if j >= k {
+                    res = res.max(min_ele * (j - i + 1) as i32);
+                }
+            }
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -91,6 +217,21 @@ class Solution {
 ---
 
 ## 2. Binary Search
+
+### Intuition
+
+For any subarray containing `k`, the minimum value decreases (or stays the same) as we expand outward from `k`. We can preprocess the array so that `arr[i]` represents the minimum value in the subarray from `i` to `k` (for left side) or from `k` to `i` (for right side). This creates sorted arrays on each side, allowing binary search to quickly find how far we can extend while maintaining at least a given minimum value.
+
+### Algorithm
+
+1. Create a copy of the array and modify it:
+    - From `k-1` down to `0`, set `arr[i] = min(arr[i], arr[i+1])`.
+    - From `k+1` to `n-1`, set `arr[i] = min(arr[i], arr[i-1])`.
+2. For each unique minimum value in the modified array:
+    - Binary search the left array to find the leftmost index with value >= `minVal`.
+    - Binary search the right array to find the rightmost index with value >= `minVal`.
+    - Calculate the score and update the result.
+3. Return the maximum score.
 
 ::tabs-start
 
@@ -290,6 +431,270 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int MaximumScore(int[] nums, int k) {
+        int n = nums.Length, res = 0;
+        int[] arr = (int[])nums.Clone();
+        var candidates = new HashSet<int>();
+        candidates.Add(arr[k]);
+
+        for (int i = k - 1; i >= 0; i--) {
+            arr[i] = Math.Min(arr[i], arr[i + 1]);
+            candidates.Add(arr[i]);
+        }
+        for (int i = k + 1; i < n; i++) {
+            arr[i] = Math.Min(arr[i], arr[i - 1]);
+            candidates.Add(arr[i]);
+        }
+
+        int[] leftArr = arr[..(k + 1)];
+        int[] rightArr = arr[k..];
+
+        foreach (int minVal in candidates) {
+            int l = FindLeft(leftArr, minVal);
+            int r = FindRight(rightArr, minVal);
+            res = Math.Max(res, minVal * (k - l + 1 + r));
+        }
+        return res;
+    }
+
+    private int FindLeft(int[] arr, int target) {
+        int lo = 0, hi = arr.Length - 1;
+        while (lo <= hi) {
+            int mid = (lo + hi) / 2;
+            if (arr[mid] < target) lo = mid + 1;
+            else hi = mid - 1;
+        }
+        return lo;
+    }
+
+    private int FindRight(int[] arr, int target) {
+        int lo = 0, hi = arr.Length - 1, pos = 0;
+        while (lo <= hi) {
+            int mid = (lo + hi) / 2;
+            if (arr[mid] >= target) { pos = mid; lo = mid + 1; }
+            else hi = mid - 1;
+        }
+        return pos;
+    }
+}
+```
+
+```go
+func maximumScore(nums []int, k int) int {
+    n := len(nums)
+    res := 0
+    arr := make([]int, n)
+    copy(arr, nums)
+    candidates := make(map[int]bool)
+    candidates[arr[k]] = true
+
+    for i := k - 1; i >= 0; i-- {
+        if arr[i+1] < arr[i] {
+            arr[i] = arr[i+1]
+        }
+        candidates[arr[i]] = true
+    }
+    for i := k + 1; i < n; i++ {
+        if arr[i-1] < arr[i] {
+            arr[i] = arr[i-1]
+        }
+        candidates[arr[i]] = true
+    }
+
+    leftArr := arr[:k+1]
+    rightArr := arr[k:]
+
+    findLeft := func(target int) int {
+        lo, hi := 0, len(leftArr)-1
+        for lo <= hi {
+            mid := (lo + hi) / 2
+            if leftArr[mid] < target {
+                lo = mid + 1
+            } else {
+                hi = mid - 1
+            }
+        }
+        return lo
+    }
+
+    findRight := func(target int) int {
+        lo, hi := 0, len(rightArr)-1
+        pos := 0
+        for lo <= hi {
+            mid := (lo + hi) / 2
+            if rightArr[mid] >= target {
+                pos = mid
+                lo = mid + 1
+            } else {
+                hi = mid - 1
+            }
+        }
+        return pos
+    }
+
+    for minVal := range candidates {
+        l := findLeft(minVal)
+        r := findRight(minVal)
+        if minVal*(k-l+1+r) > res {
+            res = minVal * (k - l + 1 + r)
+        }
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun maximumScore(nums: IntArray, k: Int): Int {
+        val n = nums.size
+        var res = 0
+        val arr = nums.copyOf()
+        val candidates = mutableSetOf(arr[k])
+
+        for (i in k - 1 downTo 0) {
+            arr[i] = minOf(arr[i], arr[i + 1])
+            candidates.add(arr[i])
+        }
+        for (i in k + 1 until n) {
+            arr[i] = minOf(arr[i], arr[i - 1])
+            candidates.add(arr[i])
+        }
+
+        val leftArr = arr.sliceArray(0..k)
+        val rightArr = arr.sliceArray(k until n)
+
+        fun findLeft(target: Int): Int {
+            var lo = 0
+            var hi = leftArr.size - 1
+            while (lo <= hi) {
+                val mid = (lo + hi) / 2
+                if (leftArr[mid] < target) lo = mid + 1
+                else hi = mid - 1
+            }
+            return lo
+        }
+
+        fun findRight(target: Int): Int {
+            var lo = 0
+            var hi = rightArr.size - 1
+            var pos = 0
+            while (lo <= hi) {
+                val mid = (lo + hi) / 2
+                if (rightArr[mid] >= target) { pos = mid; lo = mid + 1 }
+                else hi = mid - 1
+            }
+            return pos
+        }
+
+        for (minVal in candidates) {
+            val l = findLeft(minVal)
+            val r = findRight(minVal)
+            res = maxOf(res, minVal * (k - l + 1 + r))
+        }
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func maximumScore(_ nums: [Int], _ k: Int) -> Int {
+        let n = nums.count
+        var res = 0
+        var arr = nums
+        var candidates = Set<Int>()
+        candidates.insert(arr[k])
+
+        for i in stride(from: k - 1, through: 0, by: -1) {
+            arr[i] = min(arr[i], arr[i + 1])
+            candidates.insert(arr[i])
+        }
+        for i in (k + 1)..<n {
+            arr[i] = min(arr[i], arr[i - 1])
+            candidates.insert(arr[i])
+        }
+
+        let leftArr = Array(arr[0...k])
+        let rightArr = Array(arr[k...])
+
+        func findLeft(_ target: Int) -> Int {
+            var lo = 0, hi = leftArr.count - 1
+            while lo <= hi {
+                let mid = (lo + hi) / 2
+                if leftArr[mid] < target { lo = mid + 1 }
+                else { hi = mid - 1 }
+            }
+            return lo
+        }
+
+        func findRight(_ target: Int) -> Int {
+            var lo = 0, hi = rightArr.count - 1, pos = 0
+            while lo <= hi {
+                let mid = (lo + hi) / 2
+                if rightArr[mid] >= target { pos = mid; lo = mid + 1 }
+                else { hi = mid - 1 }
+            }
+            return pos
+        }
+
+        for minVal in candidates {
+            let l = findLeft(minVal)
+            let r = findRight(minVal)
+            res = max(res, minVal * (k - l + 1 + r))
+        }
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn maximum_score(nums: Vec<i32>, k: i32) -> i32 {
+        let n = nums.len();
+        let k = k as usize;
+        let mut arr = nums.clone();
+        let mut candidates = HashSet::new();
+        candidates.insert(arr[k]);
+
+        for i in (0..k).rev() {
+            arr[i] = arr[i].min(arr[i + 1]);
+            candidates.insert(arr[i]);
+        }
+        for i in (k + 1)..n {
+            arr[i] = arr[i].min(arr[i - 1]);
+            candidates.insert(arr[i]);
+        }
+
+        let left_arr = &arr[..=k];
+        let right_arr = &arr[k..];
+
+        let mut res = 0;
+        for &min_val in &candidates {
+            let l = left_arr.partition_point(|&x| x < min_val);
+            let r = {
+                let mut lo = 0usize;
+                let mut hi = right_arr.len();
+                let mut pos = 0;
+                while lo < hi {
+                    let mid = (lo + hi) / 2;
+                    if right_arr[mid] >= min_val {
+                        pos = mid;
+                        lo = mid + 1;
+                    } else {
+                        hi = mid;
+                    }
+                }
+                pos
+            };
+            res = res.max(min_val * (k as i32 - l as i32 + 1 + r as i32));
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -300,6 +705,21 @@ class Solution {
 ---
 
 ## 3. Binary Search (Overwriting the Input)
+
+### Intuition
+
+This is a space-optimized version of the previous approach. Instead of creating a separate array, we modify the input array directly. The left portion becomes non-decreasing toward `k`, and the right portion becomes non-increasing from `k`. We can then binary search directly on the modified input array.
+
+### Algorithm
+
+1. Modify the input array in place:
+    - From `k-1` down to `0`, set `nums[i] = min(nums[i], nums[i+1])`.
+    - From `k+1` to `n-1`, set `nums[i] = min(nums[i], nums[i-1])`.
+2. For each unique value in the modified array:
+    - Binary search to find the leftmost index (in range `[0, k]`) with value >= target.
+    - Binary search to find the rightmost index (in range `[k, n-1]`) with value >= target.
+    - Calculate and track the maximum score.
+3. Return the result.
 
 ::tabs-start
 
@@ -500,6 +920,247 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int MaximumScore(int[] nums, int k) {
+        int n = nums.Length, res = 0;
+
+        for (int i = k - 1; i >= 0; i--) {
+            nums[i] = Math.Min(nums[i], nums[i + 1]);
+        }
+        for (int i = k + 1; i < n; i++) {
+            nums[i] = Math.Min(nums[i], nums[i - 1]);
+        }
+
+        var candidates = new HashSet<int>(nums);
+
+        foreach (int minVal in candidates) {
+            int i = FindLeft(nums, k, minVal);
+            int j = FindRight(nums, k, n, minVal);
+            res = Math.Max(res, minVal * (j - i + 1));
+        }
+        return res;
+    }
+
+    int FindLeft(int[] nums, int k, int target) {
+        int lo = 0, hi = k;
+        while (lo <= hi) {
+            int mid = (lo + hi) / 2;
+            if (nums[mid] < target) lo = mid + 1;
+            else hi = mid - 1;
+        }
+        return lo;
+    }
+
+    int FindRight(int[] nums, int k, int n, int target) {
+        int lo = k, hi = n - 1;
+        while (lo <= hi) {
+            int mid = (lo + hi) / 2;
+            if (nums[mid] >= target) lo = mid + 1;
+            else hi = mid - 1;
+        }
+        return hi;
+    }
+}
+```
+
+```go
+func maximumScore(nums []int, k int) int {
+    n := len(nums)
+    res := 0
+
+    for i := k - 1; i >= 0; i-- {
+        if nums[i+1] < nums[i] {
+            nums[i] = nums[i+1]
+        }
+    }
+    for i := k + 1; i < n; i++ {
+        if nums[i-1] < nums[i] {
+            nums[i] = nums[i-1]
+        }
+    }
+
+    findLeft := func(target int) int {
+        lo, hi := 0, k
+        for lo <= hi {
+            mid := (lo + hi) / 2
+            if nums[mid] < target {
+                lo = mid + 1
+            } else {
+                hi = mid - 1
+            }
+        }
+        return lo
+    }
+
+    findRight := func(target int) int {
+        lo, hi := k, n-1
+        for lo <= hi {
+            mid := (lo + hi) / 2
+            if nums[mid] >= target {
+                lo = mid + 1
+            } else {
+                hi = mid - 1
+            }
+        }
+        return hi
+    }
+
+    candidates := make(map[int]bool)
+    for _, num := range nums {
+        candidates[num] = true
+    }
+
+    for minVal := range candidates {
+        i := findLeft(minVal)
+        j := findRight(minVal)
+        if minVal*(j-i+1) > res {
+            res = minVal * (j - i + 1)
+        }
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun maximumScore(nums: IntArray, k: Int): Int {
+        val n = nums.size
+        var res = 0
+
+        for (i in k - 1 downTo 0) {
+            nums[i] = minOf(nums[i], nums[i + 1])
+        }
+        for (i in k + 1 until n) {
+            nums[i] = minOf(nums[i], nums[i - 1])
+        }
+
+        fun findLeft(target: Int): Int {
+            var lo = 0
+            var hi = k
+            while (lo <= hi) {
+                val mid = (lo + hi) / 2
+                if (nums[mid] < target) lo = mid + 1
+                else hi = mid - 1
+            }
+            return lo
+        }
+
+        fun findRight(target: Int): Int {
+            var lo = k
+            var hi = n - 1
+            while (lo <= hi) {
+                val mid = (lo + hi) / 2
+                if (nums[mid] >= target) lo = mid + 1
+                else hi = mid - 1
+            }
+            return hi
+        }
+
+        val candidates = nums.toSet()
+        for (minVal in candidates) {
+            val i = findLeft(minVal)
+            val j = findRight(minVal)
+            res = maxOf(res, minVal * (j - i + 1))
+        }
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func maximumScore(_ nums: [Int], _ k: Int) -> Int {
+        var nums = nums
+        let n = nums.count
+        var res = 0
+
+        for i in stride(from: k - 1, through: 0, by: -1) {
+            nums[i] = min(nums[i], nums[i + 1])
+        }
+        for i in (k + 1)..<n {
+            nums[i] = min(nums[i], nums[i - 1])
+        }
+
+        func findLeft(_ target: Int) -> Int {
+            var lo = 0, hi = k
+            while lo <= hi {
+                let mid = (lo + hi) / 2
+                if nums[mid] < target { lo = mid + 1 }
+                else { hi = mid - 1 }
+            }
+            return lo
+        }
+
+        func findRight(_ target: Int) -> Int {
+            var lo = k, hi = n - 1
+            while lo <= hi {
+                let mid = (lo + hi) / 2
+                if nums[mid] >= target { lo = mid + 1 }
+                else { hi = mid - 1 }
+            }
+            return hi
+        }
+
+        let candidates = Set(nums)
+        for minVal in candidates {
+            let i = findLeft(minVal)
+            let j = findRight(minVal)
+            res = max(res, minVal * (j - i + 1))
+        }
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn maximum_score(mut nums: Vec<i32>, k: i32) -> i32 {
+        let n = nums.len();
+        let k = k as usize;
+        let mut res = 0;
+
+        for i in (0..k).rev() {
+            nums[i] = nums[i].min(nums[i + 1]);
+        }
+        for i in (k + 1)..n {
+            nums[i] = nums[i].min(nums[i - 1]);
+        }
+
+        let candidates: HashSet<i32> = nums.iter().copied().collect();
+
+        for &min_val in &candidates {
+            let i = {
+                let (mut lo, mut hi) = (0i32, k as i32);
+                while lo <= hi {
+                    let mid = (lo + hi) / 2;
+                    if nums[mid as usize] < min_val {
+                        lo = mid + 1;
+                    } else {
+                        hi = mid - 1;
+                    }
+                }
+                lo
+            };
+            let j = {
+                let (mut lo, mut hi) = (k as i32, n as i32 - 1);
+                while lo <= hi {
+                    let mid = (lo + hi) / 2;
+                    if nums[mid as usize] >= min_val {
+                        lo = mid + 1;
+                    } else {
+                        hi = mid - 1;
+                    }
+                }
+                hi
+            };
+            res = res.max(min_val * (j - i + 1));
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -510,6 +1171,20 @@ class Solution {
 ---
 
 ## 4. Monotonic Stack
+
+### Intuition
+
+This problem is related to finding the largest rectangle in a histogram. For each element, we want to know how far left and right it can extend as the minimum. A monotonic stack helps us find the "next smaller element" boundaries efficiently. When we pop an element from the stack, we know its valid range, and we only count it if that range includes index `k`.
+
+### Algorithm
+
+1. Iterate from index `0` to `n` (using `n` as a sentinel to flush the stack).
+2. Maintain a stack of indices in increasing order of values.
+3. When we encounter a smaller element (or reach the end):
+    - Pop from the stack. The popped element's value is the minimum for some range.
+    - The range extends from the element below it in the stack (or `-1`) to the current index.
+    - If this range contains `k`, calculate the score.
+4. Return the maximum score found.
 
 ::tabs-start
 
@@ -607,6 +1282,125 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int MaximumScore(int[] nums, int k) {
+        int n = nums.Length, res = 0;
+        var stack = new Stack<int>();
+
+        for (int i = 0; i <= n; i++) {
+            while (stack.Count > 0 && (i == n || nums[stack.Peek()] >= nums[i])) {
+                int mini = nums[stack.Pop()];
+                int j = stack.Count > 0 ? stack.Peek() : -1;
+                if (j < k && k < i) {
+                    res = Math.Max(res, mini * (i - j - 1));
+                }
+            }
+            stack.Push(i);
+        }
+
+        return res;
+    }
+}
+```
+
+```go
+func maximumScore(nums []int, k int) int {
+    n := len(nums)
+    res := 0
+    stack := []int{}
+
+    for i := 0; i <= n; i++ {
+        for len(stack) > 0 && (i == n || nums[stack[len(stack)-1]] >= nums[i]) {
+            mini := nums[stack[len(stack)-1]]
+            stack = stack[:len(stack)-1]
+            j := -1
+            if len(stack) > 0 {
+                j = stack[len(stack)-1]
+            }
+            if j < k && k < i {
+                if mini*(i-j-1) > res {
+                    res = mini * (i - j - 1)
+                }
+            }
+        }
+        stack = append(stack, i)
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun maximumScore(nums: IntArray, k: Int): Int {
+        val n = nums.size
+        var res = 0
+        val stack = ArrayDeque<Int>()
+
+        for (i in 0..n) {
+            while (stack.isNotEmpty() && (i == n || nums[stack.last()] >= nums[i])) {
+                val mini = nums[stack.removeLast()]
+                val j = if (stack.isNotEmpty()) stack.last() else -1
+                if (j < k && k < i) {
+                    res = maxOf(res, mini * (i - j - 1))
+                }
+            }
+            stack.addLast(i)
+        }
+
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func maximumScore(_ nums: [Int], _ k: Int) -> Int {
+        let n = nums.count
+        var res = 0
+        var stack = [Int]()
+
+        for i in 0...n {
+            while !stack.isEmpty && (i == n || nums[stack.last!] >= nums[i]) {
+                let mini = nums[stack.removeLast()]
+                let j = stack.isEmpty ? -1 : stack.last!
+                if j < k && k < i {
+                    res = max(res, mini * (i - j - 1))
+                }
+            }
+            stack.append(i)
+        }
+
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn maximum_score(nums: Vec<i32>, k: i32) -> i32 {
+        let n = nums.len();
+        let k = k as usize;
+        let mut res = 0;
+        let mut stack: Vec<usize> = vec![];
+
+        for i in 0..=n {
+            while !stack.is_empty() && (i == n || nums[*stack.last().unwrap()] >= nums[i]) {
+                let mini = nums[stack.pop().unwrap()];
+                let j = if stack.is_empty() { -1i32 } else { *stack.last().unwrap() as i32 };
+                if j < k as i32 && k < i {
+                    res = res.max(mini * (i as i32 - j - 1));
+                }
+            }
+            stack.push(i);
+        }
+
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -617,6 +1411,20 @@ class Solution {
 ---
 
 ## 5. Greedy + Two Pointers
+
+### Intuition
+
+Start with just the element at index `k` as our subarray. To expand, we have two choices: go left or go right. The key insight is that we should always expand toward the larger neighbor. This greedy choice maximizes the minimum value we can maintain for as long as possible, leading to higher scores. We continue until we have expanded to cover the entire array.
+
+### Algorithm
+
+1. Initialize pointers `l = r = k` and track the current minimum starting with `nums[k]`.
+2. While we can still expand (`l > 0` or `r < n-1`):
+    - Compare the left neighbor (if exists) with the right neighbor (if exists).
+    - Expand toward the larger one (or whichever exists).
+    - Update the current minimum with the newly included element.
+    - Calculate the score and update the result.
+3. Return the maximum score.
 
 ::tabs-start
 
@@ -734,9 +1542,186 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int MaximumScore(int[] nums, int k) {
+        int l = k, r = k;
+        int res = nums[k];
+        int curMin = nums[k];
+        int n = nums.Length;
+
+        while (l > 0 || r < n - 1) {
+            int left = (l > 0) ? nums[l - 1] : 0;
+            int right = (r < n - 1) ? nums[r + 1] : 0;
+
+            if (left > right) {
+                l--;
+                curMin = Math.Min(curMin, left);
+            } else {
+                r++;
+                curMin = Math.Min(curMin, right);
+            }
+
+            res = Math.Max(res, curMin * (r - l + 1));
+        }
+
+        return res;
+    }
+}
+```
+
+```go
+func maximumScore(nums []int, k int) int {
+    l, r := k, k
+    res := nums[k]
+    curMin := nums[k]
+    n := len(nums)
+
+    for l > 0 || r < n-1 {
+        left := 0
+        if l > 0 {
+            left = nums[l-1]
+        }
+        right := 0
+        if r < n-1 {
+            right = nums[r+1]
+        }
+
+        if left > right {
+            l--
+            if left < curMin {
+                curMin = left
+            }
+        } else {
+            r++
+            if right < curMin {
+                curMin = right
+            }
+        }
+
+        if curMin*(r-l+1) > res {
+            res = curMin * (r - l + 1)
+        }
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun maximumScore(nums: IntArray, k: Int): Int {
+        var l = k
+        var r = k
+        var res = nums[k]
+        var curMin = nums[k]
+        val n = nums.size
+
+        while (l > 0 || r < n - 1) {
+            val left = if (l > 0) nums[l - 1] else 0
+            val right = if (r < n - 1) nums[r + 1] else 0
+
+            if (left > right) {
+                l--
+                curMin = minOf(curMin, left)
+            } else {
+                r++
+                curMin = minOf(curMin, right)
+            }
+
+            res = maxOf(res, curMin * (r - l + 1))
+        }
+
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func maximumScore(_ nums: [Int], _ k: Int) -> Int {
+        var l = k, r = k
+        var res = nums[k]
+        var curMin = nums[k]
+        let n = nums.count
+
+        while l > 0 || r < n - 1 {
+            let left = l > 0 ? nums[l - 1] : 0
+            let right = r < n - 1 ? nums[r + 1] : 0
+
+            if left > right {
+                l -= 1
+                curMin = min(curMin, left)
+            } else {
+                r += 1
+                curMin = min(curMin, right)
+            }
+
+            res = max(res, curMin * (r - l + 1))
+        }
+
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn maximum_score(nums: Vec<i32>, k: i32) -> i32 {
+        let n = nums.len();
+        let k = k as usize;
+        let mut l = k;
+        let mut r = k;
+        let mut res = nums[k];
+        let mut cur_min = nums[k];
+
+        while l > 0 || r < n - 1 {
+            let left = if l > 0 { nums[l - 1] } else { 0 };
+            let right = if r < n - 1 { nums[r + 1] } else { 0 };
+
+            if left > right {
+                l -= 1;
+                cur_min = cur_min.min(left);
+            } else {
+                r += 1;
+                cur_min = cur_min.min(right);
+            }
+
+            res = res.max(cur_min * (r - l + 1) as i32);
+        }
+
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(1)$ extra space.
+
+---
+
+## Common Pitfalls
+
+### Forgetting the Subarray Must Include Index k
+
+The problem requires the subarray to contain index `k`. A common mistake is computing the maximum score over all subarrays without enforcing this constraint. In the monotonic stack approach, you must check that the range `[left, right]` actually contains `k` before updating the result. Skipping this check leads to incorrect answers when the global maximum rectangle doesn't include `k`.
+
+### Off-by-One Errors in Boundary Calculations
+
+When computing the left and right boundaries of a valid subarray, it's easy to be off by one. The valid range for an element at index `i` extends from `prev_smaller + 1` to `next_smaller - 1`, not from `prev_smaller` to `next_smaller`. Miscalculating these boundaries causes incorrect subarray lengths and wrong scores.
+
+### Expanding in the Wrong Direction with Two Pointers
+
+In the greedy two-pointer approach, you should always expand toward the larger neighbor to maintain the highest possible minimum for as long as possible. Expanding toward the smaller neighbor prematurely reduces the minimum value, potentially missing the optimal score. Always compare `nums[l-1]` with `nums[r+1]` and expand toward the larger one.
+
+### Not Handling Edge Cases at Array Boundaries
+
+When the left pointer reaches `0` or the right pointer reaches `n-1`, you can only expand in one direction. Failing to handle these boundary conditions (e.g., accessing `nums[-1]` or `nums[n]`) causes index out of bounds errors. Use sentinel values or explicit boundary checks to handle these cases gracefully.
+
+### Misunderstanding the Score Formula
+
+The score is `min(subarray) * length(subarray)`, not `min(subarray) * sum(subarray)`. Confusing this formula with similar problems leads to computing the wrong value entirely. Always verify you're multiplying the minimum element by the subarray length, not its sum.

@@ -1,4 +1,40 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Binary Search Tree Properties** - Understanding that left subtree values are smaller and right subtree values are larger than the node's value
+- **Tree Traversal** - Ability to navigate through a tree using recursion or iteration
+- **Recursion (optional)** - One approach uses recursive calls to traverse down the tree until the split point is found
+
+---
+
 ## 1. Recursion
+
+### Intuition
+
+We are working with a **Binary Search Tree (BST)**, so:
+
+- All values in the **left subtree** of a node are **smaller** than the node’s value.
+- All values in the **right subtree** are **greater** than the node’s value.
+
+For two nodes `p` and `q`:
+
+- If **both** values are smaller than the current node -> both must lie in the **left subtree**.
+- If **both** values are greater than the current node -> both must lie in the **right subtree**.
+- Otherwise, the current node is the **split point** where one node is on the left and the other is on the right (or one is equal to the current node).
+  That split point is the **Lowest Common Ancestor (LCA)**.
+
+### Algorithm
+
+1. Start from the `root`.
+2. While at a node:
+    - If both `p` and `q` have values **less than** the current node's value:
+        - Move to the **left child**.
+    - Else if both `p` and `q` have values **greater than** the current node's value:
+        - Move to the **right child**.
+    - Otherwise:
+        - The current node is the **LCA** -> return it.
+3. If the tree is empty, return `null`.
 
 ::tabs-start
 
@@ -243,6 +279,41 @@ class Solution {
 }
 ```
 
+```rust
+// Definition for a binary tree node.
+// #[derive(Debug, PartialEq, Eq)]
+// pub struct TreeNode {
+//     pub val: i32,
+//     pub left: Option<Rc<RefCell<TreeNode>>>,
+//     pub right: Option<Rc<RefCell<TreeNode>>>,
+// }
+
+impl Solution {
+    pub fn lowest_common_ancestor(
+        root: Option<Rc<RefCell<TreeNode>>>,
+        p: Option<Rc<RefCell<TreeNode>>>,
+        q: Option<Rc<RefCell<TreeNode>>>,
+    ) -> Option<Rc<RefCell<TreeNode>>> {
+        let root = root?;
+        let p_val = p.as_ref()?.borrow().val;
+        let q_val = q.as_ref()?.borrow().val;
+        let root_val = root.borrow().val;
+
+        if p_val.max(q_val) < root_val {
+            Self::lowest_common_ancestor(
+                root.borrow().left.clone(), p, q,
+            )
+        } else if p_val.min(q_val) > root_val {
+            Self::lowest_common_ancestor(
+                root.borrow().right.clone(), p, q,
+            )
+        } else {
+            Some(root)
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -255,6 +326,32 @@ class Solution {
 ---
 
 ## 2. Iteration
+
+### Intuition
+
+This is the iterative version of finding the **Lowest Common Ancestor (LCA)** in a **Binary Search Tree (BST)**.
+Because a BST is ordered:
+
+- Left subtree < node < right subtree
+
+We can decide **where both nodes lie** just by comparing values.
+
+- If `p` and `q` are both **greater** than the current node -> move **right**.
+- If they are both **smaller** -> move **left**.
+- If they split (one on each side) or one equals the current node ->
+  **current node is the LCA**, because it's the first node where their paths diverge.
+
+This avoids recursion and simply walks down the tree until the split point is found.
+
+### Algorithm
+
+1. Set `cur = root`.
+2. While `cur` is not `null`:
+    - If `p.val` and `q.val` are both **greater** than `cur.val` -> go right.
+    - Else if both are **smaller** -> go left.
+    - Otherwise:
+        - You've found the **first node** where their paths separate -> return `cur` (the LCA).
+3. Return `null` if tree is empty (should not happen for valid input).
 
 ::tabs-start
 
@@ -503,6 +600,40 @@ class Solution {
 }
 ```
 
+```rust
+// Definition for a binary tree node.
+// #[derive(Debug, PartialEq, Eq)]
+// pub struct TreeNode {
+//     pub val: i32,
+//     pub left: Option<Rc<RefCell<TreeNode>>>,
+//     pub right: Option<Rc<RefCell<TreeNode>>>,
+// }
+
+impl Solution {
+    pub fn lowest_common_ancestor(
+        root: Option<Rc<RefCell<TreeNode>>>,
+        p: Option<Rc<RefCell<TreeNode>>>,
+        q: Option<Rc<RefCell<TreeNode>>>,
+    ) -> Option<Rc<RefCell<TreeNode>>> {
+        let p_val = p.as_ref()?.borrow().val;
+        let q_val = q.as_ref()?.borrow().val;
+        let mut cur = root;
+
+        while let Some(node) = cur {
+            let node_val = node.borrow().val;
+            if p_val > node_val && q_val > node_val {
+                cur = node.borrow().right.clone();
+            } else if p_val < node_val && q_val < node_val {
+                cur = node.borrow().left.clone();
+            } else {
+                return Some(node);
+            }
+        }
+        None
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -511,3 +642,15 @@ class Solution {
 - Space complexity: $O(1)$
 
 > Where $h$ is the height of the tree.
+
+---
+
+## Common Pitfalls
+
+### Ignoring BST Properties
+
+A common mistake is treating this problem like a general binary tree LCA problem. In a BST, values are ordered (left < node < right), which allows us to determine the direction to search based on value comparisons alone. Using a generic DFS approach that checks both subtrees wastes time and ignores the BST structure that makes O(h) solutions possible.
+
+### Incorrect Comparison Logic
+
+When comparing `p` and `q` values against the current node, be careful with the boundary conditions. The LCA is found when the current node's value lies between `p.val` and `q.val` (inclusive). A common bug is using strict inequalities everywhere, which fails when `p` or `q` equals the current node. Remember: if `p.val <= root.val <= q.val` (or vice versa), the current node is the LCA.

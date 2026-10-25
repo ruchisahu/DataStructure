@@ -1,4 +1,29 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Prefix Sums** - Essential for computing range sums in O(1) time after O(n) preprocessing
+- **Monotonic Stack** - Used to efficiently find the nearest smaller element on both sides for each index
+- **Divide and Conquer** - Alternative approach that recursively processes subarrays based on minimum elements
+- **Segment Tree (optional)** - Advanced data structure for O(log n) range minimum queries
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+The min-product of a subarray is defined as the minimum element multiplied by the sum of all elements. For each possible subarray, we need to track both the running minimum and the running sum. By trying all subarrays starting from each index, we can compute every possible min-product and find the maximum.
+
+### Algorithm
+
+1. For each starting index `i` from `0` to `n-1`:
+    - Initialize `total_sum = 0` and `mini = infinity`.
+    - Extend the subarray rightward from `i` to `n-1`.
+    - Update `mini` with each new element.
+    - Add each element to `total_sum`.
+    - Calculate `mini * total_sum` and update the result.
+2. Return the maximum min-product modulo `10^9 + 7`.
 
 ::tabs-start
 
@@ -78,6 +103,91 @@ class Solution {
 }
 ```
 
+```go
+func maxSumMinProduct(nums []int) int {
+    res := int64(0)
+    MOD := int64(1000000007)
+
+    for i := 0; i < len(nums); i++ {
+        totalSum := int64(0)
+        mini := int64(math.MaxInt64)
+        for j := i; j < len(nums); j++ {
+            if int64(nums[j]) < mini {
+                mini = int64(nums[j])
+            }
+            totalSum += int64(nums[j])
+            cur := (mini * totalSum) % MOD
+            if cur > res {
+                res = cur
+            }
+        }
+    }
+    return int(res)
+}
+```
+
+```kotlin
+class Solution {
+    fun maxSumMinProduct(nums: IntArray): Int {
+        var res = 0L
+        val MOD = 1000000007L
+
+        for (i in nums.indices) {
+            var totalSum = 0L
+            var mini = Long.MAX_VALUE
+            for (j in i until nums.size) {
+                mini = minOf(mini, nums[j].toLong())
+                totalSum += nums[j]
+                val cur = (mini * totalSum) % MOD
+                res = maxOf(res, cur)
+            }
+        }
+        return res.toInt()
+    }
+}
+```
+
+```swift
+class Solution {
+    func maxSumMinProduct(_ nums: [Int]) -> Int {
+        var res: Int64 = 0
+        let MOD: Int64 = 1000000007
+
+        for i in 0..<nums.count {
+            var totalSum: Int64 = 0
+            var mini: Int64 = Int64.max
+            for j in i..<nums.count {
+                mini = min(mini, Int64(nums[j]))
+                totalSum += Int64(nums[j])
+                let cur = (mini * totalSum) % MOD
+                res = max(res, cur)
+            }
+        }
+        return Int(res)
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn max_sum_min_product(nums: Vec<i32>) -> i32 {
+        let mut res: i64 = 0;
+        let modv: i64 = 1_000_000_007;
+        for i in 0..nums.len() {
+            let mut total_sum: i64 = 0;
+            let mut mini: i64 = i64::MAX;
+            for j in i..nums.len() {
+                mini = mini.min(nums[j] as i64);
+                total_sum += nums[j] as i64;
+                let cur = (mini * total_sum) % modv;
+                res = res.max(cur);
+            }
+        }
+        res as i32
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -88,6 +198,20 @@ class Solution {
 ---
 
 ## 2. Divide And Conquer (Brute Force)
+
+### Intuition
+
+For any subarray, the minimum element defines the "bottleneck." If we know the minimum element's position, the optimal subarray with that element as minimum spans as far as possible in both directions. This leads to a divide and conquer approach: find the minimum in the current range, calculate the score for the entire range using that minimum, then recursively solve for the left and right portions (excluding the minimum).
+
+### Algorithm
+
+1. Define a recursive function for range `[l, r]`:
+    - Base case: if `l > r`, return `0`.
+    - Find the index of the minimum element in `[l, r]` and compute the total sum.
+    - Calculate the current score as `sum * min_element`.
+    - Recursively solve for `[l, min_idx - 1]` and `[min_idx + 1, r]`.
+    - Return the maximum of the three values.
+2. Call the recursive function on `[0, n-1]` and return the result modulo `10^9 + 7`.
 
 ::tabs-start
 
@@ -209,6 +333,127 @@ class Solution {
 }
 ```
 
+```go
+func maxSumMinProduct(nums []int) int {
+    MOD := int64(1e9 + 7)
+
+    var rec func(l, r int) int64
+    rec = func(l, r int) int64 {
+        if l > r {
+            return 0
+        }
+
+        minIdx := l
+        var totalSum int64 = 0
+        for i := l; i <= r; i++ {
+            totalSum += int64(nums[i])
+            if nums[i] < nums[minIdx] {
+                minIdx = i
+            }
+        }
+
+        cur := totalSum * int64(nums[minIdx])
+        left := rec(l, minIdx-1)
+        right := rec(minIdx+1, r)
+
+        if left > cur {
+            cur = left
+        }
+        if right > cur {
+            cur = right
+        }
+        return cur
+    }
+
+    return int(rec(0, len(nums)-1) % MOD)
+}
+```
+
+```kotlin
+class Solution {
+    fun maxSumMinProduct(nums: IntArray): Int {
+        val MOD = 1_000_000_007L
+
+        fun rec(l: Int, r: Int): Long {
+            if (l > r) return 0L
+
+            var minIdx = l
+            var totalSum = 0L
+            for (i in l..r) {
+                totalSum += nums[i]
+                if (nums[i] < nums[minIdx]) {
+                    minIdx = i
+                }
+            }
+
+            var cur = totalSum * nums[minIdx]
+            val left = rec(l, minIdx - 1)
+            val right = rec(minIdx + 1, r)
+
+            return maxOf(cur, left, right)
+        }
+
+        return (rec(0, nums.size - 1) % MOD).toInt()
+    }
+}
+```
+
+```swift
+class Solution {
+    func maxSumMinProduct(_ nums: [Int]) -> Int {
+        let MOD: Int64 = 1_000_000_007
+
+        func rec(_ l: Int, _ r: Int) -> Int64 {
+            if l > r { return 0 }
+
+            var minIdx = l
+            var totalSum: Int64 = 0
+            for i in l...r {
+                totalSum += Int64(nums[i])
+                if nums[i] < nums[minIdx] {
+                    minIdx = i
+                }
+            }
+
+            var cur = totalSum * Int64(nums[minIdx])
+            let left = rec(l, minIdx - 1)
+            let right = rec(minIdx + 1, r)
+
+            return max(cur, max(left, right))
+        }
+
+        return Int(rec(0, nums.count - 1) % MOD)
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn max_sum_min_product(nums: Vec<i32>) -> i32 {
+        let modv: i64 = 1_000_000_007;
+
+        fn rec(nums: &[i32], l: isize, r: isize) -> i64 {
+            if l > r { return 0; }
+            let (l, r) = (l as usize, r as usize);
+            let mut min_idx = l;
+            let mut total_sum: i64 = 0;
+            for i in l..=r {
+                total_sum += nums[i] as i64;
+                if nums[i] < nums[min_idx] {
+                    min_idx = i;
+                }
+            }
+            let cur = total_sum * nums[min_idx] as i64;
+            let left = rec(nums, l as isize, min_idx as isize - 1);
+            let right = rec(nums, min_idx as isize + 1, r as isize);
+            cur.max(left).max(right)
+        }
+
+        (rec(&nums, 0, nums.len() as isize - 1) % modv) as i32
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -219,6 +464,21 @@ class Solution {
 ---
 
 ## 3. Divide And Conquer (Segment Tree)
+
+### Intuition
+
+The brute force divide and conquer spends O(n) time finding the minimum in each range, leading to O(n^2) worst case. We can optimize this using a segment tree that answers range minimum queries in O(log n). Combined with a prefix sum array for O(1) range sum queries, this reduces the overall complexity significantly.
+
+### Algorithm
+
+1. Build a segment tree that stores the index of the minimum element for each range.
+2. Build a prefix sum array for O(1) range sum queries.
+3. Define a recursive function for range `[l, r]`:
+    - Base case: if `l > r`, return `0`.
+    - Query the segment tree to find the minimum element's index in `[l, r]`.
+    - Compute the range sum using prefix sums.
+    - Calculate the current score and recursively process left and right portions.
+4. Return the maximum result modulo `10^9 + 7`.
 
 ::tabs-start
 
@@ -497,6 +757,69 @@ class Solution {
 }
 ```
 
+```rust
+struct SegmentTree {
+    n: usize,
+    tree: Vec<(i32, i64)>,
+}
+
+impl SegmentTree {
+    fn new(n: usize, nums: &[i32]) -> Self {
+        let mut sz = n;
+        while sz & (sz - 1) != 0 { sz += 1; }
+        let mut tree = vec![(-1, i64::MAX); 2 * sz];
+        for i in 0..n {
+            tree[sz + i] = (i as i32, nums[i] as i64);
+        }
+        for i in (1..sz).rev() {
+            tree[i] = if tree[i << 1].1 <= tree[i << 1 | 1].1 {
+                tree[i << 1]
+            } else {
+                tree[i << 1 | 1]
+            };
+        }
+        SegmentTree { n: sz, tree }
+    }
+
+    fn query(&self, mut l: usize, mut r: usize) -> usize {
+        let mut res = (-1i32, i64::MAX);
+        l += self.n;
+        r += self.n + 1;
+        while l < r {
+            if l & 1 == 1 { if self.tree[l].1 < res.1 { res = self.tree[l]; } l += 1; }
+            if r & 1 == 1 { r -= 1; if self.tree[r].1 < res.1 { res = self.tree[r]; } }
+            l >>= 1; r >>= 1;
+        }
+        res.0 as usize
+    }
+}
+
+impl Solution {
+    pub fn max_sum_min_product(nums: Vec<i32>) -> i32 {
+        let modv: i64 = 1_000_000_007;
+        let n = nums.len();
+        let seg_tree = SegmentTree::new(n, &nums);
+        let mut prefix_sum = vec![0i64; n + 1];
+        for i in 0..n {
+            prefix_sum[i + 1] = prefix_sum[i] + nums[i] as i64;
+        }
+
+        fn rec(l: isize, r: isize, nums: &[i32], prefix_sum: &[i64], seg_tree: &SegmentTree) -> i64 {
+            if l > r { return 0; }
+            let (lu, ru) = (l as usize, r as usize);
+            let min_idx = seg_tree.query(lu, ru);
+            let total_sum = prefix_sum[ru + 1] - prefix_sum[lu];
+            let cur = total_sum * nums[min_idx] as i64;
+            let left = rec(l, min_idx as isize - 1, nums, prefix_sum, seg_tree);
+            let right = rec(min_idx as isize + 1, r, nums, prefix_sum, seg_tree);
+            cur.max(left).max(right)
+        }
+
+        (rec(0, n as isize - 1, &nums, &prefix_sum, &seg_tree) % modv) as i32
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -507,6 +830,22 @@ class Solution {
 ---
 
 ## 4. Monotonic Stack
+
+### Intuition
+
+For each element, we want to find the maximum subarray where that element is the minimum. This means finding the nearest smaller elements on both sides. A monotonic stack efficiently computes these boundaries in linear time. With prefix sums for fast range sums, we can evaluate each element's contribution and find the global maximum.
+
+### Algorithm
+
+1. Build a prefix sum array.
+2. Use a monotonic stack (increasing values) to find, for each index:
+    - `prev_min[i]`: index of the nearest smaller element to the left (or `-1`).
+    - `nxt_min[i]`: index of the nearest smaller element to the right (or `n`).
+3. For each index `i`:
+    - The valid range is `[prev_min[i] + 1, nxt_min[i] - 1]`.
+    - Compute the range sum using prefix sums.
+    - Calculate `nums[i] * range_sum` and update the result.
+4. Return the maximum modulo `10^9 + 7`.
 
 ::tabs-start
 
@@ -696,6 +1035,206 @@ class Solution {
 }
 ```
 
+```go
+func maxSumMinProduct(nums []int) int {
+    n := len(nums)
+    prefixSum := make([]int64, n+1)
+    for i := 0; i < n; i++ {
+        prefixSum[i+1] = prefixSum[i] + int64(nums[i])
+    }
+
+    prevMin := make([]int, n)
+    nxtMin := make([]int, n)
+    for i := 0; i < n; i++ {
+        prevMin[i] = -1
+        nxtMin[i] = n
+    }
+
+    stack := []int{}
+    for i := 0; i < n; i++ {
+        for len(stack) > 0 && nums[stack[len(stack)-1]] >= nums[i] {
+            stack = stack[:len(stack)-1]
+        }
+        if len(stack) > 0 {
+            prevMin[i] = stack[len(stack)-1]
+        }
+        stack = append(stack, i)
+    }
+
+    stack = stack[:0]
+    for i := n - 1; i >= 0; i-- {
+        for len(stack) > 0 && nums[stack[len(stack)-1]] >= nums[i] {
+            stack = stack[:len(stack)-1]
+        }
+        if len(stack) > 0 {
+            nxtMin[i] = stack[len(stack)-1]
+        }
+        stack = append(stack, i)
+    }
+
+    var res int64 = 0
+    MOD := int64(1e9 + 7)
+    for i := 0; i < n; i++ {
+        l := prevMin[i] + 1
+        r := nxtMin[i] - 1
+        totalSum := prefixSum[r+1] - prefixSum[l]
+        tmp := int64(nums[i]) * totalSum
+        if tmp > res {
+            res = tmp
+        }
+    }
+
+    return int(res % MOD)
+}
+```
+
+```kotlin
+class Solution {
+    fun maxSumMinProduct(nums: IntArray): Int {
+        val n = nums.size
+        val prefixSum = LongArray(n + 1)
+        for (i in 0 until n) {
+            prefixSum[i + 1] = prefixSum[i] + nums[i]
+        }
+
+        val prevMin = IntArray(n) { -1 }
+        val nxtMin = IntArray(n) { n }
+        val stack = ArrayDeque<Int>()
+
+        for (i in 0 until n) {
+            while (stack.isNotEmpty() && nums[stack.last()] >= nums[i]) {
+                stack.removeLast()
+            }
+            if (stack.isNotEmpty()) {
+                prevMin[i] = stack.last()
+            }
+            stack.addLast(i)
+        }
+
+        stack.clear()
+        for (i in n - 1 downTo 0) {
+            while (stack.isNotEmpty() && nums[stack.last()] >= nums[i]) {
+                stack.removeLast()
+            }
+            if (stack.isNotEmpty()) {
+                nxtMin[i] = stack.last()
+            }
+            stack.addLast(i)
+        }
+
+        var res = 0L
+        val MOD = 1_000_000_007L
+        for (i in 0 until n) {
+            val l = prevMin[i] + 1
+            val r = nxtMin[i] - 1
+            val totalSum = prefixSum[r + 1] - prefixSum[l]
+            val tmp = nums[i].toLong() * totalSum
+            if (tmp > res) res = tmp
+        }
+
+        return (res % MOD).toInt()
+    }
+}
+```
+
+```swift
+class Solution {
+    func maxSumMinProduct(_ nums: [Int]) -> Int {
+        let n = nums.count
+        var prefixSum = [Int64](repeating: 0, count: n + 1)
+        for i in 0..<n {
+            prefixSum[i + 1] = prefixSum[i] + Int64(nums[i])
+        }
+
+        var prevMin = [Int](repeating: -1, count: n)
+        var nxtMin = [Int](repeating: n, count: n)
+        var stack = [Int]()
+
+        for i in 0..<n {
+            while !stack.isEmpty && nums[stack.last!] >= nums[i] {
+                stack.removeLast()
+            }
+            if !stack.isEmpty {
+                prevMin[i] = stack.last!
+            }
+            stack.append(i)
+        }
+
+        stack.removeAll()
+        for i in stride(from: n - 1, through: 0, by: -1) {
+            while !stack.isEmpty && nums[stack.last!] >= nums[i] {
+                stack.removeLast()
+            }
+            if !stack.isEmpty {
+                nxtMin[i] = stack.last!
+            }
+            stack.append(i)
+        }
+
+        var res: Int64 = 0
+        let MOD: Int64 = 1_000_000_007
+        for i in 0..<n {
+            let l = prevMin[i] + 1
+            let r = nxtMin[i] - 1
+            let totalSum = prefixSum[r + 1] - prefixSum[l]
+            let tmp = Int64(nums[i]) * totalSum
+            if tmp > res { res = tmp }
+        }
+
+        return Int(res % MOD)
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn max_sum_min_product(nums: Vec<i32>) -> i32 {
+        let n = nums.len();
+        let mut prefix_sum = vec![0i64; n + 1];
+        for i in 0..n {
+            prefix_sum[i + 1] = prefix_sum[i] + nums[i] as i64;
+        }
+
+        let mut prev_min = vec![-1i32; n];
+        let mut nxt_min = vec![n as i32; n];
+        let mut stack: Vec<usize> = Vec::new();
+
+        for i in 0..n {
+            while let Some(&top) = stack.last() {
+                if nums[top] >= nums[i] { stack.pop(); } else { break; }
+            }
+            if let Some(&top) = stack.last() {
+                prev_min[i] = top as i32;
+            }
+            stack.push(i);
+        }
+
+        stack.clear();
+        for i in (0..n).rev() {
+            while let Some(&top) = stack.last() {
+                if nums[top] >= nums[i] { stack.pop(); } else { break; }
+            }
+            if let Some(&top) = stack.last() {
+                nxt_min[i] = top as i32;
+            }
+            stack.push(i);
+        }
+
+        let mut res: i64 = 0;
+        let modv: i64 = 1_000_000_007;
+        for i in 0..n {
+            let l = (prev_min[i] + 1) as usize;
+            let r = (nxt_min[i] - 1) as usize;
+            let total_sum = prefix_sum[r + 1] - prefix_sum[l];
+            let tmp = nums[i] as i64 * total_sum;
+            res = res.max(tmp);
+        }
+
+        (res % modv) as i32
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -706,6 +1245,20 @@ class Solution {
 ---
 
 ## 5. Monotonic Stack (Space Optimized) - I
+
+### Intuition
+
+We can avoid storing separate boundary arrays by processing elements as they are popped from the stack. When an element is popped (because a smaller element is found), we immediately know its right boundary. The left boundary is the element currently at the top of the stack. We also track the starting index of each element's potential range as we push to the stack.
+
+### Algorithm
+
+1. Build a prefix sum array.
+2. Iterate through the array, maintaining a stack of (start_index, value) pairs:
+    - When a smaller element is encountered, pop elements from the stack.
+    - For each popped element, calculate its contribution using the range from its start index to the current index.
+    - Update the new element's start index to the earliest popped element's start.
+3. After iteration, process remaining stack elements (their range extends to the end).
+4. Return the maximum modulo `10^9 + 7`.
 
 ::tabs-start
 
@@ -849,6 +1402,157 @@ class Solution {
 }
 ```
 
+```go
+func maxSumMinProduct(nums []int) int {
+    n := len(nums)
+    prefix := make([]int64, n+1)
+    for i := 0; i < n; i++ {
+        prefix[i+1] = prefix[i] + int64(nums[i])
+    }
+
+    var res int64 = 0
+    stack := [][2]int{}
+
+    for i := 0; i < n; i++ {
+        newStart := i
+        for len(stack) > 0 && stack[len(stack)-1][1] > nums[i] {
+            top := stack[len(stack)-1]
+            stack = stack[:len(stack)-1]
+            start, val := top[0], top[1]
+            total := prefix[i] - prefix[start]
+            if int64(val)*total > res {
+                res = int64(val) * total
+            }
+            newStart = start
+        }
+        stack = append(stack, [2]int{newStart, nums[i]})
+    }
+
+    for len(stack) > 0 {
+        top := stack[len(stack)-1]
+        stack = stack[:len(stack)-1]
+        start, val := top[0], top[1]
+        total := prefix[n] - prefix[start]
+        if int64(val)*total > res {
+            res = int64(val) * total
+        }
+    }
+
+    return int(res % int64(1e9+7))
+}
+```
+
+```kotlin
+class Solution {
+    fun maxSumMinProduct(nums: IntArray): Int {
+        val n = nums.size
+        val prefix = LongArray(n + 1)
+        for (i in 0 until n) {
+            prefix[i + 1] = prefix[i] + nums[i]
+        }
+
+        var res = 0L
+        val stack = ArrayDeque<IntArray>()
+
+        for (i in 0 until n) {
+            var newStart = i
+            while (stack.isNotEmpty() && stack.last()[1] > nums[i]) {
+                val top = stack.removeLast()
+                val start = top[0]
+                val value = top[1]
+                val total = prefix[i] - prefix[start]
+                res = maxOf(res, value.toLong() * total)
+                newStart = start
+            }
+            stack.addLast(intArrayOf(newStart, nums[i]))
+        }
+
+        while (stack.isNotEmpty()) {
+            val top = stack.removeLast()
+            val start = top[0]
+            val value = top[1]
+            val total = prefix[n] - prefix[start]
+            res = maxOf(res, value.toLong() * total)
+        }
+
+        return (res % 1_000_000_007L).toInt()
+    }
+}
+```
+
+```swift
+class Solution {
+    func maxSumMinProduct(_ nums: [Int]) -> Int {
+        let n = nums.count
+        var prefix = [Int64](repeating: 0, count: n + 1)
+        for i in 0..<n {
+            prefix[i + 1] = prefix[i] + Int64(nums[i])
+        }
+
+        var res: Int64 = 0
+        var stack = [(Int, Int)]()
+
+        for i in 0..<n {
+            var newStart = i
+            while !stack.isEmpty && stack.last!.1 > nums[i] {
+                let (start, val) = stack.removeLast()
+                let total = prefix[i] - prefix[start]
+                let tmp = Int64(val) * total
+                if tmp > res { res = tmp }
+                newStart = start
+            }
+            stack.append((newStart, nums[i]))
+        }
+
+        while !stack.isEmpty {
+            let (start, val) = stack.removeLast()
+            let total = prefix[n] - prefix[start]
+            let tmp = Int64(val) * total
+            if tmp > res { res = tmp }
+        }
+
+        return Int(res % 1_000_000_007)
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn max_sum_min_product(nums: Vec<i32>) -> i32 {
+        let n = nums.len();
+        let mut prefix = vec![0i64; n + 1];
+        for i in 0..n {
+            prefix[i + 1] = prefix[i] + nums[i] as i64;
+        }
+
+        let mut res: i64 = 0;
+        let mut stack: Vec<(usize, i32)> = Vec::new();
+
+        for i in 0..n {
+            let mut new_start = i;
+            while let Some(&(start, val)) = stack.last() {
+                if val > nums[i] {
+                    stack.pop();
+                    let total = prefix[i] - prefix[start];
+                    res = res.max(val as i64 * total);
+                    new_start = start;
+                } else {
+                    break;
+                }
+            }
+            stack.push((new_start, nums[i]));
+        }
+
+        while let Some((start, val)) = stack.pop() {
+            let total = prefix[n] - prefix[start];
+            res = res.max(val as i64 * total);
+        }
+
+        (res % 1_000_000_007) as i32
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -859,6 +1563,22 @@ class Solution {
 ---
 
 ## 6. Monotonic Stack (Space Optimized) - II
+
+### Intuition
+
+This variation uses an index-only stack and processes all elements in a single pass by treating the position after the array as a sentinel. When we pop an element, the current position is its right boundary, and the new stack top (or -1) is its left boundary. This eliminates the need to store value pairs in the stack.
+
+### Algorithm
+
+1. Build a prefix sum array.
+2. Iterate from index `0` to `n` (inclusive, where `n` acts as sentinel):
+    - While the stack is non-empty and current element is smaller (or we reached the sentinel):
+        - Pop index `j` from the stack.
+        - Left boundary is stack top + 1 (or `0` if empty).
+        - Right boundary is current index - 1.
+        - Calculate `nums[j] * range_sum` and update the result.
+    - Push current index to stack.
+3. Return the maximum modulo `10^9 + 7`.
 
 ::tabs-start
 
@@ -971,9 +1691,148 @@ class Solution {
 }
 ```
 
+```go
+func maxSumMinProduct(nums []int) int {
+    n := len(nums)
+    prefixSum := make([]int64, n+1)
+    for i := 0; i < n; i++ {
+        prefixSum[i+1] = prefixSum[i] + int64(nums[i])
+    }
+
+    var res int64 = 0
+    MOD := int64(1e9 + 7)
+    stack := []int{}
+
+    for i := 0; i <= n; i++ {
+        for len(stack) > 0 && (i == n || nums[i] < nums[stack[len(stack)-1]]) {
+            j := stack[len(stack)-1]
+            stack = stack[:len(stack)-1]
+            start := 0
+            if len(stack) > 0 {
+                start = stack[len(stack)-1] + 1
+            }
+            total := prefixSum[i] - prefixSum[start]
+            tmp := int64(nums[j]) * total
+            if tmp > res {
+                res = tmp
+            }
+        }
+        stack = append(stack, i)
+    }
+
+    return int(res % MOD)
+}
+```
+
+```kotlin
+class Solution {
+    fun maxSumMinProduct(nums: IntArray): Int {
+        val n = nums.size
+        val prefixSum = LongArray(n + 1)
+        for (i in 0 until n) {
+            prefixSum[i + 1] = prefixSum[i] + nums[i]
+        }
+
+        var res = 0L
+        val MOD = 1_000_000_007L
+        val stack = ArrayDeque<Int>()
+
+        for (i in 0..n) {
+            while (stack.isNotEmpty() && (i == n || nums[i] < nums[stack.last()])) {
+                val j = stack.removeLast()
+                val start = if (stack.isEmpty()) 0 else stack.last() + 1
+                val total = prefixSum[i] - prefixSum[start]
+                val tmp = nums[j].toLong() * total
+                if (tmp > res) res = tmp
+            }
+            stack.addLast(i)
+        }
+
+        return (res % MOD).toInt()
+    }
+}
+```
+
+```swift
+class Solution {
+    func maxSumMinProduct(_ nums: [Int]) -> Int {
+        let n = nums.count
+        var prefixSum = [Int64](repeating: 0, count: n + 1)
+        for i in 0..<n {
+            prefixSum[i + 1] = prefixSum[i] + Int64(nums[i])
+        }
+
+        var res: Int64 = 0
+        let MOD: Int64 = 1_000_000_007
+        var stack = [Int]()
+
+        for i in 0...n {
+            while !stack.isEmpty && (i == n || nums[i] < nums[stack.last!]) {
+                let j = stack.removeLast()
+                let start = stack.isEmpty ? 0 : stack.last! + 1
+                let total = prefixSum[i] - prefixSum[start]
+                let tmp = Int64(nums[j]) * total
+                if tmp > res { res = tmp }
+            }
+            stack.append(i)
+        }
+
+        return Int(res % MOD)
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn max_sum_min_product(nums: Vec<i32>) -> i32 {
+        let n = nums.len();
+        let mut prefix_sum = vec![0i64; n + 1];
+        for i in 0..n {
+            prefix_sum[i + 1] = prefix_sum[i] + nums[i] as i64;
+        }
+
+        let mut res: i64 = 0;
+        let modv: i64 = 1_000_000_007;
+        let mut stack: Vec<usize> = Vec::new();
+
+        for i in 0..=n {
+            while let Some(&top) = stack.last() {
+                if i == n || nums[i] < nums[top] {
+                    stack.pop();
+                    let start = stack.last().map_or(0, |&s| s + 1);
+                    let total = prefix_sum[i] - prefix_sum[start];
+                    res = res.max(nums[top] as i64 * total);
+                } else {
+                    break;
+                }
+            }
+            stack.push(i);
+        }
+
+        (res % modv) as i32
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(n)$
+
+---
+
+## Common Pitfalls
+
+### Integer Overflow Before Taking Modulo
+
+The min-product can be extremely large (minimum value up to `10^7` times sum up to `10^14`), exceeding 32-bit integer limits. You must use 64-bit integers for intermediate calculations and only apply modulo at the very end when returning the result. Applying modulo during comparisons breaks the max logic since you're comparing reduced values.
+
+### Confusing Min-Product with Other Formulas
+
+The min-product is `min(subarray) * sum(subarray)`, which combines both the minimum element and the subarray sum. This is different from problems involving just the minimum times length, or just the sum. Make sure to compute prefix sums for efficient range sum queries and track minimums correctly.
+
+### Off-by-One Errors with Prefix Sum Boundaries
+
+When using prefix sums, the sum of elements from index `l` to `r` (inclusive) is `prefix[r+1] - prefix[l]`, not `prefix[r] - prefix[l]`. Getting this boundary wrong by one index leads to incorrect subarray sums and wrong answers.

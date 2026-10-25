@@ -1,4 +1,28 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Graph Representation** - Building adjacency lists from edge pairs to represent directed graphs
+- **Depth-First Search (DFS)** - Recursive graph traversal for path finding and reachability queries
+- **Topological Sort (Kahn's Algorithm)** - BFS-based approach using indegree to process nodes in dependency order
+- **Memoization** - Caching computed results to avoid redundant DFS traversals
+- **Floyd-Warshall Algorithm** - Dynamic programming approach for computing transitive closure in O(V^3) time
+
+---
+
 ## 1. Brute Force (DFS)
+
+### Intuition
+
+To check if course A is a prerequisite of course B, we need to determine if there is a path from A to B in the prerequisite graph. A depth-first search starting from A can explore all courses reachable from A. If we reach B during this traversal, then A is indeed a prerequisite of B.
+
+### Algorithm
+
+1. Build an adjacency list from the prerequisites, where each course points to its direct successors.
+2. For each query `(u, v)`, run a DFS starting from `u`.
+3. In the DFS, if we reach `v`, return `true`.
+4. Otherwise, recursively explore all neighbors and return `true` if any path reaches `v`.
+5. If no path is found, return `false`.
 
 ::tabs-start
 
@@ -138,6 +162,105 @@ public class Solution {
 }
 ```
 
+```go
+func checkIfPrerequisite(numCourses int, prerequisites [][]int, queries [][]int) []bool {
+    adj := make([][]int, numCourses)
+    for i := range adj {
+        adj[i] = []int{}
+    }
+    for _, pre := range prerequisites {
+        adj[pre[0]] = append(adj[pre[0]], pre[1])
+    }
+
+    var dfs func(node, target int) bool
+    dfs = func(node, target int) bool {
+        if node == target {
+            return true
+        }
+        for _, nei := range adj[node] {
+            if dfs(nei, target) {
+                return true
+            }
+        }
+        return false
+    }
+
+    res := make([]bool, len(queries))
+    for i, q := range queries {
+        res[i] = dfs(q[0], q[1])
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    private lateinit var adj: Array<MutableList<Int>>
+
+    fun checkIfPrerequisite(numCourses: Int, prerequisites: Array<IntArray>, queries: Array<IntArray>): List<Boolean> {
+        adj = Array(numCourses) { mutableListOf() }
+        for (pre in prerequisites) {
+            adj[pre[0]].add(pre[1])
+        }
+
+        return queries.map { dfs(it[0], it[1]) }
+    }
+
+    private fun dfs(node: Int, target: Int): Boolean {
+        if (node == target) return true
+        for (nei in adj[node]) {
+            if (dfs(nei, target)) return true
+        }
+        return false
+    }
+}
+```
+
+```swift
+class Solution {
+    private var adj = [[Int]]()
+
+    func checkIfPrerequisite(_ numCourses: Int, _ prerequisites: [[Int]], _ queries: [[Int]]) -> [Bool] {
+        adj = Array(repeating: [Int](), count: numCourses)
+        for pre in prerequisites {
+            adj[pre[0]].append(pre[1])
+        }
+
+        func dfs(_ node: Int, _ target: Int) -> Bool {
+            if node == target { return true }
+            for nei in adj[node] {
+                if dfs(nei, target) { return true }
+            }
+            return false
+        }
+
+        return queries.map { dfs($0[0], $0[1]) }
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn check_if_prerequisite(num_courses: i32, prerequisites: Vec<Vec<i32>>, queries: Vec<Vec<i32>>) -> Vec<bool> {
+        let n = num_courses as usize;
+        let mut adj = vec![vec![]; n];
+        for pre in &prerequisites {
+            adj[pre[0] as usize].push(pre[1] as usize);
+        }
+
+        fn dfs(node: usize, target: usize, adj: &Vec<Vec<usize>>) -> bool {
+            if node == target { return true; }
+            for &nei in &adj[node] {
+                if dfs(nei, target, adj) { return true; }
+            }
+            false
+        }
+
+        queries.iter().map(|q| dfs(q[0] as usize, q[1] as usize, &adj)).collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -150,6 +273,18 @@ public class Solution {
 ---
 
 ## 2. Depth First Search (Hash Set)
+
+### Intuition
+
+Instead of running DFS for every query, we can precompute all prerequisites for each course. For each course, we use DFS to find all courses that are prerequisites (directly or indirectly) and store them in a set. Then answering any query becomes a simple set lookup.
+
+### Algorithm
+
+1. Build an adjacency list where each course points to its direct prerequisites.
+2. For each course, run DFS to collect all reachable prerequisites into a set.
+3. Cache these sets to avoid recomputation.
+4. Each course's prerequisite set includes itself and all prerequisites of its direct prerequisites.
+5. For each query `(u, v)`, check if `u` is in the prerequisite set of `v`.
 
 ::tabs-start
 
@@ -327,6 +462,149 @@ public class Solution {
 }
 ```
 
+```go
+func checkIfPrerequisite(numCourses int, prerequisites [][]int, queries [][]int) []bool {
+    adj := make([][]int, numCourses)
+    for i := range adj {
+        adj[i] = []int{}
+    }
+    for _, pre := range prerequisites {
+        prereq, crs := pre[0], pre[1]
+        adj[crs] = append(adj[crs], prereq)
+    }
+
+    prereqMap := make(map[int]map[int]bool)
+
+    var dfs func(crs int) map[int]bool
+    dfs = func(crs int) map[int]bool {
+        if _, exists := prereqMap[crs]; !exists {
+            prereqMap[crs] = make(map[int]bool)
+            for _, prereq := range adj[crs] {
+                for p := range dfs(prereq) {
+                    prereqMap[crs][p] = true
+                }
+            }
+            prereqMap[crs][crs] = true
+        }
+        return prereqMap[crs]
+    }
+
+    for crs := 0; crs < numCourses; crs++ {
+        dfs(crs)
+    }
+
+    res := make([]bool, len(queries))
+    for i, q := range queries {
+        res[i] = prereqMap[q[1]][q[0]]
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    private lateinit var adj: Array<MutableList<Int>>
+    private lateinit var prereqMap: MutableMap<Int, MutableSet<Int>>
+
+    fun checkIfPrerequisite(numCourses: Int, prerequisites: Array<IntArray>, queries: Array<IntArray>): List<Boolean> {
+        adj = Array(numCourses) { mutableListOf() }
+        prereqMap = mutableMapOf()
+
+        for (pre in prerequisites) {
+            adj[pre[1]].add(pre[0])
+        }
+
+        for (crs in 0 until numCourses) {
+            dfs(crs)
+        }
+
+        return queries.map { prereqMap[it[1]]?.contains(it[0]) ?: false }
+    }
+
+    private fun dfs(crs: Int): MutableSet<Int> {
+        if (crs !in prereqMap) {
+            prereqMap[crs] = mutableSetOf()
+            for (prereq in adj[crs]) {
+                prereqMap[crs]!!.addAll(dfs(prereq))
+            }
+            prereqMap[crs]!!.add(crs)
+        }
+        return prereqMap[crs]!!
+    }
+}
+```
+
+```swift
+class Solution {
+    private var adj = [[Int]]()
+    private var prereqMap = [Int: Set<Int>]()
+
+    func checkIfPrerequisite(_ numCourses: Int, _ prerequisites: [[Int]], _ queries: [[Int]]) -> [Bool] {
+        adj = Array(repeating: [Int](), count: numCourses)
+        prereqMap = [:]
+
+        for pre in prerequisites {
+            adj[pre[1]].append(pre[0])
+        }
+
+        for crs in 0..<numCourses {
+            _ = dfs(crs)
+        }
+
+        return queries.map { prereqMap[$0[1]]?.contains($0[0]) ?? false }
+    }
+
+    private func dfs(_ crs: Int) -> Set<Int> {
+        if prereqMap[crs] == nil {
+            var prereqs = Set<Int>()
+            for prereq in adj[crs] {
+                prereqs.formUnion(dfs(prereq))
+            }
+            prereqs.insert(crs)
+            prereqMap[crs] = prereqs
+        }
+        return prereqMap[crs]!
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn check_if_prerequisite(num_courses: i32, prerequisites: Vec<Vec<i32>>, queries: Vec<Vec<i32>>) -> Vec<bool> {
+        let n = num_courses as usize;
+        let mut adj = vec![vec![]; n];
+        for pre in &prerequisites {
+            adj[pre[1] as usize].push(pre[0] as usize);
+        }
+
+        let mut prereq_map: Vec<Option<HashSet<usize>>> = vec![None; n];
+
+        fn dfs(crs: usize, adj: &Vec<Vec<usize>>, prereq_map: &mut Vec<Option<HashSet<usize>>>) -> HashSet<usize> {
+            if let Some(ref set) = prereq_map[crs] {
+                return set.clone();
+            }
+            let mut prereqs = HashSet::new();
+            for i in 0..adj[crs].len() {
+                let pre = adj[crs][i];
+                let sub = dfs(pre, adj, prereq_map);
+                prereqs.extend(sub);
+            }
+            prereqs.insert(crs);
+            prereq_map[crs] = Some(prereqs.clone());
+            prereqs
+        }
+
+        for crs in 0..n {
+            dfs(crs, &adj, &mut prereq_map);
+        }
+
+        queries.iter().map(|q| {
+            prereq_map[q[1] as usize].as_ref().map_or(false, |s| s.contains(&(q[0] as usize)))
+        }).collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -339,6 +617,19 @@ public class Solution {
 ---
 
 ## 3. Depth First Search (Memoization)
+
+### Intuition
+
+We can optimize by memoizing the result for each pair of courses. When checking if course `A` is a prerequisite of course `B`, we store the result so that future queries for the same pair can be answered instantly. This avoids redundant graph traversals for repeated or similar queries.
+
+### Algorithm
+
+1. Build an adjacency list where each course points to its direct prerequisites.
+2. Create a 2D memoization array initialized to `-1` (unknown).
+3. For each query `(u, v)`, run DFS to check if `u` is a prerequisite of `v`.
+4. During DFS, if the result for `(course, prereq)` is already computed, return it.
+5. Otherwise, check all direct prerequisites. If any of them is the target or leads to the target, mark and return `true`.
+6. If no path exists, mark and return `false`.
 
 ::tabs-start
 
@@ -533,6 +824,150 @@ public class Solution {
 }
 ```
 
+```go
+func checkIfPrerequisite(numCourses int, prerequisites [][]int, queries [][]int) []bool {
+    adj := make([][]int, numCourses)
+    for i := range adj {
+        adj[i] = []int{}
+    }
+
+    isPrereq := make([][]int, numCourses)
+    for i := range isPrereq {
+        isPrereq[i] = make([]int, numCourses)
+        for j := range isPrereq[i] {
+            isPrereq[i][j] = -1
+        }
+    }
+
+    for _, pre := range prerequisites {
+        prereq, crs := pre[0], pre[1]
+        adj[crs] = append(adj[crs], prereq)
+        isPrereq[crs][prereq] = 1
+    }
+
+    var dfs func(crs, prereq int) bool
+    dfs = func(crs, prereq int) bool {
+        if isPrereq[crs][prereq] != -1 {
+            return isPrereq[crs][prereq] == 1
+        }
+        for _, pre := range adj[crs] {
+            if pre == prereq || dfs(pre, prereq) {
+                isPrereq[crs][prereq] = 1
+                return true
+            }
+        }
+        isPrereq[crs][prereq] = 0
+        return false
+    }
+
+    res := make([]bool, len(queries))
+    for i, q := range queries {
+        res[i] = dfs(q[1], q[0])
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    private lateinit var adj: Array<MutableList<Int>>
+    private lateinit var isPrereq: Array<IntArray>
+
+    fun checkIfPrerequisite(numCourses: Int, prerequisites: Array<IntArray>, queries: Array<IntArray>): List<Boolean> {
+        adj = Array(numCourses) { mutableListOf() }
+        isPrereq = Array(numCourses) { IntArray(numCourses) { -1 } }
+
+        for (pre in prerequisites) {
+            adj[pre[1]].add(pre[0])
+            isPrereq[pre[1]][pre[0]] = 1
+        }
+
+        return queries.map { dfs(it[1], it[0]) }
+    }
+
+    private fun dfs(crs: Int, prereq: Int): Boolean {
+        if (isPrereq[crs][prereq] != -1) {
+            return isPrereq[crs][prereq] == 1
+        }
+        for (pre in adj[crs]) {
+            if (pre == prereq || dfs(pre, prereq)) {
+                isPrereq[crs][prereq] = 1
+                return true
+            }
+        }
+        isPrereq[crs][prereq] = 0
+        return false
+    }
+}
+```
+
+```swift
+class Solution {
+    private var adj = [[Int]]()
+    private var isPrereq = [[Int]]()
+
+    func checkIfPrerequisite(_ numCourses: Int, _ prerequisites: [[Int]], _ queries: [[Int]]) -> [Bool] {
+        adj = Array(repeating: [Int](), count: numCourses)
+        isPrereq = Array(repeating: Array(repeating: -1, count: numCourses), count: numCourses)
+
+        for pre in prerequisites {
+            let prereq = pre[0], crs = pre[1]
+            adj[crs].append(prereq)
+            isPrereq[crs][prereq] = 1
+        }
+
+        func dfs(_ crs: Int, _ prereq: Int) -> Bool {
+            if isPrereq[crs][prereq] != -1 {
+                return isPrereq[crs][prereq] == 1
+            }
+            for pre in adj[crs] {
+                if pre == prereq || dfs(pre, prereq) {
+                    isPrereq[crs][prereq] = 1
+                    return true
+                }
+            }
+            isPrereq[crs][prereq] = 0
+            return false
+        }
+
+        return queries.map { dfs($0[1], $0[0]) }
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn check_if_prerequisite(num_courses: i32, prerequisites: Vec<Vec<i32>>, queries: Vec<Vec<i32>>) -> Vec<bool> {
+        let n = num_courses as usize;
+        let mut adj = vec![vec![]; n];
+        let mut is_prereq = vec![vec![-1i8; n]; n];
+
+        for pre in &prerequisites {
+            let (prereq, crs) = (pre[0] as usize, pre[1] as usize);
+            adj[crs].push(prereq);
+            is_prereq[crs][prereq] = 1;
+        }
+
+        fn dfs(crs: usize, prereq: usize, adj: &Vec<Vec<usize>>, is_prereq: &mut Vec<Vec<i8>>) -> bool {
+            if is_prereq[crs][prereq] != -1 {
+                return is_prereq[crs][prereq] == 1;
+            }
+            for i in 0..adj[crs].len() {
+                let pre = adj[crs][i];
+                if pre == prereq || dfs(pre, prereq, adj, is_prereq) {
+                    is_prereq[crs][prereq] = 1;
+                    return true;
+                }
+            }
+            is_prereq[crs][prereq] = 0;
+            false
+        }
+
+        queries.iter().map(|q| dfs(q[1] as usize, q[0] as usize, &adj, &mut is_prereq)).collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -545,6 +980,20 @@ public class Solution {
 ---
 
 ## 4. Topological Sort (Kahn's Algorithm)
+
+### Intuition
+
+Using topological sort, we process courses in an order where all prerequisites of a course are processed before the course itself. When we process a course, we propagate all its prerequisites to its successors. This way, each course accumulates the complete set of all courses that must be taken before it.
+
+### Algorithm
+
+1. Build an adjacency list and compute the `indegree` for each course.
+2. Initialize a queue with all courses having `indegree` `0`.
+3. For each course processed:
+    - For each successor, add the current course and all its prerequisites to the successor's prerequisite set.
+    - Decrement the successor's `indegree` and add to queue if it becomes `0`.
+4. After processing all courses, each course has a complete set of its prerequisites.
+5. For each query `(u, v)`, check if `u` is in the prerequisite set of `v`.
 
 ::tabs-start
 
@@ -739,6 +1188,161 @@ public class Solution {
 }
 ```
 
+```go
+func checkIfPrerequisite(numCourses int, prerequisites [][]int, queries [][]int) []bool {
+    adj := make([]map[int]bool, numCourses)
+    isPrereq := make([]map[int]bool, numCourses)
+    indegree := make([]int, numCourses)
+
+    for i := 0; i < numCourses; i++ {
+        adj[i] = make(map[int]bool)
+        isPrereq[i] = make(map[int]bool)
+    }
+
+    for _, pre := range prerequisites {
+        adj[pre[0]][pre[1]] = true
+        indegree[pre[1]]++
+    }
+
+    q := []int{}
+    for i := 0; i < numCourses; i++ {
+        if indegree[i] == 0 {
+            q = append(q, i)
+        }
+    }
+
+    for len(q) > 0 {
+        node := q[0]
+        q = q[1:]
+        for neighbor := range adj[node] {
+            isPrereq[neighbor][node] = true
+            for p := range isPrereq[node] {
+                isPrereq[neighbor][p] = true
+            }
+            indegree[neighbor]--
+            if indegree[neighbor] == 0 {
+                q = append(q, neighbor)
+            }
+        }
+    }
+
+    res := make([]bool, len(queries))
+    for i, query := range queries {
+        res[i] = isPrereq[query[1]][query[0]]
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun checkIfPrerequisite(numCourses: Int, prerequisites: Array<IntArray>, queries: Array<IntArray>): List<Boolean> {
+        val adj = Array(numCourses) { mutableSetOf<Int>() }
+        val isPrereq = Array(numCourses) { mutableSetOf<Int>() }
+        val indegree = IntArray(numCourses)
+
+        for (pre in prerequisites) {
+            adj[pre[0]].add(pre[1])
+            indegree[pre[1]]++
+        }
+
+        val q = ArrayDeque<Int>()
+        for (i in 0 until numCourses) {
+            if (indegree[i] == 0) q.add(i)
+        }
+
+        while (q.isNotEmpty()) {
+            val node = q.removeFirst()
+            for (neighbor in adj[node]) {
+                isPrereq[neighbor].add(node)
+                isPrereq[neighbor].addAll(isPrereq[node])
+                indegree[neighbor]--
+                if (indegree[neighbor] == 0) {
+                    q.add(neighbor)
+                }
+            }
+        }
+
+        return queries.map { isPrereq[it[1]].contains(it[0]) }
+    }
+}
+```
+
+```swift
+class Solution {
+    func checkIfPrerequisite(_ numCourses: Int, _ prerequisites: [[Int]], _ queries: [[Int]]) -> [Bool] {
+        var adj = Array(repeating: Set<Int>(), count: numCourses)
+        var isPrereq = Array(repeating: Set<Int>(), count: numCourses)
+        var indegree = Array(repeating: 0, count: numCourses)
+
+        for pre in prerequisites {
+            adj[pre[0]].insert(pre[1])
+            indegree[pre[1]] += 1
+        }
+
+        var queue = [Int]()
+        for i in 0..<numCourses {
+            if indegree[i] == 0 {
+                queue.append(i)
+            }
+        }
+
+        while !queue.isEmpty {
+            let node = queue.removeFirst()
+            for neighbor in adj[node] {
+                isPrereq[neighbor].insert(node)
+                isPrereq[neighbor].formUnion(isPrereq[node])
+                indegree[neighbor] -= 1
+                if indegree[neighbor] == 0 {
+                    queue.append(neighbor)
+                }
+            }
+        }
+
+        return queries.map { isPrereq[$0[1]].contains($0[0]) }
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn check_if_prerequisite(num_courses: i32, prerequisites: Vec<Vec<i32>>, queries: Vec<Vec<i32>>) -> Vec<bool> {
+        let n = num_courses as usize;
+        let mut adj = vec![vec![]; n];
+        let mut is_prereq: Vec<HashSet<usize>> = vec![HashSet::new(); n];
+        let mut indegree = vec![0usize; n];
+
+        for pre in &prerequisites {
+            let (p, c) = (pre[0] as usize, pre[1] as usize);
+            adj[p].push(c);
+            indegree[c] += 1;
+        }
+
+        let mut queue = VecDeque::new();
+        for i in 0..n {
+            if indegree[i] == 0 {
+                queue.push_back(i);
+            }
+        }
+
+        while let Some(node) = queue.pop_front() {
+            for i in 0..adj[node].len() {
+                let neighbor = adj[node][i];
+                is_prereq[neighbor].insert(node);
+                let parent_set: HashSet<usize> = is_prereq[node].clone();
+                is_prereq[neighbor].extend(parent_set);
+                indegree[neighbor] -= 1;
+                if indegree[neighbor] == 0 {
+                    queue.push_back(neighbor);
+                }
+            }
+        }
+
+        queries.iter().map(|q| is_prereq[q[1] as usize].contains(&(q[0] as usize))).collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -751,6 +1355,18 @@ public class Solution {
 ---
 
 ## 5. Floyd Warshall Algorithm
+
+### Intuition
+
+The Floyd-Warshall algorithm finds all-pairs reachability in a graph. We can adapt it to find transitive closure: if there is a path from `A` to `B` through any intermediate course `K`, then `A` is a prerequisite of `B`. After running the algorithm, we have direct `O(1)` lookup for any pair.
+
+### Algorithm
+
+1. Create a 2D boolean matrix initialized to `false`.
+2. Mark direct prerequisites as `true` in the matrix.
+3. For each intermediate course `k`, iterate through all pairs `(i, j)`.
+4. If there is a path from `i` to `k` and from `k` to `j`, mark the path from `i` to `j` as `true`.
+5. For each query `(u, v)`, simply return the value at `matrix[u][v]`.
 
 ::tabs-start
 
@@ -893,6 +1509,100 @@ public class Solution {
 }
 ```
 
+```go
+func checkIfPrerequisite(numCourses int, prerequisites [][]int, queries [][]int) []bool {
+    adj := make([][]bool, numCourses)
+    for i := range adj {
+        adj[i] = make([]bool, numCourses)
+    }
+
+    for _, pre := range prerequisites {
+        adj[pre[0]][pre[1]] = true
+    }
+
+    for k := 0; k < numCourses; k++ {
+        for i := 0; i < numCourses; i++ {
+            for j := 0; j < numCourses; j++ {
+                adj[i][j] = adj[i][j] || (adj[i][k] && adj[k][j])
+            }
+        }
+    }
+
+    res := make([]bool, len(queries))
+    for i, q := range queries {
+        res[i] = adj[q[0]][q[1]]
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun checkIfPrerequisite(numCourses: Int, prerequisites: Array<IntArray>, queries: Array<IntArray>): List<Boolean> {
+        val adj = Array(numCourses) { BooleanArray(numCourses) }
+
+        for (pre in prerequisites) {
+            adj[pre[0]][pre[1]] = true
+        }
+
+        for (k in 0 until numCourses) {
+            for (i in 0 until numCourses) {
+                for (j in 0 until numCourses) {
+                    adj[i][j] = adj[i][j] || (adj[i][k] && adj[k][j])
+                }
+            }
+        }
+
+        return queries.map { adj[it[0]][it[1]] }
+    }
+}
+```
+
+```swift
+class Solution {
+    func checkIfPrerequisite(_ numCourses: Int, _ prerequisites: [[Int]], _ queries: [[Int]]) -> [Bool] {
+        var adj = Array(repeating: Array(repeating: false, count: numCourses), count: numCourses)
+
+        for pre in prerequisites {
+            adj[pre[0]][pre[1]] = true
+        }
+
+        for k in 0..<numCourses {
+            for i in 0..<numCourses {
+                for j in 0..<numCourses {
+                    adj[i][j] = adj[i][j] || (adj[i][k] && adj[k][j])
+                }
+            }
+        }
+
+        return queries.map { adj[$0[0]][$0[1]] }
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn check_if_prerequisite(num_courses: i32, prerequisites: Vec<Vec<i32>>, queries: Vec<Vec<i32>>) -> Vec<bool> {
+        let n = num_courses as usize;
+        let mut adj = vec![vec![false; n]; n];
+
+        for pre in &prerequisites {
+            adj[pre[0] as usize][pre[1] as usize] = true;
+        }
+
+        for k in 0..n {
+            for i in 0..n {
+                for j in 0..n {
+                    adj[i][j] = adj[i][j] || (adj[i][k] && adj[k][j]);
+                }
+            }
+        }
+
+        queries.iter().map(|q| adj[q[0] as usize][q[1] as usize]).collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -901,3 +1611,42 @@ public class Solution {
 - Space complexity: $O(V ^ 2 + E + m)$
 
 > Where $m$ is the number of queries, $V$ is the number of courses, and $E$ is the number of prerequisites.
+
+---
+
+## Common Pitfalls
+
+### Confusing Edge Direction
+
+A common mistake is building the graph with edges pointing in the wrong direction. The prerequisite `[a, b]` means course `a` must be taken before course `b`, so `a -> b`. Reversing this leads to incorrect reachability results.
+
+```python
+# Wrong: edge points from course to prerequisite
+for pre, crs in prerequisites:
+    adj[crs].append(pre)  # Incorrect for "is a prerequisite of" queries
+
+# Correct: edge points from prerequisite to course
+for pre, crs in prerequisites:
+    adj[pre].append(crs)  # Now adj[u] contains courses that u is a prerequisite of
+```
+
+### Rerunning DFS for Every Query Without Memoization
+
+Running a fresh DFS for each query without caching results leads to repeated work. With many queries, this causes TLE. Always memoize visited pairs or precompute the full transitive closure.
+
+```python
+# Inefficient: no memoization
+def dfs(node, target):
+    if node == target:
+        return True
+    for nei in adj[node]:
+        if dfs(nei, target):
+            return True
+    return False
+
+# Each query starts from scratch - O(V+E) per query
+```
+
+### Not Handling Disconnected Nodes
+
+Courses with no prerequisites and no dependents are still valid nodes. Forgetting to initialize them in your adjacency list or prerequisite map causes KeyError or incorrect results when they appear in queries.

@@ -1,4 +1,54 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Recursion** - Breaking down the matching problem into smaller subproblems with base cases
+- **Dynamic Programming (Memoization)** - Caching results to avoid redundant computations in overlapping subproblems
+- **Dynamic Programming (Tabulation)** - Building solutions bottom-up using a 2D table
+
+---
+
 ## 1. Recursion
+
+### Intuition
+
+We need to check if the string `s` matches the pattern `p`, where:
+
+- `.` matches any single character
+- `*` means "zero or more of the previous character"
+
+A recursive approach works because at each step we decide how to match the current part of the pattern with the current part of the string.
+
+The function `dfs(i, j)` represents:
+**"Can `s[i:]` be matched by `p[j:]`?"**
+
+There are two main cases:
+
+1. The next pattern character is NOT `*`
+    - then the current characters must match (directly or via `.`), and we move both pointers forward.
+2. The next pattern character IS `*`
+    - then we have two choices:
+        - **skip** the `x*` part entirely (use `*` as zero occurrences)
+        - **use** the `x*` part to match one character from the string (if it matches), and stay on the same pattern index to potentially match more
+
+### Algorithm
+
+1. Let `m = len(s)` and `n = len(p)`.
+2. Define a recursive function `dfs(i, j)`:
+    - `i` is the current index in `s`
+    - `j` is the current index in `p`
+3. If `j` reaches the end of the pattern:
+    - Return `true` only if `i` also reached the end of the string
+4. Compute whether the current characters match:
+    - `match` is `true` if `i` is in bounds and (`s[i] == p[j]` or `p[j] == '.'`)
+5. If the next character in the pattern is `*` (i.e., `p[j + 1] == '*'`):
+    - Option 1: Skip `p[j]` and `*` → `dfs(i, j + 2)`
+    - Option 2: If `match` is `true`, consume one character from `s` and keep pattern at `j` → `dfs(i + 1, j)`
+    - Return `true` if either option works
+6. Otherwise (no `*` case):
+    - If `match` is `true`, move both pointers forward → `dfs(i + 1, j + 1)`
+    - If not, return `false`
+7. Start with `dfs(0, 0)` and return the result
 
 ::tabs-start
 
@@ -213,6 +263,30 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn is_match(s: String, p: String) -> bool {
+        let s = s.as_bytes();
+        let p = p.as_bytes();
+        let (m, n) = (s.len(), p.len());
+
+        fn dfs(i: usize, j: usize, s: &[u8], p: &[u8], m: usize, n: usize) -> bool {
+            if j == n {
+                return i == m;
+            }
+            let matched = i < m && (s[i] == p[j] || p[j] == b'.');
+            if j + 1 < n && p[j + 1] == b'*' {
+                return dfs(i, j + 2, s, p, m, n)
+                    || (matched && dfs(i + 1, j, s, p, m, n));
+            }
+            matched && dfs(i + 1, j + 1, s, p, m, n)
+        }
+
+        dfs(0, 0, s, p, m, n)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -225,6 +299,46 @@ class Solution {
 ---
 
 ## 2. Dynamic Programming (Top-Down)
+
+### Intuition
+
+We need to check if `s` matches pattern `p`, where:
+
+- `.` matches any single character
+- `*` means "zero or more of the previous character"
+
+A recursive solution explores all matching possibilities, especially because `*` can represent many choices.
+However, the same `(i, j)` states get recomputed multiple times, making plain recursion slow.
+
+So we use **top-down dynamic programming (memoization)**.
+
+We define `dfs(i, j)` as:
+**"Can the substring `s[i:]` match the pattern `p[j:]`?"**
+
+Whenever we compute the answer for a state `(i, j)`, we store it in a cache so future calls can reuse it instantly.
+
+### Algorithm
+
+1. Let `m = len(s)` and `n = len(p)`.
+2. Create a cache (map) to store results for states `(i, j)`.
+3. Define a recursive function `dfs(i, j)`:
+    - `i` is the current index in `s`
+    - `j` is the current index in `p`
+4. If `j` reaches the end of the pattern:
+    - Return `true` only if `i` also reaches the end of the string
+5. If `(i, j)` is already in the cache:
+    - Return the cached result
+6. Check if the current characters match:
+    - `match` is `true` if `i < m` and (`s[i] == p[j]` or `p[j] == '.'`)
+7. If the next character in the pattern is `*` (`p[j + 1] == '*'`):
+    - Option 1: Skip the `x*` part completely → `dfs(i, j + 2)`
+    - Option 2: If `match` is `true`, consume one char from `s` and stay on `j` → `dfs(i + 1, j)`
+    - Store and return whether either option works
+8. Otherwise (no `*` case):
+    - If `match` is `true`, move both pointers forward → `dfs(i + 1, j + 1)`
+    - Otherwise, return `false`
+9. Store the computed result in the cache before returning it
+10. Start with `dfs(0, 0)` and return the final answer
 
 ::tabs-start
 
@@ -498,6 +612,38 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn is_match(s: String, p: String) -> bool {
+        let s = s.as_bytes();
+        let p = p.as_bytes();
+        let (m, n) = (s.len(), p.len());
+        let mut dp = vec![vec![-1i8; n + 1]; m + 1];
+
+        fn dfs(i: usize, j: usize, s: &[u8], p: &[u8],
+               m: usize, n: usize, dp: &mut Vec<Vec<i8>>) -> bool {
+            if j == n {
+                return i == m;
+            }
+            if dp[i][j] != -1 {
+                return dp[i][j] == 1;
+            }
+            let matched = i < m && (s[i] == p[j] || p[j] == b'.');
+            let res = if j + 1 < n && p[j + 1] == b'*' {
+                dfs(i, j + 2, s, p, m, n, dp)
+                    || (matched && dfs(i + 1, j, s, p, m, n, dp))
+            } else {
+                matched && dfs(i + 1, j + 1, s, p, m, n, dp)
+            };
+            dp[i][j] = res as i8;
+            res
+        }
+
+        dfs(0, 0, s, p, m, n, &mut dp)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -510,6 +656,41 @@ class Solution {
 ---
 
 ## 3. Dynamic Programming (Bottom-Up)
+
+### Intuition
+
+We want to check whether the string `s` matches the pattern `p`, where:
+
+- `.` matches any single character
+- `*` means "zero or more of the previous character"
+
+Instead of recursion, we can solve this using **bottom-up dynamic programming** by building answers for smaller suffixes of the strings.
+
+We define a DP state that answers:
+**"Can the substring `s[i:]` be matched by the pattern `p[j:]`?"**
+
+By filling a table from the end of both strings toward the beginning, we ensure that when we compute a state, all the states it depends on are already known.
+
+### Algorithm
+
+1. Create a 2D boolean DP table `dp` of size
+   `(len(s) + 1) × (len(p) + 1)`.
+2. Let `dp[i][j]` represent whether `s[i:]` matches `p[j:]`.
+3. Initialize the base case:
+    - `dp[len(s)][len(p)] = true` because two empty strings match
+4. Fill the table from bottom to top and right to left:
+5. For each position `(i, j)`:
+    - First check if the current characters match:
+        - `match` is `true` if `i < len(s)` and (`s[i] == p[j]` or `p[j] == '.'`)
+6. If the next character in the pattern is `*`:
+    - Option 1: Treat `x*` as zero occurrences → `dp[i][j] = dp[i][j + 2]`
+    - Option 2: If `match` is `true`, consume one character from `s` and stay on the same pattern → `dp[i + 1][j]`
+    - Set `dp[i][j]` to `true` if either option works
+7. If the next character is not `*`:
+    - If `match` is `true`, move both pointers forward:
+        - `dp[i][j] = dp[i + 1][j + 1]`
+8. After filling the table, the final answer is stored in `dp[0][0]`
+9. Return `dp[0][0]`
 
 ::tabs-start
 
@@ -728,6 +909,34 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn is_match(s: String, p: String) -> bool {
+        let s = s.as_bytes();
+        let p = p.as_bytes();
+        let (m, n) = (s.len(), p.len());
+        let mut dp = vec![vec![false; n + 1]; m + 1];
+        dp[m][n] = true;
+
+        for i in (0..=m).rev() {
+            for j in (0..n).rev() {
+                let matched = i < m && (s[i] == p[j] || p[j] == b'.');
+                if j + 1 < n && p[j + 1] == b'*' {
+                    dp[i][j] = dp[i][j + 2];
+                    if matched {
+                        dp[i][j] = dp[i][j] || dp[i + 1][j];
+                    }
+                } else if matched {
+                    dp[i][j] = dp[i + 1][j + 1];
+                }
+            }
+        }
+
+        dp[0][0]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -740,6 +949,51 @@ class Solution {
 ---
 
 ## 4. Dynamic Programming (Space Optimized)
+
+### Intuition
+
+We need to determine if string `s` matches pattern `p`, where:
+
+- `.` matches any single character
+- `*` means "zero or more of the previous character"
+
+In the bottom-up DP solution, we used a 2D table `dp[i][j]` meaning:
+**"Does `s[i:]` match `p[j:]`?"**
+
+But each row `i` only depends on:
+
+- the next row (`i + 1`)
+- values within the current row while moving across `j`
+
+So we don't need the full 2D table. We can compress it into:
+
+- `dp` → represents the row for `i + 1`
+- `nextDp` → represents the row for `i`
+
+This keeps the same logic while using much less memory.
+
+### Algorithm
+
+1. Create a 1D boolean array `dp` of size `len(p) + 1`:
+    - it represents results for matching `s[i+1:]` with `p[j:]`
+2. Initialize the base case:
+    - `dp[len(p)] = true` (empty pattern matches empty string at the very end)
+3. Iterate `i` from `len(s)` down to `0`:
+    - Create a new array `nextDp` for the current row (`i`)
+    - Set `nextDp[len(p)] = (i == len(s))`
+        - empty pattern only matches if we are also at the end of the string
+4. For each `i`, iterate `j` from `len(p) - 1` down to `0`:
+    - Compute `match`:
+        - `true` if `i < len(s)` and (`s[i] == p[j]` or `p[j] == '.'`)
+    - If the next pattern character is `*`:
+        - Option 1: skip `x*` (zero occurrences) → `nextDp[j + 2]`
+        - Option 2: if `match`, consume one char from `s` and stay on `j` → `dp[j]`
+        - Combine both options to set `nextDp[j]`
+    - Otherwise (no `*`):
+        - if `match`, move both forward → `nextDp[j] = dp[j + 1]`
+5. After finishing the row, set `dp = nextDp`
+6. The final answer is `dp[0]` (matching `s[0:]` with `p[0:]`)
+7. Return `dp[0]`
 
 ::tabs-start
 
@@ -986,6 +1240,39 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn is_match(s: String, p: String) -> bool {
+        let s = s.as_bytes();
+        let p = p.as_bytes();
+        let (m, n) = (s.len(), p.len());
+        let mut dp = vec![false; n + 1];
+        dp[n] = true;
+
+        for i in (0..=m).rev() {
+            let mut next_dp = vec![false; n + 1];
+            next_dp[n] = i == m;
+
+            for j in (0..n).rev() {
+                let matched = i < m && (s[i] == p[j] || p[j] == b'.');
+                if j + 1 < n && p[j + 1] == b'*' {
+                    next_dp[j] = next_dp[j + 2];
+                    if matched {
+                        next_dp[j] = next_dp[j] || dp[j];
+                    }
+                } else if matched {
+                    next_dp[j] = dp[j + 1];
+                }
+            }
+
+            dp = next_dp;
+        }
+
+        dp[0]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -998,6 +1285,56 @@ class Solution {
 ---
 
 ## 5. Dynamic Programming (Optimal)
+
+### Intuition
+
+We want to check if `s` matches `p`, where:
+
+- `.` matches any single character
+- `*` means "zero or more of the previous character"
+
+The usual bottom-up DP state is:
+**`dp[i][j]` = does `s[i:]` match `p[j:]`?**
+
+A 2D table works, and a 1D array also works if we update carefully.
+This "optimal" version goes one step further: it updates the 1D array **in-place** without creating a second array.
+
+The main challenge with in-place updates is that some transitions need the **diagonal value**:
+
+- `dp[i + 1][j + 1]` (move both forward)
+
+When we compress to 1D, that diagonal value would get overwritten while we move left through `j`.
+To handle this, we keep one extra variable (`dp1`) that stores the previous diagonal value as we update the row.
+
+So at each `(i, j)` we can still access:
+
+- `dp[j]` → old value for `dp[i + 1][j]`
+- `dp[j + 2]` → current row value for skipping `x*`
+- `dp1` → old diagonal `dp[i + 1][j + 1]`
+
+### Algorithm
+
+1. Create a 1D boolean array `dp` of size `len(p) + 1`:
+    - `dp[j]` represents whether `s[i + 1:]` matches `p[j:]` for the current outer loop
+2. Initialize the base case:
+    - `dp[len(p)] = true` (empty pattern matches empty string at the end)
+3. Iterate `i` from `len(s)` down to `0`:
+    - Save the old end value in `dp1` (this will act as the diagonal when `j` moves left)
+    - Update `dp[len(p)] = (i == len(s))` since empty pattern only matches if string is also empty
+4. Iterate `j` from `len(p) - 1` down to `0`:
+    - Compute `match`:
+        - `true` if `i < len(s)` and (`s[i] == p[j]` or `p[j] == '.'`)
+    - If the next pattern character is `*`:
+        - Option 1: skip `x*` → use `dp[j + 2]`
+        - Option 2: if `match`, consume one char from `s` and stay on `j` → use `dp[j]`
+        - Combine both to get the result for `dp[j]`
+    - Otherwise (no `*`):
+        - If `match`, move both forward → result is the diagonal `dp1`
+    - Update `dp[j]` with the computed result
+    - Shift the diagonal tracker:
+        - set `dp1` to the old `dp[j]` value before it was overwritten
+5. After all updates, `dp[0]` represents whether `s[0:]` matches `p[0:]`
+6. Return `dp[0]`
 
 ::tabs-start
 
@@ -1252,6 +1589,40 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn is_match(s: String, p: String) -> bool {
+        let s = s.as_bytes();
+        let p = p.as_bytes();
+        let (m, n) = (s.len(), p.len());
+        let mut dp = vec![false; n + 1];
+        dp[n] = true;
+
+        for i in (0..=m).rev() {
+            let mut dp1 = dp[n];
+            dp[n] = i == m;
+
+            for j in (0..n).rev() {
+                let matched = i < m && (s[i] == p[j] || p[j] == b'.');
+                let mut res = false;
+                if j + 1 < n && p[j + 1] == b'*' {
+                    res = dp[j + 2];
+                    if matched {
+                        res = res || dp[j];
+                    }
+                } else if matched {
+                    res = dp1;
+                }
+                dp1 = dp[j];
+                dp[j] = res;
+            }
+        }
+
+        dp[0]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1260,3 +1631,27 @@ class Solution {
 - Space complexity: $O(n)$
 
 > Where $m$ is the length of the string $s$ and $n$ is the length of the string $p$.
+
+---
+
+## Common Pitfalls
+
+### Misunderstanding How Star Works
+
+The `*` character means "zero or more of the preceding element," not "zero or more of any character." A common mistake is treating `a*` as matching any sequence of characters. In reality, `a*` only matches zero or more 'a' characters. Similarly, `.*` matches zero or more of any single character (because `.` matches any character).
+
+### Forgetting That Star Can Match Zero Occurrences
+
+When encountering `x*` in the pattern, many solutions only consider the case where `x` matches at least one character. However, `x*` can also match zero characters, meaning the entire `x*` portion can be skipped. Both branches must be explored: skip `x*` entirely or consume a matching character while staying on the same pattern position.
+
+### Off-by-One Errors When Checking for Star
+
+The pattern must be checked carefully to see if the next character is `*`. A common bug is checking `p[j]` instead of `p[j+1]` for the star, or failing to verify that `j+1` is within bounds before accessing it. This leads to index out of bounds errors or incorrect pattern matching logic.
+
+### Not Handling Empty String or Pattern Edge Cases
+
+The base cases require careful handling. When the pattern is exhausted (`j == n`), the match is valid only if the string is also exhausted (`i == m`). However, when the string is exhausted but the pattern is not, matching can still succeed if the remaining pattern consists entirely of `x*` pairs. Failing to account for patterns like `a*b*c*` matching an empty string is a common oversight.
+
+### Incorrect DP State Transitions
+
+In the bottom-up DP approach, the iteration order matters. Processing from the end of both strings toward the beginning ensures that required subproblem solutions are available. A common mistake is iterating in the wrong direction or incorrectly referencing `dp[i+1][j+1]` when it has not been computed yet.

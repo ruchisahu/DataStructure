@@ -1,4 +1,25 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Hash Map / Dictionary** - Storing and retrieving key-value pairs for frequency counting
+- **Character Frequency Counting** - Counting occurrences of each character in a string
+- **Finding Minimum Across Values** - Determining the limiting factor from multiple constraints
+
+---
+
 ## 1. Hash Map - I
+
+### Intuition
+
+To form the word "balloon", we need specific counts of each letter: one each of 'b', 'a', 'n', and two each of 'l' and 'o'. The number of times we can spell "balloon" is limited by whichever required letter runs out first. By counting all letters in the text and then dividing by the required amounts, we find how many complete words we can form.
+
+### Algorithm
+
+1. Count the frequency of each character in the input text using a hash map.
+2. Create a hash map for the word "balloon" with the required count of each character.
+3. For each character in "balloon", calculate how many times it can satisfy the requirement by dividing the available count by the required count.
+4. Return the minimum across all characters, as this determines the bottleneck.
 
 ::tabs-start
 
@@ -80,6 +101,107 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int MaxNumberOfBalloons(string text) {
+        Dictionary<char, int> countText = new Dictionary<char, int>();
+        foreach (char c in text) {
+            if (!countText.ContainsKey(c)) countText[c] = 0;
+            countText[c]++;
+        }
+
+        Dictionary<char, int> balloon = new Dictionary<char, int> {
+            {'b', 1}, {'a', 1}, {'l', 2}, {'o', 2}, {'n', 1}
+        };
+
+        int res = text.Length;
+        foreach (var entry in balloon) {
+            int count = countText.ContainsKey(entry.Key) ? countText[entry.Key] : 0;
+            res = Math.Min(res, count / entry.Value);
+        }
+        return res;
+    }
+}
+```
+
+```go
+func maxNumberOfBalloons(text string) int {
+    countText := make(map[rune]int)
+    for _, c := range text {
+        countText[c]++
+    }
+
+    balloon := map[rune]int{'b': 1, 'a': 1, 'l': 2, 'o': 2, 'n': 1}
+
+    res := len(text)
+    for c, need := range balloon {
+        if countText[c]/need < res {
+            res = countText[c] / need
+        }
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun maxNumberOfBalloons(text: String): Int {
+        val countText = mutableMapOf<Char, Int>()
+        for (c in text) {
+            countText[c] = countText.getOrDefault(c, 0) + 1
+        }
+
+        val balloon = mapOf('b' to 1, 'a' to 1, 'l' to 2, 'o' to 2, 'n' to 1)
+
+        var res = text.length
+        for ((c, need) in balloon) {
+            res = minOf(res, (countText[c] ?: 0) / need)
+        }
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func maxNumberOfBalloons(_ text: String) -> Int {
+        var countText = [Character: Int]()
+        for c in text {
+            countText[c, default: 0] += 1
+        }
+
+        let balloon: [Character: Int] = ["b": 1, "a": 1, "l": 2, "o": 2, "n": 1]
+
+        var res = text.count
+        for (c, need) in balloon {
+            res = min(res, (countText[c] ?? 0) / need)
+        }
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn max_number_of_balloons(text: String) -> i32 {
+        let mut count_text = HashMap::new();
+        for c in text.chars() {
+            *count_text.entry(c).or_insert(0) += 1;
+        }
+
+        let balloon = HashMap::from([
+            ('b', 1), ('a', 1), ('l', 2), ('o', 2), ('n', 1),
+        ]);
+
+        let mut res = text.len() as i32;
+        for (&c, &need) in &balloon {
+            res = res.min(*count_text.get(&c).unwrap_or(&0) / need);
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -90,6 +212,17 @@ class Solution {
 ---
 
 ## 2. Hash Map - II
+
+### Intuition
+
+We can optimize by only counting the five relevant characters ('b', 'a', 'l', 'o', 'n') instead of all 26 letters. After counting, we adjust for 'l' and 'o' by dividing their counts by 2 since each "balloon" requires two of each. The minimum count then gives our answer directly.
+
+### Algorithm
+
+1. Iterate through the text and only count characters that appear in "balon" (the unique letters of "balloon").
+2. If fewer than 5 distinct characters are counted, return `0` (cannot form even one "balloon").
+3. Divide the counts of `'l'` and `'o'` by `2` to account for needing two of each.
+4. Return the minimum value among all five character counts.
 
 ::tabs-start
 
@@ -177,9 +310,132 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int MaxNumberOfBalloons(string text) {
+        Dictionary<char, int> mp = new Dictionary<char, int>();
+        foreach (char c in text) {
+            if ("balon".Contains(c)) {
+                if (!mp.ContainsKey(c)) mp[c] = 0;
+                mp[c]++;
+            }
+        }
+
+        if (mp.Count < 5) {
+            return 0;
+        }
+
+        mp['l'] /= 2;
+        mp['o'] /= 2;
+        return mp.Values.Min();
+    }
+}
+```
+
+```go
+func maxNumberOfBalloons(text string) int {
+    mp := make(map[rune]int)
+    for _, c := range text {
+        if c == 'b' || c == 'a' || c == 'l' || c == 'o' || c == 'n' {
+            mp[c]++
+        }
+    }
+
+    if len(mp) < 5 {
+        return 0
+    }
+
+    mp['l'] /= 2
+    mp['o'] /= 2
+
+    res := mp['b']
+    for _, v := range mp {
+        if v < res {
+            res = v
+        }
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun maxNumberOfBalloons(text: String): Int {
+        val mp = mutableMapOf<Char, Int>()
+        for (c in text) {
+            if (c in "balon") {
+                mp[c] = mp.getOrDefault(c, 0) + 1
+            }
+        }
+
+        if (mp.size < 5) {
+            return 0
+        }
+
+        mp['l'] = mp['l']!! / 2
+        mp['o'] = mp['o']!! / 2
+        return mp.values.min()
+    }
+}
+```
+
+```swift
+class Solution {
+    func maxNumberOfBalloons(_ text: String) -> Int {
+        var mp = [Character: Int]()
+        for c in text {
+            if "balon".contains(c) {
+                mp[c, default: 0] += 1
+            }
+        }
+
+        if mp.count < 5 {
+            return 0
+        }
+
+        mp["l"]! /= 2
+        mp["o"]! /= 2
+        return mp.values.min()!
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn max_number_of_balloons(text: String) -> i32 {
+        let mut mp = HashMap::new();
+        for c in text.chars() {
+            if "balon".contains(c) {
+                *mp.entry(c).or_insert(0) += 1;
+            }
+        }
+
+        if mp.len() < 5 {
+            return 0;
+        }
+
+        *mp.get_mut(&'l').unwrap() /= 2;
+        *mp.get_mut(&'o').unwrap() /= 2;
+        *mp.values().min().unwrap()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(1)$ since $balloon$ has $5$ different characters.
+
+---
+
+## Common Pitfalls
+
+### Forgetting Double Letters
+
+The word "balloon" contains two `l`s and two `o`s. A common mistake is treating all characters equally without dividing the counts of `l` and `o` by 2. This results in overcounting the number of possible words that can be formed.
+
+### Not Checking for Missing Characters
+
+If any of the five required characters (`b`, `a`, `l`, `o`, `n`) is missing from the text, the answer is 0. Failing to handle this case (for example, by taking the minimum of an empty collection or dividing by zero) can cause runtime errors or incorrect results.

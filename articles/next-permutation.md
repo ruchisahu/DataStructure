@@ -1,4 +1,28 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Array Manipulation** - In-place swapping and reversing elements
+- **Two Pointers Technique** - Using left and right pointers to reverse subarrays
+- **Lexicographic Ordering** - Understanding how sequences are compared and ordered
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+The most straightforward approach generates all permutations of the array, sorts them in lexicographic order, finds the current permutation in that sorted list, and returns the next one. If we are at the last permutation, we wrap around to the first.
+
+This approach is extremely inefficient for large arrays since the number of permutations is n!, but it demonstrates the concept of what "next permutation" means.
+
+### Algorithm
+
+1. Generate all unique permutations of the input array.
+2. Sort the permutations lexicographically.
+3. Find the current array in the sorted list.
+4. Return the next permutation in the list (wrapping to the first if at the end).
+5. Copy the result back into the original array.
 
 ::tabs-start
 
@@ -244,6 +268,220 @@ public class Solution {
 }
 ```
 
+```go
+func nextPermutation(nums []int) {
+    perms := permute(append([]int{}, nums...))
+    sort.Slice(perms, func(a, b int) bool {
+        for i := 0; i < len(perms[a]); i++ {
+            if perms[a][i] != perms[b][i] {
+                return perms[a][i] < perms[b][i]
+            }
+        }
+        return false
+    })
+    for i := 0; i < len(perms); i++ {
+        match := true
+        for j := 0; j < len(nums); j++ {
+            if perms[i][j] != nums[j] {
+                match = false
+                break
+            }
+        }
+        if match {
+            next := perms[(i+1)%len(perms)]
+            copy(nums, next)
+            return
+        }
+    }
+}
+
+func permute(nums []int) [][]int {
+    sort.Ints(nums)
+    var res [][]int
+    used := make([]bool, len(nums))
+    var path []int
+
+    var dfs func()
+    dfs = func() {
+        if len(path) == len(nums) {
+            res = append(res, append([]int{}, path...))
+            return
+        }
+        for i := 0; i < len(nums); i++ {
+            if used[i] {
+                continue
+            }
+            if i > 0 && nums[i] == nums[i-1] && !used[i-1] {
+                continue
+            }
+            used[i] = true
+            path = append(path, nums[i])
+            dfs()
+            path = path[:len(path)-1]
+            used[i] = false
+        }
+    }
+    dfs()
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun nextPermutation(nums: IntArray) {
+        val perms = permute(nums.clone())
+        perms.sortWith { a, b ->
+            for (i in a.indices) {
+                if (a[i] != b[i]) return@sortWith a[i] - b[i]
+            }
+            0
+        }
+        for (i in perms.indices) {
+            var match = true
+            for (j in nums.indices) {
+                if (perms[i][j] != nums[j]) {
+                    match = false
+                    break
+                }
+            }
+            if (match) {
+                val next = perms[(i + 1) % perms.size]
+                for (j in nums.indices) {
+                    nums[j] = next[j]
+                }
+                return
+            }
+        }
+    }
+
+    private fun permute(nums: IntArray): MutableList<IntArray> {
+        nums.sort()
+        val res = mutableListOf<IntArray>()
+        val used = BooleanArray(nums.size)
+        val path = mutableListOf<Int>()
+
+        fun dfs() {
+            if (path.size == nums.size) {
+                res.add(path.toIntArray())
+                return
+            }
+            for (i in nums.indices) {
+                if (used[i]) continue
+                if (i > 0 && nums[i] == nums[i - 1] && !used[i - 1]) continue
+                used[i] = true
+                path.add(nums[i])
+                dfs()
+                path.removeAt(path.size - 1)
+                used[i] = false
+            }
+        }
+        dfs()
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func nextPermutation(_ nums: inout [Int]) {
+        var perms = permute(nums)
+        perms.sort { a, b in
+            for i in 0..<a.count {
+                if a[i] != b[i] {
+                    return a[i] < b[i]
+                }
+            }
+            return false
+        }
+        for i in 0..<perms.count {
+            var match = true
+            for j in 0..<nums.count {
+                if perms[i][j] != nums[j] {
+                    match = false
+                    break
+                }
+            }
+            if match {
+                let next = perms[(i + 1) % perms.count]
+                for j in 0..<nums.count {
+                    nums[j] = next[j]
+                }
+                return
+            }
+        }
+    }
+
+    private func permute(_ nums: [Int]) -> [[Int]] {
+        var nums = nums.sorted()
+        var res = [[Int]]()
+        var used = Array(repeating: false, count: nums.count)
+        var path = [Int]()
+
+        func dfs() {
+            if path.count == nums.count {
+                res.append(path)
+                return
+            }
+            for i in 0..<nums.count {
+                if used[i] { continue }
+                if i > 0 && nums[i] == nums[i - 1] && !used[i - 1] { continue }
+                used[i] = true
+                path.append(nums[i])
+                dfs()
+                path.removeLast()
+                used[i] = false
+            }
+        }
+        dfs()
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn next_permutation(nums: &mut Vec<i32>) {
+        let perms = Self::permute(nums.clone());
+        let mut perms = perms;
+        perms.sort();
+        for i in 0..perms.len() {
+            if perms[i] == *nums {
+                let next = &perms[(i + 1) % perms.len()];
+                nums.copy_from_slice(next);
+                return;
+            }
+        }
+    }
+
+    fn permute(nums: Vec<i32>) -> Vec<Vec<i32>> {
+        let mut nums = nums;
+        nums.sort();
+        let mut res = Vec::new();
+        let mut used = vec![false; nums.len()];
+        let mut path = Vec::new();
+
+        fn dfs(nums: &[i32], used: &mut Vec<bool>, path: &mut Vec<i32>, res: &mut Vec<Vec<i32>>) {
+            if path.len() == nums.len() {
+                res.push(path.clone());
+                return;
+            }
+            for i in 0..nums.len() {
+                if used[i] { continue; }
+                if i > 0 && nums[i] == nums[i - 1] && !used[i - 1] { continue; }
+                used[i] = true;
+                path.push(nums[i]);
+                dfs(nums, used, path, res);
+                path.pop();
+                used[i] = false;
+            }
+        }
+
+        dfs(&nums, &mut used, &mut path, &mut res);
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -254,6 +492,24 @@ public class Solution {
 ---
 
 ## 2. Greedy
+
+### Intuition
+
+To find the next lexicographically greater permutation, we need to make the smallest possible change that increases the array's value. The key insight is to find the rightmost position where we can make an increase.
+
+Scan from right to left to find the first element that is smaller than its right neighbor. This element (call it `pivot`) can be swapped with something larger to get a bigger permutation. We then find the smallest element to the right of `pivot` that is still larger than `pivot` and swap them.
+
+After the swap, everything to the right of the `pivot` position is in descending order. To get the smallest possible permutation from this point, we reverse that suffix to ascending order.
+
+If no such `pivot` exists (the array is fully descending), we are at the largest permutation, so we reverse the entire array to get the smallest.
+
+### Algorithm
+
+1. Scan from the second-to-last element leftward to find the first index `i` where `nums[i] < nums[i+1]`.
+2. If such an index exists:
+    - Scan from the right to find the first index `j` where `nums[j] > nums[i]`.
+    - Swap `nums[i]` and `nums[j]`.
+3. Reverse the subarray from `i+1` to the end.
 
 ::tabs-start
 
@@ -393,9 +649,120 @@ public class Solution {
 }
 ```
 
+```go
+func nextPermutation(nums []int) {
+    n := len(nums)
+    i := n - 2
+    for i >= 0 && nums[i] >= nums[i+1] {
+        i--
+    }
+    if i >= 0 {
+        j := n - 1
+        for nums[j] <= nums[i] {
+            j--
+        }
+        nums[i], nums[j] = nums[j], nums[i]
+    }
+    l, r := i+1, n-1
+    for l < r {
+        nums[l], nums[r] = nums[r], nums[l]
+        l++
+        r--
+    }
+}
+```
+
+```kotlin
+class Solution {
+    fun nextPermutation(nums: IntArray) {
+        val n = nums.size
+        var i = n - 2
+        while (i >= 0 && nums[i] >= nums[i + 1]) {
+            i--
+        }
+        if (i >= 0) {
+            var j = n - 1
+            while (nums[j] <= nums[i]) {
+                j--
+            }
+            nums[i] = nums[j].also { nums[j] = nums[i] }
+        }
+        var l = i + 1
+        var r = n - 1
+        while (l < r) {
+            nums[l] = nums[r].also { nums[r] = nums[l] }
+            l++
+            r--
+        }
+    }
+}
+```
+
+```swift
+class Solution {
+    func nextPermutation(_ nums: inout [Int]) {
+        let n = nums.count
+        var i = n - 2
+        while i >= 0 && nums[i] >= nums[i + 1] {
+            i -= 1
+        }
+        if i >= 0 {
+            var j = n - 1
+            while nums[j] <= nums[i] {
+                j -= 1
+            }
+            nums.swapAt(i, j)
+        }
+        var l = i + 1
+        var r = n - 1
+        while l < r {
+            nums.swapAt(l, r)
+            l += 1
+            r -= 1
+        }
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn next_permutation(nums: &mut Vec<i32>) {
+        let n = nums.len();
+        let mut i = n as i32 - 2;
+        while i >= 0 && nums[i as usize] >= nums[i as usize + 1] {
+            i -= 1;
+        }
+        if i >= 0 {
+            let mut j = n - 1;
+            while nums[j] <= nums[i as usize] {
+                j -= 1;
+            }
+            nums.swap(i as usize, j);
+        }
+        nums[(i as usize + 1)..].reverse();
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(1)$
+
+---
+
+## Common Pitfalls
+
+### Finding Pivot with Wrong Comparison
+
+The pivot is the rightmost element that is smaller than its right neighbor (nums[i] < nums[i+1]). Using <= instead of < causes the algorithm to fail on arrays with duplicate elements, as it may skip valid pivot positions.
+
+### Swapping with Wrong Element
+
+After finding the pivot, you must swap it with the smallest element to its right that is still larger than the pivot. Swapping with the first larger element from the left (instead of from the right) may not produce the lexicographically smallest increase.
+
+### Forgetting to Reverse the Suffix
+
+After swapping, the suffix to the right of the pivot position is in descending order. Failing to reverse it to ascending order produces a larger permutation than necessary. The reversal is essential to get the next (smallest) greater permutation.

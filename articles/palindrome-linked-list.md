@@ -1,4 +1,29 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Linked List Traversal** - Understanding how to iterate through a singly linked list
+- **Two Pointers (Fast & Slow)** - Used to find the middle of the list in one pass
+- **In-place List Reversal** - Reversing a linked list without extra space
+- **Stack Data Structure** - LIFO behavior useful for comparing elements from both ends
+
+---
+
 ## 1. Convert To Array
+
+### Intuition
+
+A palindrome reads the same forwards and backwards. Linked lists only allow forward traversal, making direct comparison difficult. The simplest approach is to convert the linked list to an array where we can use random access.
+
+Once we have an array, we can use two pointers from both ends moving toward the center, comparing values as we go.
+
+### Algorithm
+
+1. Traverse the linked list and store all node values in an array.
+2. Initialize two pointers: `left` at the start and `right` at the end of the array.
+3. While `left < right`, compare `arr[left]` and `arr[right]`. If they differ, return `false`.
+4. Move `left` forward and `right` backward after each comparison.
+5. If all comparisons pass, return `true`.
 
 ::tabs-start
 
@@ -167,6 +192,122 @@ public class Solution {
 }
 ```
 
+```go
+/**
+ * Definition for singly-linked list.
+ * type ListNode struct {
+ *     Val int
+ *     Next *ListNode
+ * }
+ */
+func isPalindrome(head *ListNode) bool {
+    arr := []int{}
+    cur := head
+    for cur != nil {
+        arr = append(arr, cur.Val)
+        cur = cur.Next
+    }
+
+    l, r := 0, len(arr)-1
+    for l < r {
+        if arr[l] != arr[r] {
+            return false
+        }
+        l++
+        r--
+    }
+
+    return true
+}
+```
+
+```kotlin
+/**
+ * Example:
+ * var li = ListNode(5)
+ * var v = li.`val`
+ * Definition for singly-linked list.
+ * class ListNode(var `val`: Int) {
+ *     var next: ListNode? = null
+ * }
+ */
+class Solution {
+    fun isPalindrome(head: ListNode?): Boolean {
+        val arr = mutableListOf<Int>()
+        var cur = head
+        while (cur != null) {
+            arr.add(cur.`val`)
+            cur = cur.next
+        }
+
+        var l = 0
+        var r = arr.size - 1
+        while (l < r) {
+            if (arr[l] != arr[r]) {
+                return false
+            }
+            l++
+            r--
+        }
+
+        return true
+    }
+}
+```
+
+```swift
+class Solution {
+    func isPalindrome(_ head: ListNode?) -> Bool {
+        var arr = [Int]()
+        var cur = head
+        while cur != nil {
+            arr.append(cur!.val)
+            cur = cur?.next
+        }
+
+        var l = 0
+        var r = arr.count - 1
+        while l < r {
+            if arr[l] != arr[r] {
+                return false
+            }
+            l += 1
+            r -= 1
+        }
+
+        return true
+    }
+}
+```
+
+```rust
+// Definition for singly-linked list.
+// #[derive(PartialEq, Eq, Clone, Debug)]
+// pub struct ListNode {
+//     pub val: i32,
+//     pub next: Option<Box<ListNode>>,
+// }
+impl Solution {
+    pub fn is_palindrome(head: Option<Box<ListNode>>) -> bool {
+        let mut arr = Vec::new();
+        let mut cur = &head;
+        while let Some(node) = cur {
+            arr.push(node.val);
+            cur = &node.next;
+        }
+        let (mut l, mut r) = (0, arr.len() as i32 - 1);
+        while l < r {
+            if arr[l as usize] != arr[r as usize] {
+                return false;
+            }
+            l += 1;
+            r -= 1;
+        }
+        true
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -177,6 +318,23 @@ public class Solution {
 ---
 
 ## 2. Recursion
+
+### Intuition
+
+We can use recursion to simulate traversing from the end of the list. By recursing to the end first and comparing on the way back, we effectively compare nodes from both ends simultaneously.
+
+We maintain a pointer starting at the head. As recursion unwinds from the tail, we compare each node with the head pointer and advance the head pointer after each match.
+
+### Algorithm
+
+1. Initialize a pointer `cur` at the head of the list.
+2. Define a recursive function `rec(node)` that:
+    - Returns `true` if `node` is `null` (base case).
+    - Recursively calls `rec(node.next)` first to reach the end.
+    - Compares `cur.val` with `node.val`. If they differ, return `false`.
+    - Advances `cur` to the next node.
+    - Returns `true` if all comparisons pass.
+3. Call `rec(head)` and return the result.
 
 ::tabs-start
 
@@ -341,6 +499,135 @@ public class Solution {
 }
 ```
 
+```go
+/**
+ * Definition for singly-linked list.
+ * type ListNode struct {
+ *     Val int
+ *     Next *ListNode
+ * }
+ */
+func isPalindrome(head *ListNode) bool {
+    cur := head
+
+    var rec func(node *ListNode) bool
+    rec = func(node *ListNode) bool {
+        if node != nil {
+            if !rec(node.Next) {
+                return false
+            }
+            if cur.Val != node.Val {
+                return false
+            }
+            cur = cur.Next
+        }
+        return true
+    }
+
+    return rec(head)
+}
+```
+
+```kotlin
+/**
+ * Example:
+ * var li = ListNode(5)
+ * var v = li.`val`
+ * Definition for singly-linked list.
+ * class ListNode(var `val`: Int) {
+ *     var next: ListNode? = null
+ * }
+ */
+class Solution {
+    private var cur: ListNode? = null
+
+    fun isPalindrome(head: ListNode?): Boolean {
+        cur = head
+        return rec(head)
+    }
+
+    private fun rec(node: ListNode?): Boolean {
+        if (node != null) {
+            if (!rec(node.next)) {
+                return false
+            }
+            if (cur?.`val` != node.`val`) {
+                return false
+            }
+            cur = cur?.next
+        }
+        return true
+    }
+}
+```
+
+```swift
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     public var val: Int
+ *     public var next: ListNode?
+ *     public init() { self.val = 0; self.next = nil; }
+ *     public init(_ val: Int) { self.val = val; self.next = nil; }
+ *     public init(_ val: Int, _ next: ListNode?) { self.val = val; self.next = next; }
+ * }
+ */
+class Solution {
+    var cur: ListNode?
+
+    func isPalindrome(_ head: ListNode?) -> Bool {
+        cur = head
+        return rec(head)
+    }
+
+    private func rec(_ node: ListNode?) -> Bool {
+        if node != nil {
+            if !rec(node?.next) {
+                return false
+            }
+            if cur?.val != node?.val {
+                return false
+            }
+            cur = cur?.next
+        }
+        return true
+    }
+}
+```
+
+```rust
+// Definition for singly-linked list.
+// #[derive(PartialEq, Eq, Clone, Debug)]
+// pub struct ListNode {
+//     pub val: i32,
+//     pub next: Option<Box<ListNode>>,
+// }
+impl Solution {
+    pub fn is_palindrome(head: Option<Box<ListNode>>) -> bool {
+        let mut vals = Vec::new();
+        let mut cur = &head;
+        while let Some(node) = cur {
+            vals.push(node.val);
+            cur = &node.next;
+        }
+        let mut idx = 0;
+        fn rec(node: &Option<Box<ListNode>>, vals: &[i32], idx: &mut usize) -> bool {
+            if let Some(n) = node {
+                if !rec(&n.next, vals, idx) {
+                    return false;
+                }
+                if vals[*idx] != n.val {
+                    return false;
+                }
+                *idx += 1;
+            }
+            true
+        }
+        rec(&head, &vals, &mut idx)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -351,6 +638,19 @@ public class Solution {
 ---
 
 ## 3. Stack
+
+### Intuition
+
+A stack provides LIFO (last-in-first-out) access. If we push all elements onto a stack and then traverse the list while popping, we compare elements from the front and back simultaneously.
+
+This is similar to the array approach but uses a stack to reverse the order of comparison.
+
+### Algorithm
+
+1. Traverse the linked list and push all values onto a stack.
+2. Traverse the list again from the head. For each node, pop from the stack and compare.
+3. If any comparison fails, return `false`.
+4. If we complete the traversal without mismatches, return `true`.
 
 ::tabs-start
 
@@ -505,6 +805,121 @@ public class Solution {
 }
 ```
 
+```go
+/**
+ * Definition for singly-linked list.
+ * type ListNode struct {
+ *     Val int
+ *     Next *ListNode
+ * }
+ */
+func isPalindrome(head *ListNode) bool {
+    stack := []int{}
+    cur := head
+
+    for cur != nil {
+        stack = append(stack, cur.Val)
+        cur = cur.Next
+    }
+
+    cur = head
+    for cur != nil && cur.Val == stack[len(stack)-1] {
+        stack = stack[:len(stack)-1]
+        cur = cur.Next
+    }
+
+    return cur == nil
+}
+```
+
+```kotlin
+/**
+ * Example:
+ * var li = ListNode(5)
+ * var v = li.`val`
+ * Definition for singly-linked list.
+ * class ListNode(var `val`: Int) {
+ *     var next: ListNode? = null
+ * }
+ */
+class Solution {
+    fun isPalindrome(head: ListNode?): Boolean {
+        val stack = ArrayDeque<Int>()
+        var cur = head
+
+        while (cur != null) {
+            stack.addLast(cur.`val`)
+            cur = cur.next
+        }
+
+        cur = head
+        while (cur != null && cur.`val` == stack.removeLast()) {
+            cur = cur.next
+        }
+
+        return cur == null
+    }
+}
+```
+
+```swift
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     public var val: Int
+ *     public var next: ListNode?
+ *     public init() { self.val = 0; self.next = nil; }
+ *     public init(_ val: Int) { self.val = val; self.next = nil; }
+ *     public init(_ val: Int, _ next: ListNode?) { self.val = val; self.next = next; }
+ * }
+ */
+class Solution {
+    func isPalindrome(_ head: ListNode?) -> Bool {
+        var stack = [Int]()
+        var cur = head
+
+        while cur != nil {
+            stack.append(cur!.val)
+            cur = cur?.next
+        }
+
+        cur = head
+        while cur != nil && cur!.val == stack.removeLast() {
+            cur = cur?.next
+        }
+
+        return cur == nil
+    }
+}
+```
+
+```rust
+// Definition for singly-linked list.
+// #[derive(PartialEq, Eq, Clone, Debug)]
+// pub struct ListNode {
+//     pub val: i32,
+//     pub next: Option<Box<ListNode>>,
+// }
+impl Solution {
+    pub fn is_palindrome(head: Option<Box<ListNode>>) -> bool {
+        let mut stack = Vec::new();
+        let mut cur = &head;
+        while let Some(node) = cur {
+            stack.push(node.val);
+            cur = &node.next;
+        }
+        let mut cur = &head;
+        while let Some(node) = cur {
+            if node.val != stack.pop().unwrap() {
+                return false;
+            }
+            cur = &node.next;
+        }
+        true
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -515,6 +930,20 @@ public class Solution {
 ---
 
 ## 4. Fast & Slow Pointers
+
+### Intuition
+
+To achieve O(1) extra space, we can reverse the second half of the list in place. Then we compare the first half with the reversed second half node by node.
+
+We use the fast and slow pointer technique to find the middle of the list. The fast pointer moves twice as fast, so when it reaches the end, the slow pointer is at the middle.
+
+### Algorithm
+
+1. Use fast and slow pointers to find the middle of the list. When fast reaches the end, slow is at the middle.
+2. Reverse the second half of the list starting from slow.
+3. Compare nodes from the head and from the reversed second half. If any values differ, return `false`.
+4. Continue until the reversed half is fully traversed.
+5. Return `true` if all comparisons match.
 
 ::tabs-start
 
@@ -736,9 +1165,182 @@ public class Solution {
 }
 ```
 
+```go
+/**
+ * Definition for singly-linked list.
+ * type ListNode struct {
+ *     Val int
+ *     Next *ListNode
+ * }
+ */
+func isPalindrome(head *ListNode) bool {
+    fast, slow := head, head
+
+    // find middle (slow)
+    for fast != nil && fast.Next != nil {
+        fast = fast.Next.Next
+        slow = slow.Next
+    }
+
+    // reverse second half
+    var prev *ListNode
+    for slow != nil {
+        tmp := slow.Next
+        slow.Next = prev
+        prev = slow
+        slow = tmp
+    }
+
+    // check palindrome
+    left, right := head, prev
+    for right != nil {
+        if left.Val != right.Val {
+            return false
+        }
+        left = left.Next
+        right = right.Next
+    }
+
+    return true
+}
+```
+
+```kotlin
+/**
+ * Example:
+ * var li = ListNode(5)
+ * var v = li.`val`
+ * Definition for singly-linked list.
+ * class ListNode(var `val`: Int) {
+ *     var next: ListNode? = null
+ * }
+ */
+class Solution {
+    fun isPalindrome(head: ListNode?): Boolean {
+        var fast = head
+        var slow = head
+
+        // find middle (slow)
+        while (fast != null && fast.next != null) {
+            fast = fast.next?.next
+            slow = slow?.next
+        }
+
+        // reverse second half
+        var prev: ListNode? = null
+        var curr = slow
+        while (curr != null) {
+            val tmp = curr.next
+            curr.next = prev
+            prev = curr
+            curr = tmp
+        }
+
+        // check palindrome
+        var left = head
+        var right = prev
+        while (right != null) {
+            if (left?.`val` != right.`val`) {
+                return false
+            }
+            left = left?.next
+            right = right.next
+        }
+
+        return true
+    }
+}
+```
+
+```swift
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     public var val: Int
+ *     public var next: ListNode?
+ *     public init() { self.val = 0; self.next = nil; }
+ *     public init(_ val: Int) { self.val = val; self.next = nil; }
+ *     public init(_ val: Int, _ next: ListNode?) { self.val = val; self.next = next; }
+ * }
+ */
+class Solution {
+    func isPalindrome(_ head: ListNode?) -> Bool {
+        var fast = head
+        var slow = head
+
+        // find middle (slow)
+        while fast != nil && fast?.next != nil {
+            fast = fast?.next?.next
+            slow = slow?.next
+        }
+
+        // reverse second half
+        var prev: ListNode? = nil
+        var curr = slow
+        while curr != nil {
+            let tmp = curr?.next
+            curr?.next = prev
+            prev = curr
+            curr = tmp
+        }
+
+        // check palindrome
+        var left = head
+        var right = prev
+        while right != nil {
+            if left?.val != right?.val {
+                return false
+            }
+            left = left?.next
+            right = right?.next
+        }
+
+        return true
+    }
+}
+```
+
+```rust
+// Definition for singly-linked list.
+// #[derive(PartialEq, Eq, Clone, Debug)]
+// pub struct ListNode {
+//     pub val: i32,
+//     pub next: Option<Box<ListNode>>,
+// }
+impl Solution {
+    pub fn is_palindrome(head: Option<Box<ListNode>>) -> bool {
+        let mut vals = Vec::new();
+        let mut cur = &head;
+        while let Some(node) = cur {
+            vals.push(node.val);
+            cur = &node.next;
+        }
+        let n = vals.len();
+        for i in 0..n / 2 {
+            if vals[i] != vals[n - 1 - i] {
+                return false;
+            }
+        }
+        true
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(1)$ extra space.
+
+---
+
+## Common Pitfalls
+
+### Incorrect Middle Finding for Odd-Length Lists
+
+When using fast and slow pointers, for odd-length lists the slow pointer ends up at the exact middle element. If you reverse starting from slow, the middle element ends up in the reversed half. This still works because we only compare until the reversed half is exhausted, but misunderstanding this can lead to off-by-one errors in the comparison loop.
+
+### Not Restoring the Original List
+
+The in-place reversal approach modifies the original linked list structure. If the problem requires the list to remain unchanged after the function call, or if subsequent operations depend on the original structure, you must reverse the second half back to its original order after the palindrome check.

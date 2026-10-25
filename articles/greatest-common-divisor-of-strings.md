@@ -1,4 +1,27 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **GCD (Greatest Common Divisor)** - Understanding and implementing the Euclidean algorithm
+- **String Manipulation** - Working with substrings, concatenation, and repetition
+- **Modular Arithmetic** - Using modulo operations for cyclic indexing and divisibility checks
+
+---
+
 ## 1. Iteration
+
+### Intuition
+
+A string `t` divides both `str1` and `str2` only if its length divides both string lengths and repeating `t` the appropriate number of times reconstructs each string. We search for the longest such divisor by checking all possible lengths from the minimum length down to `1`.
+
+### Algorithm
+
+1. For each possible length `l` from `min(len1, len2)` down to `1`:
+    - Check if `l` divides both `len1` and `len2`.
+    - Extract the prefix `str1[:l]` as the candidate divisor.
+    - Check if repeating this prefix `len1/l` times equals `str1` and `len2/l` times equals `str2`.
+2. Return the first valid prefix found.
+3. If no valid divisor exists, return an empty string.
 
 ::tabs-start
 
@@ -131,6 +154,124 @@ public class Solution {
 }
 ```
 
+```go
+func gcdOfStrings(str1 string, str2 string) string {
+    len1, len2 := len(str1), len(str2)
+
+    isDivisor := func(l int) bool {
+        if len1%l != 0 || len2%l != 0 {
+            return false
+        }
+        f1, f2 := len1/l, len2/l
+        sub := str1[:l]
+        repeated1, repeated2 := "", ""
+        for i := 0; i < f1; i++ {
+            repeated1 += sub
+        }
+        for i := 0; i < f2; i++ {
+            repeated2 += sub
+        }
+        return repeated1 == str1 && repeated2 == str2
+    }
+
+    minLen := len1
+    if len2 < minLen {
+        minLen = len2
+    }
+    for l := minLen; l > 0; l-- {
+        if isDivisor(l) {
+            return str1[:l]
+        }
+    }
+
+    return ""
+}
+```
+
+```kotlin
+class Solution {
+    fun gcdOfStrings(str1: String, str2: String): String {
+        val len1 = str1.length
+        val len2 = str2.length
+
+        fun isDivisor(l: Int): Boolean {
+            if (len1 % l != 0 || len2 % l != 0) return false
+            val f1 = len1 / l
+            val f2 = len2 / l
+            val sub = str1.substring(0, l)
+            return sub.repeat(f1) == str1 && sub.repeat(f2) == str2
+        }
+
+        for (l in minOf(len1, len2) downTo 1) {
+            if (isDivisor(l)) {
+                return str1.substring(0, l)
+            }
+        }
+
+        return ""
+    }
+}
+```
+
+```swift
+class Solution {
+    func gcdOfStrings(_ str1: String, _ str2: String) -> String {
+        let len1 = str1.count
+        let len2 = str2.count
+        let arr1 = Array(str1)
+        let arr2 = Array(str2)
+
+        func isDivisor(_ l: Int) -> Bool {
+            if len1 % l != 0 || len2 % l != 0 { return false }
+            let f1 = len1 / l
+            let f2 = len2 / l
+            let sub = String(arr1[0..<l])
+            return String(repeating: sub, count: f1) == str1 &&
+                   String(repeating: sub, count: f2) == str2
+        }
+
+        for l in stride(from: min(len1, len2), through: 1, by: -1) {
+            if isDivisor(l) {
+                return String(arr1[0..<l])
+            }
+        }
+
+        return ""
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn gcd_of_strings(str1: String, str2: String) -> String {
+        let len1 = str1.len();
+        let len2 = str2.len();
+        let b1 = str1.as_bytes();
+        let b2 = str2.as_bytes();
+
+        let is_divisor = |l: usize| -> bool {
+            if len1 % l != 0 || len2 % l != 0 {
+                return false;
+            }
+            let sub = &b1[..l];
+            let f1 = len1 / l;
+            let f2 = len2 / l;
+            let repeated1: Vec<u8> = sub.iter().copied().cycle().take(l * f1).collect();
+            let repeated2: Vec<u8> = sub.iter().copied().cycle().take(l * f2).collect();
+            repeated1 == b1 && repeated2 == b2
+        };
+
+        for l in (1..=len1.min(len2)).rev() {
+            if is_divisor(l) {
+                return str1[..l].to_string();
+            }
+        }
+
+        String::new()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -143,6 +284,20 @@ public class Solution {
 ---
 
 ## 2. Iteration (Space Optimized)
+
+### Intuition
+
+Instead of constructing repeated strings and comparing them (which uses extra space), we can validate a candidate divisor by checking character-by-character using modular indexing. Each character at position `i` should match the character at position `i % l` in the candidate prefix.
+
+### Algorithm
+
+1. Ensure `str1` is the longer string by swapping if necessary.
+2. For each possible length `l` from `n` down to `1`:
+    - Check if `l` divides both lengths.
+    - Verify that `str1[i] == str2[i % l]` for all positions in `str1`.
+    - Verify that `str2[i] == str2[i % l]` for positions from `l` to `n`.
+3. Return the prefix `str2[:l]` if all checks pass.
+4. Return an empty string if no valid divisor exists.
 
 ::tabs-start
 
@@ -338,6 +493,165 @@ public class Solution {
 }
 ```
 
+```go
+func gcdOfStrings(str1 string, str2 string) string {
+    m, n := len(str1), len(str2)
+    if m < n {
+        m, n = n, m
+        str1, str2 = str2, str1
+    }
+
+    for l := n; l > 0; l-- {
+        if m%l != 0 || n%l != 0 {
+            continue
+        }
+
+        valid := true
+        for i := 0; i < m; i++ {
+            if str1[i] != str2[i%l] {
+                valid = false
+                break
+            }
+        }
+        if !valid {
+            continue
+        }
+
+        for i := l; i < n; i++ {
+            if str2[i] != str2[i%l] {
+                valid = false
+                break
+            }
+        }
+
+        if valid {
+            return str2[:l]
+        }
+    }
+
+    return ""
+}
+```
+
+```kotlin
+class Solution {
+    fun gcdOfStrings(str1: String, str2: String): String {
+        var s1 = str1
+        var s2 = str2
+        var m = s1.length
+        var n = s2.length
+        if (m < n) {
+            s1 = str2.also { s2 = str1 }
+            m = n.also { n = m }
+        }
+
+        for (l in n downTo 1) {
+            if (m % l != 0 || n % l != 0) continue
+
+            var valid = true
+            for (i in 0 until m) {
+                if (s1[i] != s2[i % l]) {
+                    valid = false
+                    break
+                }
+            }
+            if (!valid) continue
+
+            for (i in l until n) {
+                if (s2[i] != s2[i % l]) {
+                    valid = false
+                    break
+                }
+            }
+
+            if (valid) return s2.substring(0, l)
+        }
+
+        return ""
+    }
+}
+```
+
+```swift
+class Solution {
+    func gcdOfStrings(_ str1: String, _ str2: String) -> String {
+        var s1 = Array(str1)
+        var s2 = Array(str2)
+        var m = s1.count
+        var n = s2.count
+        if m < n {
+            swap(&s1, &s2)
+            swap(&m, &n)
+        }
+
+        for l in stride(from: n, through: 1, by: -1) {
+            if m % l != 0 || n % l != 0 { continue }
+
+            var valid = true
+            for i in 0..<m {
+                if s1[i] != s2[i % l] {
+                    valid = false
+                    break
+                }
+            }
+            if !valid { continue }
+
+            for i in l..<n {
+                if s2[i] != s2[i % l] {
+                    valid = false
+                    break
+                }
+            }
+
+            if valid { return String(s2[0..<l]) }
+        }
+
+        return ""
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn gcd_of_strings(str1: String, str2: String) -> String {
+        let (mut s1, mut s2) = (str1.as_bytes().to_vec(), str2.as_bytes().to_vec());
+        let (mut m, mut n) = (s1.len(), s2.len());
+        if m < n {
+            std::mem::swap(&mut s1, &mut s2);
+            std::mem::swap(&mut m, &mut n);
+        }
+
+        for l in (1..=n).rev() {
+            if m % l != 0 || n % l != 0 {
+                continue;
+            }
+
+            let mut valid = true;
+            for i in 0..m {
+                if s1[i] != s2[i % l] {
+                    valid = false;
+                    break;
+                }
+            }
+            if !valid { continue; }
+
+            for i in l..n {
+                if s2[i] != s2[i % l] {
+                    valid = false;
+                    break;
+                }
+            }
+
+            if valid {
+                return String::from_utf8(s2[..l].to_vec()).unwrap();
+            }
+        }
+
+        String::new()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -350,6 +664,16 @@ public class Solution {
 ---
 
 ## 3. Greatest Common Divisor
+
+### Intuition
+
+If a common divisor string exists, then concatenating the two strings in either order must produce the same result: `str1 + str2 == str2 + str1`. This is because both strings are built from the same repeating pattern. Once verified, the GCD of the two string lengths gives us the length of the largest common divisor.
+
+### Algorithm
+
+1. Check if `str1 + str2 == str2 + str1`. If not, return an empty string.
+2. Compute `g = gcd(len(str1), len(str2))`.
+3. Return the prefix `str1[:g]`.
 
 ::tabs-start
 
@@ -432,6 +756,66 @@ public class Solution {
 }
 ```
 
+```go
+func gcdOfStrings(str1 string, str2 string) string {
+    if str1+str2 != str2+str1 {
+        return ""
+    }
+    var gcd func(a, b int) int
+    gcd = func(a, b int) int {
+        if b == 0 {
+            return a
+        }
+        return gcd(b, a%b)
+    }
+    return str1[:gcd(len(str1), len(str2))]
+}
+```
+
+```kotlin
+class Solution {
+    fun gcdOfStrings(str1: String, str2: String): String {
+        if (str1 + str2 != str2 + str1) {
+            return ""
+        }
+        fun gcd(a: Int, b: Int): Int = if (b == 0) a else gcd(b, a % b)
+        return str1.substring(0, gcd(str1.length, str2.length))
+    }
+}
+```
+
+```swift
+class Solution {
+    func gcdOfStrings(_ str1: String, _ str2: String) -> String {
+        if str1 + str2 != str2 + str1 {
+            return ""
+        }
+        func gcd(_ a: Int, _ b: Int) -> Int {
+            return b == 0 ? a : gcd(b, a % b)
+        }
+        let g = gcd(str1.count, str2.count)
+        return String(str1.prefix(g))
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn gcd_of_strings(str1: String, str2: String) -> String {
+        if format!("{}{}", str1, str2) != format!("{}{}", str2, str1) {
+            return String::new();
+        }
+
+        fn gcd(a: usize, b: usize) -> usize {
+            if b == 0 { a } else { gcd(b, a % b) }
+        }
+
+        let g = gcd(str1.len(), str2.len());
+        str1[..g].to_string()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -444,6 +828,18 @@ public class Solution {
 ---
 
 ## 4. Greatest Common Divisor (Space Optimized)
+
+### Intuition
+
+We can avoid the concatenation check (which requires O(m+n) space) by directly validating the divisor property. Compute the GCD of the lengths, then verify that every character in both strings matches the corresponding character in the first `g` characters, using modular indexing.
+
+### Algorithm
+
+1. Compute `g = gcd(len(str1), len(str2))`.
+2. For each index `i` in `str1`, verify `str1[i] == str1[i % g]`.
+3. For each index `i` in `str2`, verify `str2[i] == str1[i % g]`.
+4. If all checks pass, return `str1[:g]`.
+5. Otherwise, return an empty string.
 
 ::tabs-start
 
@@ -566,6 +962,111 @@ public class Solution {
 }
 ```
 
+```go
+func gcdOfStrings(str1 string, str2 string) string {
+    var gcd func(a, b int) int
+    gcd = func(a, b int) int {
+        if b == 0 {
+            return a
+        }
+        return gcd(b, a%b)
+    }
+    g := gcd(len(str1), len(str2))
+
+    for i := 0; i < len(str1); i++ {
+        if str1[i] != str1[i%g] {
+            return ""
+        }
+    }
+
+    for i := 0; i < len(str2); i++ {
+        if str2[i] != str1[i%g] {
+            return ""
+        }
+    }
+
+    return str1[:g]
+}
+```
+
+```kotlin
+class Solution {
+    fun gcdOfStrings(str1: String, str2: String): String {
+        fun gcd(a: Int, b: Int): Int = if (b == 0) a else gcd(b, a % b)
+        val g = gcd(str1.length, str2.length)
+
+        for (i in str1.indices) {
+            if (str1[i] != str1[i % g]) {
+                return ""
+            }
+        }
+
+        for (i in str2.indices) {
+            if (str2[i] != str1[i % g]) {
+                return ""
+            }
+        }
+
+        return str1.substring(0, g)
+    }
+}
+```
+
+```swift
+class Solution {
+    func gcdOfStrings(_ str1: String, _ str2: String) -> String {
+        func gcd(_ a: Int, _ b: Int) -> Int {
+            return b == 0 ? a : gcd(b, a % b)
+        }
+        let g = gcd(str1.count, str2.count)
+        let s1 = Array(str1)
+        let s2 = Array(str2)
+
+        for i in 0..<s1.count {
+            if s1[i] != s1[i % g] {
+                return ""
+            }
+        }
+
+        for i in 0..<s2.count {
+            if s2[i] != s1[i % g] {
+                return ""
+            }
+        }
+
+        return String(s1[0..<g])
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn gcd_of_strings(str1: String, str2: String) -> String {
+        fn gcd(a: usize, b: usize) -> usize {
+            if b == 0 { a } else { gcd(b, a % b) }
+        }
+
+        let g = gcd(str1.len(), str2.len());
+        let s1 = str1.as_bytes();
+        let s2 = str2.as_bytes();
+
+        for i in 0..s1.len() {
+            if s1[i] != s1[i % g] {
+                return String::new();
+            }
+        }
+
+        for i in 0..s2.len() {
+            if s2[i] != s1[i % g] {
+                return String::new();
+            }
+        }
+
+        str1[..g].to_string()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -574,3 +1075,15 @@ public class Solution {
 - Space complexity: $O(g)$ for the output string.
 
 > Where $m$ is the length of the string $str1$, $n$ is the length of the string $str2$, and $g$ is the GCD of $m$ and $n$.
+
+---
+
+## Common Pitfalls
+
+### Skipping the Concatenation Check
+
+The key insight is that if a common divisor string exists, then `str1 + str2` must equal `str2 + str1`. Skipping this check and directly returning `str1[:gcd(len1, len2)]` will produce wrong answers for cases where no valid divisor exists, such as `str1 = "LEET"` and `str2 = "CODE"`.
+
+### Confusing GCD of Lengths with GCD of Strings
+
+The GCD of the string lengths tells you the candidate divisor length, but it does not guarantee that the prefix of that length actually divides both strings. You must verify that the candidate pattern repeats correctly to form both original strings, either through the concatenation check or by explicitly validating the pattern.

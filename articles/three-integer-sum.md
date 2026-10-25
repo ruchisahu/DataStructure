@@ -1,4 +1,34 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Sorting** - Sorting the array enables efficient duplicate handling and two-pointer technique
+- **Two pointers** - The optimal solution uses two pointers to find pairs that sum to a target
+- **Hash maps** - An alternative approach uses hash maps for O(1) lookups
+- **Handling duplicates** - Skipping duplicate values to avoid repeated triplets in the result
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+The brute-force approach simply tries every possible triplet.
+Since we check all combinations `(i, j, k)` with `i < j < k`, we are guaranteed to find all sets of three numbers that sum to zero.
+Sorting helps keep the triplets in order and makes it easier to avoid duplicates by storing them in a set.
+
+### Algorithm
+
+1. Sort the array to make handling duplicates easier.
+2. Create an empty set `res` to store unique triplets.
+3. Use three nested loops:
+    - For each `i`,
+    - For each `j > i`,
+    - For each `k > j`,
+        - Check if `nums[i] + nums[j] + nums[k] == 0`.
+        - If true, add the sorted triplet to the set.
+4. Convert the set of tuples back into a list of lists.
+5. Return the result.
 
 ::tabs-start
 
@@ -166,18 +196,67 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn three_sum(mut nums: Vec<i32>) -> Vec<Vec<i32>> {
+        let mut res: HashSet<Vec<i32>> = HashSet::new();
+        nums.sort();
+        let n = nums.len();
+        for i in 0..n {
+            for j in (i + 1)..n {
+                for k in (j + 1)..n {
+                    if nums[i] + nums[j] + nums[k] == 0 {
+                        res.insert(vec![nums[i], nums[j], nums[k]]);
+                    }
+                }
+            }
+        }
+        res.into_iter().collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n ^ 3)$
-- Space complexity: $O(m)$
+- Space complexity: $O(m)$, plus the space used by the sorting algorithm.
+    - This excludes the space used for the output list.
+    - $O(m)$ is used for storing unique triplets in a set.
+    - In the worst case, $m$ is $O(n ^ 2)$.
+    - If the output list is included, the space is still $O(m)$, plus sorting space.
 
-> Where $m$ is the number of triplets and $n$ is the length of the given array.
+> Where $m$ is the number of unique triplets and $n$ is the length of the given array.
 
 ---
 
 ## 2. Hash Map
+
+### Intuition
+
+After sorting the array, we can fix two numbers and look for the third number that completes the triplet.
+To do this efficiently, we use a hash map that stores how many times each number appears.
+As we pick the first and second numbers, we temporarily reduce their counts in the map so we don't reuse them.
+Then we check whether the needed third value still exists in the map.
+Sorting also helps us skip duplicates easily so we only add unique triplets.
+
+### Algorithm
+
+1. Sort the array to organize duplicates and allow easy skipping.
+2. Build a frequency map `count` for all numbers.
+3. Initialize an empty list `res` for storing valid triplets.
+4. Loop through each index `i`:
+    - Decrease the count of `nums[i]` (so it won't be reused).
+    - Skip duplicates of the first element.
+    - Loop through each index `j > i`:
+        - Decrease the count of `nums[j]`.
+        - Skip duplicates of the second element.
+        - Compute the needed third value:
+          `target = -(nums[i] + nums[j])`
+        - If `target` still has a positive count, add the triplet.
+    - After finishing all `j`s, restore the counts for the second loop by adding back the decremented values.
+5. Return `res` containing all found triplets.
 
 ::tabs-start
 
@@ -455,16 +534,93 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn three_sum(mut nums: Vec<i32>) -> Vec<Vec<i32>> {
+        nums.sort();
+        let mut count = HashMap::new();
+        for &num in &nums {
+            *count.entry(num).or_insert(0) += 1;
+        }
+
+        let mut res = Vec::new();
+        let n = nums.len();
+        for i in 0..n {
+            *count.get_mut(&nums[i]).unwrap() -= 1;
+            if i > 0 && nums[i] == nums[i - 1] {
+                continue;
+            }
+            for j in (i + 1)..n {
+                *count.get_mut(&nums[j]).unwrap() -= 1;
+                if j > i + 1 && nums[j] == nums[j - 1] {
+                    continue;
+                }
+                let target = -(nums[i] + nums[j]);
+                if *count.get(&target).unwrap_or(&0) > 0 {
+                    res.push(vec![nums[i], nums[j], target]);
+                }
+            }
+            for j in (i + 1)..n {
+                *count.get_mut(&nums[j]).unwrap() += 1;
+            }
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n ^ 2)$
 - Space complexity: $O(n)$
+    - This excludes the space used for the output list.
+    - $O(n)$ is used for the frequency map.
+    - If the output list is included, the space is $O(n + m)$, which is $O(n^2)$ in the worst case.
+
+> Where $m$ is the number of unique triplets and $n$ is the length of the given array.
 
 ---
 
 ## 3. Two Pointers
+
+### Intuition
+
+After sorting the array, we can fix one number and then search for the other two using the two-pointer technique.
+Sorting helps in two ways:
+
+1. It lets us skip duplicates easily.
+2. It ensures that moving the left or right pointer will increase or decrease the sum in a predictable way.
+
+For each fixed number `a`, we place two pointers:
+
+- `l` starts just after `i`,
+- `r` starts at the end.
+
+If the current sum is too large, we move `r` left to reduce it.
+If the sum is too small, we move `l` right to increase it.
+When the sum is exactly zero, we record the triplet and skip duplicates.
+
+### Algorithm
+
+1. Sort the array to handle duplicates and enable two-pointer logic.
+2. Loop through the array using index `i`:
+    - Let `a = nums[i]`.
+    - If `a > 0`, break (all remaining numbers are positive).
+    - Skip duplicate values for the first number.
+3. Set two pointers:
+    - `l = i + 1`
+    - `r = len(nums) - 1`
+4. While `l < r`:
+    - Compute `threeSum = a + nums[l] + nums[r]`.
+    - If `threeSum > 0`, move `r` left.
+    - If `threeSum < 0`, move `l` right.
+    - If `threeSum == 0`:
+        - Add the triplet to the result.
+        - Move both pointers inward.
+        - Skip duplicates at the left pointer.
+5. Return the list of all valid triplets.
 
 ::tabs-start
 
@@ -740,13 +896,68 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn three_sum(mut nums: Vec<i32>) -> Vec<Vec<i32>> {
+        nums.sort();
+        let mut res = Vec::new();
+        let n = nums.len();
+
+        for i in 0..n {
+            let a = nums[i];
+            if a > 0 {
+                break;
+            }
+            if i > 0 && a == nums[i - 1] {
+                continue;
+            }
+
+            let (mut l, mut r) = (i + 1, n - 1);
+            while l < r {
+                let sum = a + nums[l] + nums[r];
+                if sum > 0 {
+                    r -= 1;
+                } else if sum < 0 {
+                    l += 1;
+                } else {
+                    res.push(vec![a, nums[l], nums[r]]);
+                    l += 1;
+                    r -= 1;
+                    while l < r && nums[l] == nums[l - 1] {
+                        l += 1;
+                    }
+                }
+            }
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
-- Time complexity: $O(n ^ 2)$
-- Space complexity:
-    - $O(1)$ or $O(n)$ extra space depending on the sorting algorithm.
-    - $O(m)$ space for the output list.
+- Time complexity: $O(n^2)$
+- Space complexity: $O(1)$, plus the space used by the sorting algorithm.
+    - This excludes the space used for the output list.
+    - In Python (CPython), `nums.sort()` modifies the list in place but uses $O(n)$ auxiliary space in the worst case, so the Python solution uses $O(n)$ auxiliary space.
+    - If the output list is included, the space is $O(m)$ plus sorting space ($O(n + m)$ in Python), which is $O(n^2)$ in the worst case.
 
-> Where $m$ is the number of triplets and $n$ is the length of the given array.
+> Where $m$ is the number of unique triplets and $n$ is the length of the given array.
+
+---
+
+## Common Pitfalls
+
+### Forgetting to Skip Duplicates
+
+A common mistake is not properly skipping duplicate values, which leads to duplicate triplets in the result. After sorting, when you find a valid triplet, you must skip over all identical values for the first element (outer loop) and the left pointer. Failing to do this causes wrong answers on inputs like `[-1, -1, 0, 1, 1]`.
+
+### Not Sorting the Array First
+
+The two-pointer approach only works correctly on a sorted array. Without sorting, moving pointers based on sum comparisons does not guarantee you will find all valid triplets. Always sort the input array before applying the two-pointer technique.
+
+### Incorrect Early Termination
+
+When the first element `nums[i]` is positive, all remaining elements are also positive (since the array is sorted), so no triplet can sum to zero. However, incorrectly breaking when `nums[i] >= 0` instead of `nums[i] > 0` misses cases like `[0, 0, 0]`. The break condition should be `nums[i] > 0`, not `nums[i] >= 0`.

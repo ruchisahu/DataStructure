@@ -1,4 +1,26 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **String Traversal** - Iterating through characters in a string one by one
+- **Stack Data Structure** - Understanding how stacks work for tracking nested/paired elements
+- **Recursion Basics** - Using recursive function calls to process sequential data
+
+---
+
 ## 1. Recursion
+
+### Intuition
+
+We can process the string from right to left using recursion. Each open parenthesis increases our depth count, and each close parenthesis decreases it. By tracking the maximum absolute value of this count at any point, we find the deepest nesting level. Processing from right to left means we encounter closing parentheses first, which decrement the counter, and opening parentheses later, which increment it.
+
+### Algorithm
+
+1. Initialize a result variable `res` to track the maximum depth.
+2. Use recursion starting from index `0`. At each step, first recurse to the next index to get the running count.
+3. If the current character is `(`, increment the count. If it's `)`, decrement the count.
+4. Update `res` with the maximum of `res` and the absolute value of the count.
+5. Return the final result after processing all characters.
 
 ::tabs-start
 
@@ -125,7 +147,7 @@ public class Solution {
             int cur = Dfs(i + 1);
             if (s[i] == '(') {
                 cur += 1;
-            } 
+            }
             else if (s[i] == ')') {
                 cur -= 1;
             }
@@ -140,6 +162,121 @@ public class Solution {
 }
 ```
 
+```go
+func maxDepth(s string) int {
+    res := 0
+
+    var dfs func(i int) int
+    dfs = func(i int) int {
+        if i == len(s) {
+            return 0
+        }
+
+        cur := dfs(i + 1)
+        if s[i] == '(' {
+            cur += 1
+        } else if s[i] == ')' {
+            cur -= 1
+        }
+
+        if cur < 0 {
+            if -cur > res {
+                res = -cur
+            }
+        } else {
+            if cur > res {
+                res = cur
+            }
+        }
+        return cur
+    }
+
+    dfs(0)
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun maxDepth(s: String): Int {
+        var res = 0
+
+        fun dfs(i: Int): Int {
+            if (i == s.length) {
+                return 0
+            }
+
+            var cur = dfs(i + 1)
+            if (s[i] == '(') {
+                cur += 1
+            } else if (s[i] == ')') {
+                cur -= 1
+            }
+
+            res = maxOf(res, kotlin.math.abs(cur))
+            return cur
+        }
+
+        dfs(0)
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func maxDepth(_ s: String) -> Int {
+        var res = 0
+        let chars = Array(s)
+
+        func dfs(_ i: Int) -> Int {
+            if i == chars.count {
+                return 0
+            }
+
+            var cur = dfs(i + 1)
+            if chars[i] == "(" {
+                cur += 1
+            } else if chars[i] == ")" {
+                cur -= 1
+            }
+
+            res = max(res, abs(cur))
+            return cur
+        }
+
+        dfs(0)
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn max_depth(s: String) -> i32 {
+        let s = s.as_bytes();
+        let mut res = 0;
+
+        fn dfs(s: &[u8], i: usize, res: &mut i32) -> i32 {
+            if i == s.len() {
+                return 0;
+            }
+            let mut cur = dfs(s, i + 1, res);
+            if s[i] == b'(' {
+                cur += 1;
+            } else if s[i] == b')' {
+                cur -= 1;
+            }
+            *res = (*res).max(cur.abs());
+            cur
+        }
+
+        dfs(s, 0, &mut res);
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -150,6 +287,18 @@ public class Solution {
 ---
 
 ## 2. Stack
+
+### Intuition
+
+A stack naturally models nested structures. Each time we see an opening parenthesis, we push it onto the stack, increasing the current depth. Each closing parenthesis pops from the stack, decreasing the depth. The maximum stack size during traversal equals the maximum nesting depth.
+
+### Algorithm
+
+1. Initialize an empty stack and a result variable `res = 0`.
+2. Iterate through each character in the string.
+3. If the character is `(`, push it onto the stack and update `res` with the maximum of `res` and the current stack size.
+4. If the character is `)`, pop from the stack.
+5. Return `res` after processing all characters.
 
 ::tabs-start
 
@@ -243,13 +392,93 @@ public class Solution {
             if (c == '(') {
                 stack.Push(c);
                 res = Math.Max(res, stack.Count);
-            } 
+            }
             else if (c == ')') {
                 stack.Pop();
             }
         }
 
         return res;
+    }
+}
+```
+
+```go
+func maxDepth(s string) int {
+    res := 0
+    stack := []rune{}
+
+    for _, c := range s {
+        if c == '(' {
+            stack = append(stack, c)
+            if len(stack) > res {
+                res = len(stack)
+            }
+        } else if c == ')' {
+            stack = stack[:len(stack)-1]
+        }
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun maxDepth(s: String): Int {
+        var res = 0
+        val stack = ArrayDeque<Char>()
+
+        for (c in s) {
+            if (c == '(') {
+                stack.addLast(c)
+                res = maxOf(res, stack.size)
+            } else if (c == ')') {
+                stack.removeLast()
+            }
+        }
+
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func maxDepth(_ s: String) -> Int {
+        var res = 0
+        var stack = [Character]()
+
+        for c in s {
+            if c == "(" {
+                stack.append(c)
+                res = max(res, stack.count)
+            } else if c == ")" {
+                stack.removeLast()
+            }
+        }
+
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn max_depth(s: String) -> i32 {
+        let mut res = 0;
+        let mut stack = Vec::new();
+
+        for c in s.chars() {
+            if c == '(' {
+                stack.push(c);
+                res = res.max(stack.len() as i32);
+            } else if c == ')' {
+                stack.pop();
+            }
+        }
+
+        res
     }
 }
 ```
@@ -264,6 +493,18 @@ public class Solution {
 ---
 
 ## 3. Iteration
+
+### Intuition
+
+We don't actually need to store the parentheses in a stack. Since we only care about the depth (stack size), we can replace the stack with a simple counter. This reduces space complexity to O(1) while maintaining the same logic.
+
+### Algorithm
+
+1. Initialize `res = 0` to track the maximum depth and `cur = 0` to track the current depth.
+2. Iterate through each character in the string.
+3. If the character is `(`, increment `cur`. If it's `)`, decrement `cur`.
+4. After each character, update `res` with the maximum of `res` and `cur`.
+5. Return `res`.
 
 ::tabs-start
 
@@ -356,7 +597,7 @@ public class Solution {
         foreach (char c in s) {
             if (c == '(') {
                 cur++;
-            } 
+            }
             else if (c == ')') {
                 cur--;
             }
@@ -368,9 +609,101 @@ public class Solution {
 }
 ```
 
+```go
+func maxDepth(s string) int {
+    res := 0
+    cur := 0
+
+    for _, c := range s {
+        if c == '(' {
+            cur++
+        } else if c == ')' {
+            cur--
+        }
+        if cur > res {
+            res = cur
+        }
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun maxDepth(s: String): Int {
+        var res = 0
+        var cur = 0
+
+        for (c in s) {
+            if (c == '(') {
+                cur++
+            } else if (c == ')') {
+                cur--
+            }
+            res = maxOf(res, cur)
+        }
+
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func maxDepth(_ s: String) -> Int {
+        var res = 0
+        var cur = 0
+
+        for c in s {
+            if c == "(" {
+                cur += 1
+            } else if c == ")" {
+                cur -= 1
+            }
+            res = max(res, cur)
+        }
+
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn max_depth(s: String) -> i32 {
+        let mut res = 0;
+        let mut cur = 0;
+
+        for c in s.chars() {
+            if c == '(' {
+                cur += 1;
+            } else if c == ')' {
+                cur -= 1;
+            }
+            res = res.max(cur);
+        }
+
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(1)$ extra space.
+
+---
+
+## Common Pitfalls
+
+### Counting All Characters
+
+A frequent mistake is incrementing or decrementing the depth counter for every character in the string. The string may contain digits, operators, and other characters that should be ignored. Only parentheses `(` and `)` affect the nesting depth.
+
+### Updating Maximum at the Wrong Time
+
+When using a counter approach, the maximum depth should be updated after incrementing for `(`, not after decrementing for `)`. Updating after processing `)` will miss the peak depth that occurred when the matching `(` was processed.

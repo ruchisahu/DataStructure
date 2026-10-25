@@ -1,4 +1,28 @@
+## Prerequisites
+Before attempting this problem, you should be comfortable with:
+- **Binary Number System** - Understanding how binary addition works with carry propagation
+- **String Manipulation** - Iterating through strings, reversing, and building result strings character by character
+- **Two Pointers** - Using two pointers to traverse strings of different lengths simultaneously from the end
+
+---
+
 ## 1. Iteration
+
+### Intuition
+
+Adding binary numbers works just like adding decimal numbers by hand, except we only have digits 0 and 1. We start from the rightmost digits (least significant bits) and add corresponding digits along with any carry from the previous position. If the sum is 2 or more, we carry 1 to the next position. We reverse both strings first to make indexing from the right easier, then build the result and reverse it at the end.
+
+### Algorithm
+
+1. Reverse both input strings for easier right-to-left processing.
+2. Initialize `carry = 0` and an empty result string.
+3. For each position from 0 to the maximum length of the two strings:
+   - Get the digit from each string (0 if past the string's length).
+   - Calculate `total = digitA + digitB + carry`.
+   - Append `total % 2` to the result.
+   - Update `carry = total / 2`.
+4. If `carry` remains, append "1".
+5. Reverse the result string and return.
 
 ::tabs-start
 
@@ -147,6 +171,132 @@ public class Solution {
 }
 ```
 
+```go
+func addBinary(a string, b string) string {
+    res := []byte{}
+    carry := 0
+
+    aBytes := []byte(a)
+    bBytes := []byte(b)
+    for i, j := 0, len(aBytes)-1; i < j; i, j = i+1, j-1 {
+        aBytes[i], aBytes[j] = aBytes[j], aBytes[i]
+    }
+    for i, j := 0, len(bBytes)-1; i < j; i, j = i+1, j-1 {
+        bBytes[i], bBytes[j] = bBytes[j], bBytes[i]
+    }
+
+    n := len(aBytes)
+    if len(bBytes) > n {
+        n = len(bBytes)
+    }
+
+    for i := 0; i < n; i++ {
+        digitA := 0
+        digitB := 0
+        if i < len(aBytes) {
+            digitA = int(aBytes[i] - '0')
+        }
+        if i < len(bBytes) {
+            digitB = int(bBytes[i] - '0')
+        }
+
+        total := digitA + digitB + carry
+        res = append(res, byte(total%2)+'0')
+        carry = total / 2
+    }
+
+    if carry > 0 {
+        res = append(res, '1')
+    }
+
+    for i, j := 0, len(res)-1; i < j; i, j = i+1, j-1 {
+        res[i], res[j] = res[j], res[i]
+    }
+    return string(res)
+}
+```
+
+```kotlin
+class Solution {
+    fun addBinary(a: String, b: String): String {
+        val res = StringBuilder()
+        var carry = 0
+
+        val sa = a.reversed()
+        val sb = b.reversed()
+
+        for (i in 0 until maxOf(sa.length, sb.length)) {
+            val digitA = if (i < sa.length) sa[i] - '0' else 0
+            val digitB = if (i < sb.length) sb[i] - '0' else 0
+
+            val total = digitA + digitB + carry
+            res.append((total % 2))
+            carry = total / 2
+        }
+
+        if (carry > 0) {
+            res.append('1')
+        }
+
+        return res.reverse().toString()
+    }
+}
+```
+
+```swift
+class Solution {
+    func addBinary(_ a: String, _ b: String) -> String {
+        var res = ""
+        var carry = 0
+
+        let aArr = Array(a.reversed())
+        let bArr = Array(b.reversed())
+
+        for i in 0..<max(aArr.count, bArr.count) {
+            let digitA = i < aArr.count ? Int(String(aArr[i]))! : 0
+            let digitB = i < bArr.count ? Int(String(bArr[i]))! : 0
+
+            let total = digitA + digitB + carry
+            res = String(total % 2) + res
+            carry = total / 2
+        }
+
+        if carry > 0 {
+            res = "1" + res
+        }
+
+        return res
+    }
+}
+```
+
+
+```rust
+impl Solution {
+    pub fn add_binary(a: String, b: String) -> String {
+        let mut res = String::new();
+        let mut carry = 0;
+
+        let a: Vec<u8> = a.bytes().rev().collect();
+        let b: Vec<u8> = b.bytes().rev().collect();
+
+        for i in 0..a.len().max(b.len()) {
+            let digit_a = if i < a.len() { (a[i] - b'0') as i32 } else { 0 };
+            let digit_b = if i < b.len() { (b[i] - b'0') as i32 } else { 0 };
+
+            let total = digit_a + digit_b + carry;
+            res.insert(0, char::from(b'0' + (total % 2) as u8));
+            carry = total / 2;
+        }
+
+        if carry > 0 {
+            res.insert(0, '1');
+        }
+
+        res
+    }
+}
+```
 ::tabs-end
 
 ### Time & Space Complexity
@@ -159,6 +309,23 @@ public class Solution {
 ---
 
 ## 2. Iteration (Optimal)
+
+### Intuition
+
+Instead of reversing the strings upfront, we can use two pointers starting at the end of each string and work backward. This avoids the extra space and time needed to reverse the input strings. We continue until both pointers have moved past the beginning of their strings and no carry remains. The result is built in reverse order, so we reverse it once at the end.
+
+### Algorithm
+
+1. Initialize pointers `i` and `j` at the last index of strings `a` and `b`.
+2. Initialize `carry = 0` and an empty result list.
+3. While `i >= 0` or `j >= 0` or `carry > 0`:
+   - Get the digit at position `i` in `a` (0 if `i < 0`).
+   - Get the digit at position `j` in `b` (0 if `j < 0`).
+   - Calculate `total = digitA + digitB + carry`.
+   - Append `total % 2` to the result.
+   - Update `carry = total / 2`.
+   - Decrement both `i` and `j`.
+4. Reverse the result and return as a string.
 
 ::tabs-start
 
@@ -290,6 +457,119 @@ public class Solution {
 }
 ```
 
+```go
+func addBinary(a string, b string) string {
+    res := []byte{}
+    carry := 0
+
+    i, j := len(a)-1, len(b)-1
+    for i >= 0 || j >= 0 || carry > 0 {
+        digitA := 0
+        digitB := 0
+        if i >= 0 {
+            digitA = int(a[i] - '0')
+        }
+        if j >= 0 {
+            digitB = int(b[j] - '0')
+        }
+
+        total := digitA + digitB + carry
+        res = append(res, byte(total%2)+'0')
+        carry = total / 2
+
+        i--
+        j--
+    }
+
+    for l, r := 0, len(res)-1; l < r; l, r = l+1, r-1 {
+        res[l], res[r] = res[r], res[l]
+    }
+    return string(res)
+}
+```
+
+```kotlin
+class Solution {
+    fun addBinary(a: String, b: String): String {
+        val res = StringBuilder()
+        var carry = 0
+
+        var i = a.length - 1
+        var j = b.length - 1
+        while (i >= 0 || j >= 0 || carry > 0) {
+            val digitA = if (i >= 0) a[i] - '0' else 0
+            val digitB = if (j >= 0) b[j] - '0' else 0
+
+            val total = digitA + digitB + carry
+            res.append(total % 2)
+            carry = total / 2
+
+            i--
+            j--
+        }
+
+        return res.reverse().toString()
+    }
+}
+```
+
+```swift
+class Solution {
+    func addBinary(_ a: String, _ b: String) -> String {
+        var res = [Character]()
+        var carry = 0
+
+        let aArr = Array(a)
+        let bArr = Array(b)
+        var i = aArr.count - 1
+        var j = bArr.count - 1
+
+        while i >= 0 || j >= 0 || carry > 0 {
+            let digitA = i >= 0 ? Int(String(aArr[i]))! : 0
+            let digitB = j >= 0 ? Int(String(bArr[j]))! : 0
+
+            let total = digitA + digitB + carry
+            res.append(Character(String(total % 2)))
+            carry = total / 2
+
+            i -= 1
+            j -= 1
+        }
+
+        return String(res.reversed())
+    }
+}
+```
+
+
+```rust
+impl Solution {
+    pub fn add_binary(a: String, b: String) -> String {
+        let mut res = Vec::new();
+        let mut carry = 0;
+
+        let a = a.as_bytes();
+        let b = b.as_bytes();
+        let mut i = a.len() as i32 - 1;
+        let mut j = b.len() as i32 - 1;
+
+        while i >= 0 || j >= 0 || carry > 0 {
+            let digit_a = if i >= 0 { (a[i as usize] - b'0') as i32 } else { 0 };
+            let digit_b = if j >= 0 { (b[j as usize] - b'0') as i32 } else { 0 };
+
+            let total = digit_a + digit_b + carry;
+            res.push(b'0' + (total % 2) as u8);
+            carry = total / 2;
+
+            i -= 1;
+            j -= 1;
+        }
+
+        res.reverse();
+        String::from_utf8(res).unwrap()
+    }
+}
+```
 ::tabs-end
 
 ### Time & Space Complexity
@@ -298,3 +578,21 @@ public class Solution {
 - Space complexity: $O(max(m, n))$
 
 > Where $m$ and $n$ are the lengths of the strings $a$ and $b$ respectively.
+
+---
+
+## Common Pitfalls
+
+### Forgetting the Final Carry
+After processing all digits, there may still be a carry of 1 that needs to be added to the result. Forgetting to check for this will produce incorrect results for cases like "1" + "1" = "10".
+```python
+# Wrong: missing final carry check
+return ''.join(res)
+# Correct: handle remaining carry
+if carry:
+    res.append('1')
+return ''.join(res)
+```
+
+### Processing Strings in Wrong Direction
+Binary addition must process digits from right to left (least significant to most significant). A common mistake is iterating from the start of the strings instead of the end, which produces completely wrong results.

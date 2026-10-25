@@ -1,4 +1,41 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Binary Search Tree Properties** - Understanding that left subtree values must be less than the node and right subtree values must be greater
+- **Tree Traversal (DFS/BFS)** - Navigating through tree nodes using depth-first or breadth-first approaches
+- **Recursion** - Passing constraints (valid ranges) down through recursive calls
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+To check if a tree is a valid **Binary Search Tree (BST)**, every node must satisfy:
+
+- All values in its **left subtree** are **strictly less** than the node’s value.
+- All values in its **right subtree** are **strictly greater** than the node’s value.
+
+In this brute force idea, for **each node** we:
+
+1. Check **all nodes** in its left subtree to confirm they are `< node.val`.
+2. Check **all nodes** in its right subtree to confirm they are `> node.val`.
+3. Then recursively repeat the same process for each child as a new root.
+
+This re-checks many nodes multiple times, so it’s correct but not efficient.
+
+### Algorithm
+
+1. If the tree is empty → return `true`.
+2. For the current node:
+    - Run a helper on its left subtree to ensure every value < current value.
+    - Run a helper on its right subtree to ensure every value > current value.
+    - If either check fails → return `false`.
+3. Recursively:
+    - Check that the left child's subtree is a valid BST.
+    - Check that the right child's subtree is a valid BST.
+4. If all checks pass for every node → return `true`.
 
 ::tabs-start
 
@@ -321,21 +358,6 @@ class Solution {
 ```
 
 ```swift
-/**
- * Definition for a binary tree node.
- * public class TreeNode {
- *     public var val: Int
- *     public var left: TreeNode?
- *     public var right: TreeNode?
- *     public init() { self.val = 0; self.left = nil; self.right = nil; }
- *     public init(_ val: Int) { self.val = val; self.left = nil; self.right = nil; }
- *     public init(_ val: Int, _ left: TreeNode?, _ right: TreeNode?) {
- *         self.val = val
- *         self.left = left
- *         self.right = right
- *     }
- * }
- */
 class Solution {
     func isValidBST(_ root: TreeNode?) -> Bool {
         guard let root = root else { return true }
@@ -358,6 +380,45 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn is_valid_bst(root: Option<Rc<RefCell<TreeNode>>>) -> bool {
+        fn is_valid(
+            node: &Option<Rc<RefCell<TreeNode>>>,
+            limit: i32,
+            check: fn(i32, i32) -> bool,
+        ) -> bool {
+            match node {
+                None => true,
+                Some(n) => {
+                    let n = n.borrow();
+                    if !check(n.val, limit) {
+                        return false;
+                    }
+                    is_valid(&n.left, limit, check)
+                        && is_valid(&n.right, limit, check)
+                }
+            }
+        }
+
+        fn validate(node: &Option<Rc<RefCell<TreeNode>>>) -> bool {
+            match node {
+                None => true,
+                Some(n) => {
+                    let n = n.borrow();
+                    is_valid(&n.left, n.val, |v, l| v < l)
+                        && is_valid(&n.right, n.val, |v, l| v > l)
+                        && validate(&n.left)
+                        && validate(&n.right)
+                }
+            }
+        }
+
+        validate(&root)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -368,6 +429,30 @@ class Solution {
 ---
 
 ## 2. Depth First Search
+
+### Intuition
+
+A Binary Search Tree isn’t just about each node being smaller or larger than its parent —  
+**every node must fit within a valid value range decided by all its ancestors**.
+
+- For the root, the allowed range is `(-∞, +∞)`.
+- When you go **left**, the node’s value must be **less than the parent**, so the upper bound becomes smaller.
+- When you go **right**, the node’s value must be **greater than the parent**, so the lower bound becomes larger.
+
+As we move down the tree, we keep tightening these bounds.  
+If any node violates its allowed range → the tree is not a BST.
+
+This checks all BST rules efficiently in one DFS pass.
+
+### Algorithm
+
+1. Start DFS from the root with the initial valid range `(-∞, +∞)`.
+2. For each node:
+    - If `node.val` is not strictly between `(left, right)` → return `false`.
+3. Recursively:
+    - Validate the left subtree with updated range `(left, node.val)`.
+    - Validate the right subtree with updated range `(node.val, right)`.
+4. If all nodes satisfy their ranges → it is a valid BST.
 
 ::tabs-start
 
@@ -625,6 +710,28 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn is_valid_bst(root: Option<Rc<RefCell<TreeNode>>>) -> bool {
+        fn valid(node: &Option<Rc<RefCell<TreeNode>>>, left: i64, right: i64) -> bool {
+            match node {
+                None => true,
+                Some(n) => {
+                    let n = n.borrow();
+                    let val = n.val as i64;
+                    if val <= left || val >= right {
+                        return false;
+                    }
+                    valid(&n.left, left, val) && valid(&n.right, val, right)
+                }
+            }
+        }
+
+        valid(&root, i64::MIN, i64::MAX)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -635,6 +742,29 @@ class Solution {
 ---
 
 ## 3. Breadth First Search
+
+### Intuition
+
+A tree is a valid BST only if **every node lies within a valid range** defined by its ancestors.  
+Instead of using recursion, we can use a queue (BFS) to check this level by level.
+
+- Start with the root, whose valid range is `(-∞, +∞)`.
+- When moving to the **left child**, its maximum allowed value becomes the current node’s value.
+- When moving to the **right child**, its minimum allowed value becomes the current node’s value.
+- If any node violates its allowed range, the tree is not a BST.
+
+This way, we verify every node exactly once using BFS.
+
+### Algorithm
+
+1. If the tree is empty → return `true`.
+2. Push `(root, -∞, +∞)` into a queue.
+3. While the queue is not empty:
+    - Pop `(node, leftBound, rightBound)`.
+    - If `node.val` is not between `(leftBound, rightBound)`, return `false`.
+    - Push the left child with range `(leftBound, node.val)`.
+    - Push the right child with range `(node.val, rightBound)`.
+4. If all nodes satisfy their ranges → return `true`.
 
 ::tabs-start
 
@@ -975,9 +1105,54 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn is_valid_bst(root: Option<Rc<RefCell<TreeNode>>>) -> bool {
+        if root.is_none() {
+            return true;
+        }
+
+        let mut queue = VecDeque::new();
+        queue.push_back((root.clone().unwrap(), i64::MIN, i64::MAX));
+
+        while let Some((node, left, right)) = queue.pop_front() {
+            let node = node.borrow();
+            let val = node.val as i64;
+            if val <= left || val >= right {
+                return false;
+            }
+            if let Some(ref l) = node.left {
+                queue.push_back((Rc::clone(l), left, val));
+            }
+            if let Some(ref r) = node.right {
+                queue.push_back((Rc::clone(r), val, right));
+            }
+        }
+
+        true
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(n)$
+
+---
+
+## Common Pitfalls
+
+### Only Comparing with the Immediate Parent
+
+A classic mistake is checking only that `left.val < node.val < right.val` for direct children. This misses cases where a node deep in the left subtree has a value greater than an ancestor. For example, a tree with root 10, left child 5, and right grandchild 15 under node 5 would pass local checks but violates BST properties. The valid range must be inherited from all ancestors.
+
+### Using Inclusive Bounds Instead of Exclusive
+
+BST properties require strictly less than and strictly greater than comparisons. Using `<=` or `>=` instead of `<` and `>` will incorrectly accept trees with duplicate values, which violates the standard BST definition where all left descendants are strictly less and all right descendants are strictly greater.
+
+### Integer Overflow with Boundary Values
+
+When using `Integer.MIN_VALUE` and `Integer.MAX_VALUE` as initial bounds, problems arise if the tree contains these exact values as node data. The comparison `node.val > Integer.MAX_VALUE` will never be true. Use `Long.MIN_VALUE` and `Long.MAX_VALUE` or nullable types to handle edge cases where node values equal the integer limits.

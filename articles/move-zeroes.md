@@ -1,4 +1,24 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Arrays** - Understanding array indexing and in-place modification
+- **Two Pointers** - Using two pointers to partition or rearrange elements within an array
+
+---
+
 ## 1. Extra Space
+
+### Intuition
+
+The simplest approach is to separate non-zero elements from zeros using extra storage. We collect all non-zero elements first, then write them back to the original array, filling the remaining positions with zeros. This guarantees the relative order of non-zero elements is preserved.
+
+### Algorithm
+
+1. Create a temporary list `tmp` and add all non-zero elements from `nums`.
+2. Iterate through the original array:
+    - For indices less than `tmp.length`, copy the value from `tmp`.
+    - For remaining indices, set the value to `0`.
 
 ::tabs-start
 
@@ -108,6 +128,83 @@ public class Solution {
 }
 ```
 
+```go
+func moveZeroes(nums []int) {
+    tmp := []int{}
+    for _, num := range nums {
+        if num != 0 {
+            tmp = append(tmp, num)
+        }
+    }
+
+    for i := 0; i < len(nums); i++ {
+        if i < len(tmp) {
+            nums[i] = tmp[i]
+        } else {
+            nums[i] = 0
+        }
+    }
+}
+```
+
+```kotlin
+class Solution {
+    fun moveZeroes(nums: IntArray) {
+        val tmp = mutableListOf<Int>()
+        for (num in nums) {
+            if (num != 0) {
+                tmp.add(num)
+            }
+        }
+
+        for (i in nums.indices) {
+            if (i < tmp.size) {
+                nums[i] = tmp[i]
+            } else {
+                nums[i] = 0
+            }
+        }
+    }
+}
+```
+
+```swift
+class Solution {
+    func moveZeroes(_ nums: inout [Int]) {
+        var tmp = [Int]()
+        for num in nums {
+            if num != 0 {
+                tmp.append(num)
+            }
+        }
+
+        for i in 0..<nums.count {
+            if i < tmp.count {
+                nums[i] = tmp[i]
+            } else {
+                nums[i] = 0
+            }
+        }
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn move_zeroes(nums: &mut Vec<i32>) {
+        let tmp: Vec<i32> = nums.iter().copied().filter(|&x| x != 0).collect();
+
+        for i in 0..nums.len() {
+            if i < tmp.len() {
+                nums[i] = tmp[i];
+            } else {
+                nums[i] = 0;
+            }
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -118,6 +215,16 @@ public class Solution {
 ---
 
 ## 2. Two Pointers (Two Pass)
+
+### Intuition
+
+We can avoid extra space by overwriting the array in place. Use a left pointer to track where the next non-zero element should go. As we scan with a right pointer, each non-zero element gets copied to the left pointer's position. After the first pass, all non-zero elements are at the front in order. A second pass fills the remaining positions with zeros.
+
+### Algorithm
+
+1. Initialize `l = 0` to track the position for the next non-zero element.
+2. First pass: Iterate through the array with pointer `r`. For each non-zero element, copy it to `nums[l]` and increment `l`.
+3. Second pass: Fill positions from `l` to the end with `0`.
 
 ::tabs-start
 
@@ -212,6 +319,78 @@ public class Solution {
 }
 ```
 
+```go
+func moveZeroes(nums []int) {
+    l := 0
+    for r := 0; r < len(nums); r++ {
+        if nums[r] != 0 {
+            nums[l] = nums[r]
+            l++
+        }
+    }
+
+    for l < len(nums) {
+        nums[l] = 0
+        l++
+    }
+}
+```
+
+```kotlin
+class Solution {
+    fun moveZeroes(nums: IntArray) {
+        var l = 0
+        for (r in nums.indices) {
+            if (nums[r] != 0) {
+                nums[l++] = nums[r]
+            }
+        }
+
+        while (l < nums.size) {
+            nums[l++] = 0
+        }
+    }
+}
+```
+
+```swift
+class Solution {
+    func moveZeroes(_ nums: inout [Int]) {
+        var l = 0
+        for r in 0..<nums.count {
+            if nums[r] != 0 {
+                nums[l] = nums[r]
+                l += 1
+            }
+        }
+
+        while l < nums.count {
+            nums[l] = 0
+            l += 1
+        }
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn move_zeroes(nums: &mut Vec<i32>) {
+        let mut l = 0;
+        for r in 0..nums.len() {
+            if nums[r] != 0 {
+                nums[l] = nums[r];
+                l += 1;
+            }
+        }
+
+        while l < nums.len() {
+            nums[l] = 0;
+            l += 1;
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -222,6 +401,18 @@ public class Solution {
 ---
 
 ## 3. Two Pointers (One Pass)
+
+### Intuition
+
+Instead of copying values and then filling zeros separately, we can swap elements in a single pass. The left pointer marks the boundary between processed non-zero elements and unprocessed elements. When we encounter a non-zero element with the right pointer, we swap it with the element at the left pointer. This naturally pushes `0` to the right while keeping non-zero elements in their relative order.
+
+### Algorithm
+
+1. Initialize `l = 0` to track the swap position.
+2. Iterate through the array with pointer `r`. For each non-zero element:
+    - Swap `nums[l]` and `nums[r]`.
+    - Increment `l`.
+3. After the loop, all non-zero elements are at the front and zeros are at the end.
 
 ::tabs-start
 
@@ -300,9 +491,75 @@ public class Solution {
 }
 ```
 
+```go
+func moveZeroes(nums []int) {
+    l := 0
+    for r := 0; r < len(nums); r++ {
+        if nums[r] != 0 {
+            nums[l], nums[r] = nums[r], nums[l]
+            l++
+        }
+    }
+}
+```
+
+```kotlin
+class Solution {
+    fun moveZeroes(nums: IntArray) {
+        var l = 0
+        for (r in nums.indices) {
+            if (nums[r] != 0) {
+                val temp = nums[l]
+                nums[l] = nums[r]
+                nums[r] = temp
+                l++
+            }
+        }
+    }
+}
+```
+
+```swift
+class Solution {
+    func moveZeroes(_ nums: inout [Int]) {
+        var l = 0
+        for r in 0..<nums.count {
+            if nums[r] != 0 {
+                nums.swapAt(l, r)
+                l += 1
+            }
+        }
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn move_zeroes(nums: &mut Vec<i32>) {
+        let mut l = 0;
+        for r in 0..nums.len() {
+            if nums[r] != 0 {
+                nums.swap(l, r);
+                l += 1;
+            }
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(1)$
+
+## Common Pitfalls
+
+### Swapping When Pointers Are at the Same Position
+
+When both pointers `l` and `r` point to the same non-zero element, swapping is unnecessary and wastes operations. While this does not affect correctness, adding a check like `if (l != r)` before swapping improves efficiency and avoids redundant writes, which can matter for performance-sensitive applications.
+
+### Disrupting Relative Order of Non-Zero Elements
+
+The problem requires maintaining the relative order of non-zero elements. Some approaches incorrectly swap non-zero elements with each other or move them out of sequence. The two-pointer technique works because the left pointer only advances when a non-zero element is placed, ensuring all non-zero elements shift left in their original order while zeros naturally accumulate at the end.

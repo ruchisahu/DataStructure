@@ -1,4 +1,26 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Backtracking** - Used to explore all possible ways to partition elements into two groups
+- **Memoization / Dynamic Programming** - Required to optimize the recursive solution by caching subproblem results
+- **Subset Sum Problem** - This problem is a variant where we find subsets with specific sum constraints
+- **Mathematical reasoning with averages** - Understanding that equal averages means `sum(A) * len(B) == sum(B) * len(A)` to avoid floating-point issues
+
+---
+
 ## 1. Backtracking
+
+### Intuition
+
+We need to check if we can partition the array into two non-empty groups with equal averages. The naive approach is to try all possible ways to assign each element to group A or group B. For each complete assignment, we verify if both groups are non-empty and have the same average. Two groups have equal averages when `sum(A) * len(B) == sum(B) * len(A)`.
+
+### Algorithm
+
+1. Define `backtrack(i, A, B)` to assign element at index `i` to either group `A` or `B`.
+2. Base case: when `i == n`, check if both groups are non-empty and have equal averages.
+3. For each element, first try adding it to `A` and recurse. If that fails, remove it from `A`, add it to `B`, and recurse.
+4. Return `true` if any assignment works, `false` otherwise.
 
 ::tabs-start
 
@@ -137,16 +159,150 @@ public class Solution {
 }
 ```
 
+```go
+func splitArraySameAverage(nums []int) bool {
+    var backtrack func(i int, A, B []int) bool
+    backtrack = func(i int, A, B []int) bool {
+        if i == len(nums) {
+            if len(A) == 0 || len(B) == 0 {
+                return false
+            }
+            sumA, sumB := 0, 0
+            for _, v := range A {
+                sumA += v
+            }
+            for _, v := range B {
+                sumB += v
+            }
+            return sumA*len(B) == sumB*len(A)
+        }
+
+        A = append(A, nums[i])
+        if backtrack(i+1, A, B) {
+            return true
+        }
+        A = A[:len(A)-1]
+
+        B = append(B, nums[i])
+        res := backtrack(i+1, A, B)
+        B = B[:len(B)-1]
+
+        return res
+    }
+
+    return backtrack(0, []int{}, []int{})
+}
+```
+
+```kotlin
+class Solution {
+    fun splitArraySameAverage(nums: IntArray): Boolean {
+        fun backtrack(i: Int, A: MutableList<Int>, B: MutableList<Int>): Boolean {
+            if (i == nums.size) {
+                if (A.isEmpty() || B.isEmpty()) return false
+                val sumA = A.sum()
+                val sumB = B.sum()
+                return sumA * B.size == sumB * A.size
+            }
+
+            A.add(nums[i])
+            if (backtrack(i + 1, A, B)) return true
+            A.removeAt(A.size - 1)
+
+            B.add(nums[i])
+            val res = backtrack(i + 1, A, B)
+            B.removeAt(B.size - 1)
+
+            return res
+        }
+
+        return backtrack(0, mutableListOf(), mutableListOf())
+    }
+}
+```
+
+```swift
+class Solution {
+    func splitArraySameAverage(_ nums: [Int]) -> Bool {
+        func backtrack(_ i: Int, _ A: inout [Int], _ B: inout [Int]) -> Bool {
+            if i == nums.count {
+                if A.isEmpty || B.isEmpty { return false }
+                let sumA = A.reduce(0, +)
+                let sumB = B.reduce(0, +)
+                return sumA * B.count == sumB * A.count
+            }
+
+            A.append(nums[i])
+            if backtrack(i + 1, &A, &B) { return true }
+            A.removeLast()
+
+            B.append(nums[i])
+            let res = backtrack(i + 1, &A, &B)
+            B.removeLast()
+
+            return res
+        }
+
+        var A: [Int] = []
+        var B: [Int] = []
+        return backtrack(0, &A, &B)
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn split_array_same_average(nums: Vec<i32>) -> bool {
+        fn backtrack(nums: &[i32], i: usize, a: &mut Vec<i32>, b: &mut Vec<i32>) -> bool {
+            if i == nums.len() {
+                if a.is_empty() || b.is_empty() {
+                    return false;
+                }
+                let sum_a: i64 = a.iter().map(|&x| x as i64).sum();
+                let sum_b: i64 = b.iter().map(|&x| x as i64).sum();
+                return sum_a * b.len() as i64 == sum_b * a.len() as i64;
+            }
+
+            a.push(nums[i]);
+            if backtrack(nums, i + 1, a, b) {
+                return true;
+            }
+            a.pop();
+
+            b.push(nums[i]);
+            let res = backtrack(nums, i + 1, a, b);
+            b.pop();
+
+            res
+        }
+
+        backtrack(&nums, 0, &mut vec![], &mut vec![])
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
-* Time complexity: $O(n * 2 ^ n)$
-* Space complexity: $O(n)$
+- Time complexity: $O(n * 2 ^ n)$
+- Space complexity: $O(n)$
 
 ---
 
 ## 2. Memoization (Brute Force)
+
+### Intuition
+
+The backtracking solution recomputes many states. We can track the state as `(index, size of A, sum of A)` since B is determined by what remains. If A has size `s` and sum `curSum`, then B has size `n - s` and sum `total - curSum`. We check the equal average condition at each step and memoize to avoid redundant work.
+
+### Algorithm
+
+1. Calculate the total sum of the array.
+2. Define `dfs(i, size, currSum)` where `size` and `currSum` refer to the current subset.
+3. If `size > 0` and `size < n`, check if `currSum * (n - size) == (total - currSum) * size`.
+4. At each index, try including or excluding the element in the current subset.
+5. Memoize results keyed by `(i, size, currSum)`.
 
 ::tabs-start
 
@@ -252,14 +408,21 @@ class Solution {
         const memo = new Map();
 
         const dfs = (i, size, currSum) => {
-        const key = `${i},${size},${currSum}`;
+            const key = `${i},${size},${currSum}`;
             if (memo.has(key)) return memo.get(key);
 
-            if (size > 0 && size < n && currSum * (n - size) === (total - currSum) * size)
+            if (
+                size > 0 &&
+                size < n &&
+                currSum * (n - size) === (total - currSum) * size
+            )
                 return true;
             if (i === n) return false;
 
-            if (dfs(i + 1, size + 1, currSum + nums[i]) || dfs(i + 1, size, currSum)) {
+            if (
+                dfs(i + 1, size + 1, currSum + nums[i]) ||
+                dfs(i + 1, size, currSum)
+            ) {
                 memo.set(key, true);
                 return true;
             }
@@ -301,18 +464,165 @@ public class Solution {
 }
 ```
 
+```go
+func splitArraySameAverage(nums []int) bool {
+    total := 0
+    for _, num := range nums {
+        total += num
+    }
+    n := len(nums)
+    memo := make(map[string]bool)
+
+    var dfs func(i, size, currSum int) bool
+    dfs = func(i, size, currSum int) bool {
+        key := fmt.Sprintf("%d,%d,%d", i, size, currSum)
+        if val, ok := memo[key]; ok {
+            return val
+        }
+
+        if size > 0 && size < n && currSum*(n-size) == (total-currSum)*size {
+            return true
+        }
+        if i == n {
+            return false
+        }
+
+        if dfs(i+1, size+1, currSum+nums[i]) || dfs(i+1, size, currSum) {
+            memo[key] = true
+            return true
+        }
+
+        memo[key] = false
+        return false
+    }
+
+    return dfs(0, 0, 0)
+}
+```
+
+```kotlin
+class Solution {
+    fun splitArraySameAverage(nums: IntArray): Boolean {
+        val total = nums.sum()
+        val n = nums.size
+        val memo = mutableMapOf<String, Boolean>()
+
+        fun dfs(i: Int, size: Int, currSum: Int): Boolean {
+            val key = "$i,$size,$currSum"
+            if (memo.containsKey(key)) return memo[key]!!
+
+            if (size > 0 && size < n && currSum * (n - size) == (total - currSum) * size)
+                return true
+            if (i == n) return false
+
+            if (dfs(i + 1, size + 1, currSum + nums[i]) || dfs(i + 1, size, currSum)) {
+                memo[key] = true
+                return true
+            }
+
+            memo[key] = false
+            return false
+        }
+
+        return dfs(0, 0, 0)
+    }
+}
+```
+
+```swift
+class Solution {
+    func splitArraySameAverage(_ nums: [Int]) -> Bool {
+        let total = nums.reduce(0, +)
+        let n = nums.count
+        var memo: [String: Bool] = [:]
+
+        func dfs(_ i: Int, _ size: Int, _ currSum: Int) -> Bool {
+            let key = "\(i),\(size),\(currSum)"
+            if let val = memo[key] {
+                return val
+            }
+
+            if size > 0 && size < n && currSum * (n - size) == (total - currSum) * size {
+                return true
+            }
+            if i == n { return false }
+
+            if dfs(i + 1, size + 1, currSum + nums[i]) || dfs(i + 1, size, currSum) {
+                memo[key] = true
+                return true
+            }
+
+            memo[key] = false
+            return false
+        }
+
+        return dfs(0, 0, 0)
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn split_array_same_average(nums: Vec<i32>) -> bool {
+        let total: i32 = nums.iter().sum();
+        let n = nums.len();
+        let mut memo = HashMap::new();
+
+        fn dfs(
+            nums: &[i32], i: usize, size: usize, curr_sum: i32,
+            total: i32, n: usize, memo: &mut HashMap<(usize, usize, i32), bool>,
+        ) -> bool {
+            if let Some(&val) = memo.get(&(i, size, curr_sum)) {
+                return val;
+            }
+            if size > 0 && size < n
+                && curr_sum as i64 * (n - size) as i64
+                    == (total - curr_sum) as i64 * size as i64
+            {
+                return true;
+            }
+            if i == n {
+                return false;
+            }
+            if dfs(nums, i + 1, size + 1, curr_sum + nums[i], total, n, memo)
+                || dfs(nums, i + 1, size, curr_sum, total, n, memo)
+            {
+                memo.insert((i, size, curr_sum), true);
+                return true;
+            }
+            memo.insert((i, size, curr_sum), false);
+            false
+        }
+
+        dfs(&nums, 0, 0, 0, total, n, &mut memo)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
-* Time complexity: $O(n ^ 2 * s)$
-* Space complexity: $O(n ^ 2 * s)$
+- Time complexity: $O(n ^ 2 * s)$
+- Space complexity: $O(n ^ 2 * s)$
 
 > Where $n$ is the size of the input array $nums$, and $s$ is the sum of the elements of the array.
 
 ---
 
 ## 3. Memoization (Optimal)
+
+### Intuition
+
+For two groups to have the same average as the whole array, we need: `sum(A) / len(A) = total / n`. This means `sum(A) = len(A) * total / n`. We only need to find a subset `A` of size `a` (where `1 <= a <= n/2`) with sum exactly `a * total / n`. This sum must be an integer, so we only check sizes where `a * total` is divisible by `n`.
+
+### Algorithm
+
+1. For each valid subset size `a` from `1` to `n/2` where `a * total % n == 0`:
+    - Calculate target sum = `a * total / n`.
+    - Use memoized DFS to check if any subset of size `a` has this exact sum.
+2. The DFS tries including or excluding each element, tracking remaining size and sum needed.
+3. Return `true` if any valid subset is found.
 
 ::tabs-start
 
@@ -435,7 +745,8 @@ class Solution {
      * @return {boolean}
      */
     splitArraySameAverage(nums) {
-        const n = nums.length, total = nums.reduce((a, b) => a + b, 0);
+        const n = nums.length,
+            total = nums.reduce((a, b) => a + b, 0);
 
         // len(A) = a, len(B) = b, let a <= b
         // avg(A) = avg(B)
@@ -510,18 +821,186 @@ public class Solution {
 }
 ```
 
+```go
+func splitArraySameAverage(nums []int) bool {
+    n := len(nums)
+    total := 0
+    for _, num := range nums {
+        total += num
+    }
+
+    memo := make([][][]int, n+1)
+    for i := range memo {
+        memo[i] = make([][]int, n/2+1)
+        for j := range memo[i] {
+            memo[i][j] = make([]int, total+1)
+            for k := range memo[i][j] {
+                memo[i][j][k] = -1
+            }
+        }
+    }
+
+    var dfs func(i, a, s int) bool
+    dfs = func(i, a, s int) bool {
+        if a == 0 {
+            return s == 0
+        }
+        if i == n || a < 0 || s < 0 {
+            return false
+        }
+        if memo[i][a][s] != -1 {
+            return memo[i][a][s] == 1
+        }
+
+        res := dfs(i+1, a, s) || dfs(i+1, a-1, s-nums[i])
+        if res {
+            memo[i][a][s] = 1
+        } else {
+            memo[i][a][s] = 0
+        }
+        return res
+    }
+
+    for a := 1; a <= n/2; a++ {
+        if (total*a)%n == 0 {
+            target := (total * a) / n
+            if dfs(0, a, target) {
+                return true
+            }
+        }
+    }
+
+    return false
+}
+```
+
+```kotlin
+class Solution {
+    fun splitArraySameAverage(nums: IntArray): Boolean {
+        val n = nums.size
+        val total = nums.sum()
+
+        val memo = Array(n + 1) { Array(n / 2 + 1) { IntArray(total + 1) { -1 } } }
+
+        fun dfs(i: Int, a: Int, s: Int): Boolean {
+            if (a == 0) return s == 0
+            if (i == n || a < 0 || s < 0) return false
+            if (memo[i][a][s] != -1) return memo[i][a][s] == 1
+
+            val res = dfs(i + 1, a, s) || dfs(i + 1, a - 1, s - nums[i])
+            memo[i][a][s] = if (res) 1 else 0
+            return res
+        }
+
+        for (a in 1..n / 2) {
+            if ((total * a) % n == 0) {
+                val target = (total * a) / n
+                if (dfs(0, a, target)) return true
+            }
+        }
+
+        return false
+    }
+}
+```
+
+```swift
+class Solution {
+    func splitArraySameAverage(_ nums: [Int]) -> Bool {
+        let n = nums.count
+        let total = nums.reduce(0, +)
+
+        var memo = [[[Int]]](repeating: [[Int]](repeating: [Int](repeating: -1, count: total + 1), count: n / 2 + 1), count: n + 1)
+
+        func dfs(_ i: Int, _ a: Int, _ s: Int) -> Bool {
+            if a == 0 { return s == 0 }
+            if i == n || a < 0 || s < 0 { return false }
+            if memo[i][a][s] != -1 { return memo[i][a][s] == 1 }
+
+            let res = dfs(i + 1, a, s) || dfs(i + 1, a - 1, s - nums[i])
+            memo[i][a][s] = res ? 1 : 0
+            return res
+        }
+
+        for a in 1...(n / 2) {
+            if (total * a) % n == 0 {
+                let target = (total * a) / n
+                if dfs(0, a, target) { return true }
+            }
+        }
+
+        return false
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn split_array_same_average(nums: Vec<i32>) -> bool {
+        let n = nums.len();
+        let total: i32 = nums.iter().sum();
+        let half = n / 2;
+        let mut memo = vec![vec![vec![-1i8; total as usize + 1]; half + 1]; n + 1];
+
+        fn dfs(
+            nums: &[i32], i: usize, a: usize, s: i32, n: usize,
+            memo: &mut Vec<Vec<Vec<i8>>>,
+        ) -> bool {
+            if a == 0 {
+                return s == 0;
+            }
+            if i == n || s < 0 {
+                return false;
+            }
+            if memo[i][a][s as usize] != -1 {
+                return memo[i][a][s as usize] == 1;
+            }
+            let res = dfs(nums, i + 1, a, s, n, memo)
+                || dfs(nums, i + 1, a - 1, s - nums[i], n, memo);
+            memo[i][a][s as usize] = if res { 1 } else { 0 };
+            res
+        }
+
+        for a in 1..=half {
+            if (total as i64 * a as i64) % n as i64 == 0 {
+                let target = (total as i64 * a as i64 / n as i64) as i32;
+                if dfs(&nums, 0, a, target, n, &mut memo) {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
-* Time complexity: $O(n ^ 2 * s)$
-* Space complexity: $O(n ^ 2 * s)$
+- Time complexity: $O(n ^ 2 * s)$
+- Space complexity: $O(n ^ 2 * s)$
 
 > Where $n$ is the size of the input array $nums$, and $s$ is the sum of the elements of the array.
 
 ---
 
 ## 4. Dynamic Programming (Bottom-Up)
+
+### Intuition
+
+We can build all achievable sums for each subset size using dynamic programming. For each element, we update what sums are achievable for each size. We iterate backwards through sizes to avoid using the same element twice. Finally, we check if any valid target sum exists for sizes 1 through n/2.
+
+### Algorithm
+
+1. Create `dp[a]` as a set of achievable sums for subsets of size `a`. Initialize `dp[0] = {0}`.
+2. For each number in the array:
+    - For sizes from `n/2` down to `1`:
+        - For each previously achievable sum in `dp[a-1]`, add `sum + num` to `dp[a]`.
+3. After processing all numbers, check each size `a` from `1` to `n/2`:
+    - If `a * total % n == 0` and the target sum `a * total / n` exists in `dp[a]`, return `true`.
+4. Return `false` if no valid partition exists.
 
 ::tabs-start
 
@@ -649,7 +1128,10 @@ class Solution {
         // a is in the range [1, (n//2)]
 
         const total = nums.reduce((a, b) => a + b, 0);
-        const dp = Array.from({ length: Math.floor(n / 2) + 1 }, () => new Set());
+        const dp = Array.from(
+            { length: Math.floor(n / 2) + 1 },
+            () => new Set(),
+        );
         dp[0].add(0);
 
         for (const num of nums) {
@@ -710,11 +1192,158 @@ public class Solution {
 }
 ```
 
+```go
+func splitArraySameAverage(nums []int) bool {
+    n := len(nums)
+    total := 0
+    for _, num := range nums {
+        total += num
+    }
+
+    dp := make([]map[int]bool, n/2+1)
+    for i := range dp {
+        dp[i] = make(map[int]bool)
+    }
+    dp[0][0] = true
+
+    for _, num := range nums {
+        for a := n / 2; a >= 1; a-- {
+            for prev := range dp[a-1] {
+                dp[a][prev+num] = true
+            }
+        }
+    }
+
+    for a := 1; a <= n/2; a++ {
+        if (a*total)%n == 0 {
+            if dp[a][(a*total)/n] {
+                return true
+            }
+        }
+    }
+
+    return false
+}
+```
+
+```kotlin
+class Solution {
+    fun splitArraySameAverage(nums: IntArray): Boolean {
+        val n = nums.size
+        val total = nums.sum()
+
+        val dp = Array(n / 2 + 1) { mutableSetOf<Int>() }
+        dp[0].add(0)
+
+        for (num in nums) {
+            for (a in n / 2 downTo 1) {
+                for (prev in dp[a - 1]) {
+                    dp[a].add(prev + num)
+                }
+            }
+        }
+
+        for (a in 1..n / 2) {
+            if ((a * total) % n == 0 && dp[a].contains((a * total) / n)) {
+                return true
+            }
+        }
+
+        return false
+    }
+}
+```
+
+```swift
+class Solution {
+    func splitArraySameAverage(_ nums: [Int]) -> Bool {
+        let n = nums.count
+        let total = nums.reduce(0, +)
+
+        var dp = [Set<Int>](repeating: Set<Int>(), count: n / 2 + 1)
+        dp[0].insert(0)
+
+        for num in nums {
+            for a in stride(from: n / 2, through: 1, by: -1) {
+                for prev in dp[a - 1] {
+                    dp[a].insert(prev + num)
+                }
+            }
+        }
+
+        for a in 1...(n / 2) {
+            if (a * total) % n == 0 && dp[a].contains((a * total) / n) {
+                return true
+            }
+        }
+
+        return false
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn split_array_same_average(nums: Vec<i32>) -> bool {
+        let n = nums.len();
+        let total: i32 = nums.iter().sum();
+        let half = n / 2;
+
+        let mut dp: Vec<HashSet<i32>> = vec![HashSet::new(); half + 1];
+        dp[0].insert(0);
+
+        for &num in &nums {
+            for a in (1..=half).rev() {
+                let prev: Vec<i32> = dp[a - 1].iter().copied().collect();
+                for p in prev {
+                    dp[a].insert(p + num);
+                }
+            }
+        }
+
+        for a in 1..=half {
+            if (total as i64 * a as i64) % n as i64 == 0 {
+                let target = (total as i64 * a as i64 / n as i64) as i32;
+                if dp[a].contains(&target) {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
-* Time complexity: $O(n ^ 2 * s)$
-* Space complexity: $O(n ^ 2 * s)$
+- Time complexity: $O(n ^ 2 * s)$
+- Space complexity: $O(n ^ 2 * s)$
 
 > Where $n$ is the size of the input array $nums$, and $s$ is the sum of the elements of the array.
+
+---
+
+## Common Pitfalls
+
+### Forgetting Both Groups Must Be Non-Empty
+
+A common mistake is checking only whether the averages match without ensuring both groups contain at least one element. If all elements go into group A and group B is empty, that is not a valid split. Always verify that both partitions have size greater than zero before comparing averages.
+
+### Using Floating-Point Comparison for Averages
+
+Comparing averages directly using floating-point division can lead to precision errors. Instead of checking `sum(A) / len(A) == sum(B) / len(B)`, use the mathematically equivalent integer comparison `sum(A) * len(B) == sum(B) * len(A)` to avoid floating-point inaccuracies.
+
+### Missing the Early Termination Condition
+
+The condition `a * total % n == 0` is crucial for pruning. For a valid subset of size `a`, the required sum `a * total / n` must be an integer. Skipping this check leads to unnecessary computation for impossible subset sizes and can cause the solution to time out.
+
+### Integer Overflow in Sum Calculations
+
+When computing sums or products like `a * total`, the result can exceed 32-bit integer limits for large arrays with large values. Use 64-bit integers (long/long long) for intermediate calculations to prevent overflow and incorrect results.
+
+### Iterating Over All Subset Sizes Instead of Half
+
+Since finding a valid subset A automatically determines a valid subset B (the remaining elements), you only need to check subset sizes from 1 to n/2. Checking sizes beyond n/2 is redundant because if a subset of size `a` works, so does the complement of size `n - a`.

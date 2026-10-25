@@ -1,4 +1,28 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Arrays** - Understanding how to traverse and modify array elements by index
+- **Two Pointers Technique** - Using multiple pointers to track positions during array manipulation
+- **In-Place Modification** - Modifying an array without using extra space
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+The simplest way to remove elements is to collect all the values we want to keep into a separate list.
+We iterate through the array, skip any element that matches the target value, and store the rest.
+Then we copy everything back into the original array.
+This works but uses extra space proportional to the input size.
+
+### Algorithm
+
+1. Create a temporary list `tmp` to store elements that are not equal to `val`.
+2. Iterate through `nums` and add each element to `tmp` if it does not equal `val`.
+3. Copy all elements from `tmp` back into the beginning of `nums`.
+4. Return the length of `tmp`, which represents how many valid elements remain.
 
 ::tabs-start
 
@@ -91,6 +115,67 @@ public class Solution {
 }
 ```
 
+```go
+func removeElement(nums []int, val int) int {
+    tmp := []int{}
+    for _, num := range nums {
+        if num != val {
+            tmp = append(tmp, num)
+        }
+    }
+    for i := 0; i < len(tmp); i++ {
+        nums[i] = tmp[i]
+    }
+    return len(tmp)
+}
+```
+
+```kotlin
+class Solution {
+    fun removeElement(nums: IntArray, `val`: Int): Int {
+        val tmp = mutableListOf<Int>()
+        for (num in nums) {
+            if (num != `val`) {
+                tmp.add(num)
+            }
+        }
+        for (i in tmp.indices) {
+            nums[i] = tmp[i]
+        }
+        return tmp.size
+    }
+}
+```
+
+```swift
+class Solution {
+    func removeElement(_ nums: inout [Int], _ val: Int) -> Int {
+        var tmp = [Int]()
+        for num in nums {
+            if num != val {
+                tmp.append(num)
+            }
+        }
+        for i in 0..<tmp.count {
+            nums[i] = tmp[i]
+        }
+        return tmp.count
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn remove_element(nums: &mut Vec<i32>, val: i32) -> i32 {
+        let tmp: Vec<i32> = nums.iter().copied().filter(|&x| x != val).collect();
+        for i in 0..tmp.len() {
+            nums[i] = tmp[i];
+        }
+        tmp.len() as i32
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -101,6 +186,20 @@ public class Solution {
 ---
 
 ## 2. Two Pointers - I
+
+### Intuition
+
+Instead of using extra space, we can overwrite unwanted elements in place.
+We use a write pointer `k` that tracks where the next valid element should go.
+As we scan through the array, whenever we find an element that is not equal to `val`, we write it at position `k` and move `k` forward.
+At the end, everything before index `k` contains valid elements.
+
+### Algorithm
+
+1. Initialize a pointer `k = 0` to track the position for the next valid element.
+2. Iterate through the array with index `i`:
+    - If `nums[i]` is not equal to `val`, copy it to `nums[k]` and increment `k`.
+3. Return `k` as the count of valid elements.
 
 ::tabs-start
 
@@ -177,6 +276,63 @@ public class Solution {
 }
 ```
 
+```go
+func removeElement(nums []int, val int) int {
+    k := 0
+    for i := 0; i < len(nums); i++ {
+        if nums[i] != val {
+            nums[k] = nums[i]
+            k++
+        }
+    }
+    return k
+}
+```
+
+```kotlin
+class Solution {
+    fun removeElement(nums: IntArray, `val`: Int): Int {
+        var k = 0
+        for (i in nums.indices) {
+            if (nums[i] != `val`) {
+                nums[k++] = nums[i]
+            }
+        }
+        return k
+    }
+}
+```
+
+```swift
+class Solution {
+    func removeElement(_ nums: inout [Int], _ val: Int) -> Int {
+        var k = 0
+        for i in 0..<nums.count {
+            if nums[i] != val {
+                nums[k] = nums[i]
+                k += 1
+            }
+        }
+        return k
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn remove_element(nums: &mut Vec<i32>, val: i32) -> i32 {
+        let mut k = 0;
+        for i in 0..nums.len() {
+            if nums[i] != val {
+                nums[k] = nums[i];
+                k += 1;
+            }
+        }
+        k as i32
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -187,6 +343,21 @@ public class Solution {
 ---
 
 ## 3. Two Pointers - II
+
+### Intuition
+
+When there are few elements to remove, the previous approach does unnecessary copying.
+Instead, we can swap unwanted elements with elements from the end of the array.
+When we encounter the target value, we replace it with the last element and shrink the valid range by one.
+This minimizes write operations when removals are rare.
+
+### Algorithm
+
+1. Initialize `i = 0` as the current position and `n` as the effective length of the array.
+2. While `i < n`:
+    - If `nums[i]` equals `val`, replace it with `nums[n-1]` and decrement `n` (don't increment `i` since the swapped element needs checking).
+    - Otherwise, increment `i` to move to the next element.
+3. Return `n` as the count of valid elements.
 
 ::tabs-start
 
@@ -275,9 +446,90 @@ public class Solution {
 }
 ```
 
+```go
+func removeElement(nums []int, val int) int {
+    i, n := 0, len(nums)
+    for i < n {
+        if nums[i] == val {
+            n--
+            nums[i] = nums[n]
+        } else {
+            i++
+        }
+    }
+    return n
+}
+```
+
+```kotlin
+class Solution {
+    fun removeElement(nums: IntArray, `val`: Int): Int {
+        var i = 0
+        var n = nums.size
+        while (i < n) {
+            if (nums[i] == `val`) {
+                n--
+                nums[i] = nums[n]
+            } else {
+                i++
+            }
+        }
+        return n
+    }
+}
+```
+
+```swift
+class Solution {
+    func removeElement(_ nums: inout [Int], _ val: Int) -> Int {
+        var i = 0
+        var n = nums.count
+        while i < n {
+            if nums[i] == val {
+                n -= 1
+                nums[i] = nums[n]
+            } else {
+                i += 1
+            }
+        }
+        return n
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn remove_element(nums: &mut Vec<i32>, val: i32) -> i32 {
+        let mut i = 0;
+        let mut n = nums.len();
+        while i < n {
+            if nums[i] == val {
+                n -= 1;
+                nums[i] = nums[n];
+            } else {
+                i += 1;
+            }
+        }
+        n as i32
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(1)$
+
+---
+
+## Common Pitfalls
+
+### Returning the Wrong Value
+
+A common mistake is returning the length of the original array instead of the count of remaining elements. The problem asks for the number of elements that are not equal to `val`, which may be less than the original array length. Always return the write pointer position (`k` or `n`) that tracks how many valid elements exist after removal.
+
+### Incrementing the Pointer After a Swap
+
+When using the swap-with-end approach (Two Pointers - II), forgetting to recheck the current position after swapping leads to missed removals. After replacing `nums[i]` with the last element, the swapped element might also equal `val` and needs to be checked. Only increment `i` when the current element is valid; otherwise, decrement `n` and keep `i` unchanged.

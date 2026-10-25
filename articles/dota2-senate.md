@@ -1,4 +1,29 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Queues** - The optimal solution uses two queues to track senator positions and simulate the voting process efficiently
+- **Greedy Algorithms** - Understanding when to make locally optimal choices (banning the nearest opponent) to achieve the global optimum
+- **Simulation** - The brute force approach involves directly simulating the circular voting process
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+We can simulate the voting process directly. Each senator, when it's their turn, will ban the next opposing senator in the circular order. We keep iterating through the remaining senators until only one party remains. This approach mirrors the problem's rules exactly but requires repeatedly scanning the list to find and remove opponents.
+
+### Algorithm
+
+1. Convert the senate string to a list for easy modification.
+2. Iterate through the list repeatedly in rounds.
+3. For each senator at position `i`:
+    - Check if the game is over (only one party left).
+    - Find the next senator of the opposing party (wrapping around circularly).
+    - Remove that opponent from the list.
+    - Adjust the current index if the removed senator was before `i`.
+4. Return the winning party once one side is eliminated.
 
 ::tabs-start
 
@@ -190,6 +215,163 @@ public class Solution {
 }
 ```
 
+```go
+func predictPartyVictory(senate string) string {
+    s := []byte(senate)
+    for {
+        i := 0
+        for i < len(s) {
+            hasR, hasD := false, false
+            for _, c := range s {
+                if c == 'R' {
+                    hasR = true
+                }
+                if c == 'D' {
+                    hasD = true
+                }
+            }
+            if !hasR {
+                return "Dire"
+            }
+            if !hasD {
+                return "Radiant"
+            }
+            if s[i] == 'R' {
+                j := (i + 1) % len(s)
+                for s[j] == 'R' {
+                    j = (j + 1) % len(s)
+                }
+                s = append(s[:j], s[j+1:]...)
+                if j < i {
+                    i--
+                }
+            } else {
+                j := (i + 1) % len(s)
+                for s[j] == 'D' {
+                    j = (j + 1) % len(s)
+                }
+                s = append(s[:j], s[j+1:]...)
+                if j < i {
+                    i--
+                }
+            }
+            i++
+        }
+    }
+}
+```
+
+```kotlin
+class Solution {
+    fun predictPartyVictory(senate: String): String {
+        val s = senate.toMutableList()
+
+        while (true) {
+            var i = 0
+            while (i < s.size) {
+                if ('R' !in s) return "Dire"
+                if ('D' !in s) return "Radiant"
+                if (s[i] == 'R') {
+                    var j = (i + 1) % s.size
+                    while (s[j] == 'R') {
+                        j = (j + 1) % s.size
+                    }
+                    s.removeAt(j)
+                    if (j < i) i--
+                } else {
+                    var j = (i + 1) % s.size
+                    while (s[j] == 'D') {
+                        j = (j + 1) % s.size
+                    }
+                    s.removeAt(j)
+                    if (j < i) i--
+                }
+                i++
+            }
+        }
+    }
+}
+```
+
+```swift
+class Solution {
+    func predictPartyVictory(_ senate: String) -> String {
+        var s = Array(senate)
+
+        while true {
+            var i = 0
+            while i < s.count {
+                if !s.contains("R") {
+                    return "Dire"
+                }
+                if !s.contains("D") {
+                    return "Radiant"
+                }
+                if s[i] == "R" {
+                    var j = (i + 1) % s.count
+                    while s[j] == "R" {
+                        j = (j + 1) % s.count
+                    }
+                    s.remove(at: j)
+                    if j < i {
+                        i -= 1
+                    }
+                } else {
+                    var j = (i + 1) % s.count
+                    while s[j] == "D" {
+                        j = (j + 1) % s.count
+                    }
+                    s.remove(at: j)
+                    if j < i {
+                        i -= 1
+                    }
+                }
+                i += 1
+            }
+        }
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn predict_party_victory(senate: String) -> String {
+        let mut s: Vec<char> = senate.chars().collect();
+        loop {
+            let mut i = 0;
+            while i < s.len() {
+                if !s.contains(&'R') {
+                    return "Dire".to_string();
+                }
+                if !s.contains(&'D') {
+                    return "Radiant".to_string();
+                }
+                if s[i] == 'R' {
+                    let mut j = (i + 1) % s.len();
+                    while s[j] == 'R' {
+                        j = (j + 1) % s.len();
+                    }
+                    s.remove(j);
+                    if j < i {
+                        i -= 1;
+                    }
+                } else {
+                    let mut j = (i + 1) % s.len();
+                    while s[j] == 'D' {
+                        j = (j + 1) % s.len();
+                    }
+                    s.remove(j);
+                    if j < i {
+                        i -= 1;
+                    }
+                }
+                i += 1;
+            }
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -200,6 +382,20 @@ public class Solution {
 ---
 
 ## 2. Greedy (Two Queues)
+
+### Intuition
+
+The key insight is that a senator should always ban the nearest opposing senator who would otherwise act before them. We use two queues to track the positions of Radiant and Dire senators. When comparing the front of both queues, the senator with the smaller index acts first and bans the other. The surviving senator then re-enters at the end of the queue with an updated index (adding `n` to represent the next round).
+
+### Algorithm
+
+1. Create two queues `R` and `D` to store indices of Radiant and Dire senators.
+2. Populate the queues by scanning through the senate string.
+3. While both queues are non-empty:
+    - Compare the front indices from both queues.
+    - The senator with the smaller index survives and gets re-added with index `+ n`.
+    - The other senator is banned (removed permanently).
+4. Return "Radiant" if the `R` queue is non-empty, otherwise "Dire".
 
 ::tabs-start
 
@@ -355,6 +551,138 @@ public class Solution {
 }
 ```
 
+```go
+func predictPartyVictory(senate string) string {
+    R := []int{}
+    D := []int{}
+    n := len(senate)
+
+    for i, c := range senate {
+        if c == 'R' {
+            R = append(R, i)
+        } else {
+            D = append(D, i)
+        }
+    }
+
+    for len(R) > 0 && len(D) > 0 {
+        rTurn := R[0]
+        R = R[1:]
+        dTurn := D[0]
+        D = D[1:]
+
+        if rTurn < dTurn {
+            R = append(R, rTurn+n)
+        } else {
+            D = append(D, dTurn+n)
+        }
+    }
+
+    if len(R) > 0 {
+        return "Radiant"
+    }
+    return "Dire"
+}
+```
+
+```kotlin
+class Solution {
+    fun predictPartyVictory(senate: String): String {
+        val R = ArrayDeque<Int>()
+        val D = ArrayDeque<Int>()
+        val n = senate.length
+
+        for (i in senate.indices) {
+            if (senate[i] == 'R') {
+                R.addLast(i)
+            } else {
+                D.addLast(i)
+            }
+        }
+
+        while (R.isNotEmpty() && D.isNotEmpty()) {
+            val rTurn = R.removeFirst()
+            val dTurn = D.removeFirst()
+
+            if (rTurn < dTurn) {
+                R.addLast(rTurn + n)
+            } else {
+                D.addLast(dTurn + n)
+            }
+        }
+
+        return if (R.isNotEmpty()) "Radiant" else "Dire"
+    }
+}
+```
+
+```swift
+class Solution {
+    func predictPartyVictory(_ senate: String) -> String {
+        var R = [Int]()
+        var D = [Int]()
+        let n = senate.count
+        let chars = Array(senate)
+
+        for (i, c) in chars.enumerated() {
+            if c == "R" {
+                R.append(i)
+            } else {
+                D.append(i)
+            }
+        }
+
+        while !R.isEmpty && !D.isEmpty {
+            let rTurn = R.removeFirst()
+            let dTurn = D.removeFirst()
+
+            if rTurn < dTurn {
+                R.append(rTurn + n)
+            } else {
+                D.append(dTurn + n)
+            }
+        }
+
+        return R.isEmpty ? "Dire" : "Radiant"
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn predict_party_victory(senate: String) -> String {
+        let mut r = VecDeque::new();
+        let mut d = VecDeque::new();
+        let n = senate.len();
+
+        for (i, c) in senate.chars().enumerate() {
+            if c == 'R' {
+                r.push_back(i);
+            } else {
+                d.push_back(i);
+            }
+        }
+
+        while !r.is_empty() && !d.is_empty() {
+            let r_turn = r.pop_front().unwrap();
+            let d_turn = d.pop_front().unwrap();
+
+            if r_turn < d_turn {
+                r.push_back(r_turn + n);
+            } else {
+                d.push_back(d_turn + n);
+            }
+        }
+
+        if r.is_empty() {
+            "Dire".to_string()
+        } else {
+            "Radiant".to_string()
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -365,6 +693,22 @@ public class Solution {
 ---
 
 ## 3. Greedy
+
+### Intuition
+
+We can track pending bans using a single counter. When we encounter a Radiant senator (`R`), they either get banned by a waiting Dire (if `cnt < 0`) or they ban a future Dire senator. Similarly, Dire senators either get banned or ban future Radiant senators. The twist is that when a senator is banned, their surviving opponent is appended to the end to act again in future rounds.
+
+### Algorithm
+
+1. Convert the string to a list and initialize a counter `cnt = 0`.
+2. Iterate through the list (which grows as we append survivors):
+    - If the senator is `R`:
+        - If `cnt < 0`, a Dire senator bans them; append `D` to the end.
+        - Increment `cnt` (representing a pending Radiant action).
+    - If the senator is `D`:
+        - If `cnt > 0`, a Radiant senator bans them; append `R` to the end.
+        - Decrement `cnt` (representing a pending Dire action).
+3. After processing, if `cnt > 0`, Radiant wins; otherwise, Dire wins.
 
 ::tabs-start
 
@@ -502,9 +846,84 @@ public class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn predict_party_victory(senate: String) -> String {
+        let mut s: Vec<char> = senate.chars().collect();
+        let mut cnt: i32 = 0;
+        let mut i = 0;
+
+        while i < s.len() {
+            let c = s[i];
+            if c == 'R' {
+                if cnt < 0 {
+                    s.push('D');
+                }
+                cnt += 1;
+            } else {
+                if cnt > 0 {
+                    s.push('R');
+                }
+                cnt -= 1;
+            }
+            i += 1;
+        }
+
+        if cnt > 0 {
+            "Radiant".to_string()
+        } else {
+            "Dire".to_string()
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(n)$
+
+---
+
+## Common Pitfalls
+
+### Not Understanding the Circular Nature
+
+The senate voting is circular, meaning after the last senator votes, it wraps back to the first. A banned senator in round 1 could have banned someone who would act later in the same round or in subsequent rounds.
+
+```python
+# Wrong: Only considering senators ahead in the array
+j = i + 1
+while j < len(s) and s[j] == s[i]:
+    j += 1
+
+# Correct: Circular wrap-around
+j = (i + 1) % len(s)
+while s[j] == s[i]:
+    j = (j + 1) % len(s)
+```
+
+### Banning the Wrong Opponent
+
+Each senator should optimally ban the nearest opposing senator who would otherwise act before them in the next round. Banning a distant opponent wastes the opportunity and may lead to suboptimal outcomes.
+
+```python
+# Wrong strategy: Banning any random opponent
+# Correct strategy: Ban the next opponent in circular order
+```
+
+### Forgetting to Re-add Surviving Senators
+
+In the queue-based approach, when a senator bans an opponent, the survivor must be re-added to the queue to vote again in future rounds. The index must be incremented by `n` to maintain proper ordering.
+
+```python
+# Wrong: Not re-adding the survivor
+if rTurn < dTurn:
+    pass  # R survives but isn't re-added
+
+# Correct: Re-add survivor with updated index
+if rTurn < dTurn:
+    R.append(rTurn + n)
+```

@@ -1,4 +1,31 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Backtracking** - Used to explore all possible subsets of words by making include/exclude decisions at each step
+- **Hash Maps / Frequency Arrays** - Needed to track letter counts and determine if a word can be formed with available letters
+- **Recursion** - The core technique for exploring the decision tree of word combinations
+- **Bit Manipulation (optional)** - Alternative approach using bitmasks to represent subsets
+
+---
+
 ## 1. Backtracking
+
+### Intuition
+
+We need to select a subset of words to maximize total score, where each word consumes letters from a shared pool. This is a classic subset selection problem. For each word, we decide whether to include it (if we have enough letters) or skip it. We explore all valid combinations using recursion and backtracking, restoring the letter counts after each recursive call.
+
+### Algorithm
+
+1. Build a frequency count of available letters.
+2. Define a recursive function that processes words one by one:
+    - Base case: if all words are processed, return `0`.
+    - Always try skipping the current word.
+    - If the current word can be formed with available letters:
+        - Subtract its letter requirements from the count.
+        - Recursively process remaining words and add the word's score.
+        - Restore the letter counts (backtrack).
+3. Return the maximum score from either skipping or including the word.
 
 ::tabs-start
 
@@ -211,6 +238,225 @@ class Solution {
 }
 ```
 
+```go
+func maxScoreWords(words []string, letters []byte, score []int) int {
+    letterCnt := make([]int, 26)
+    for _, c := range letters {
+        letterCnt[c-'a']++
+    }
+
+    canFormWord := func(w string) bool {
+        wordCnt := make([]int, 26)
+        for i := 0; i < len(w); i++ {
+            idx := w[i] - 'a'
+            wordCnt[idx]++
+            if wordCnt[idx] > letterCnt[idx] {
+                return false
+            }
+        }
+        return true
+    }
+
+    getScore := func(w string) int {
+        res := 0
+        for i := 0; i < len(w); i++ {
+            res += score[w[i]-'a']
+        }
+        return res
+    }
+
+    var backtrack func(i int) int
+    backtrack = func(i int) int {
+        if i == len(words) {
+            return 0
+        }
+
+        res := backtrack(i + 1)
+        if canFormWord(words[i]) {
+            for j := 0; j < len(words[i]); j++ {
+                letterCnt[words[i][j]-'a']--
+            }
+            res = max(res, getScore(words[i])+backtrack(i+1))
+            for j := 0; j < len(words[i]); j++ {
+                letterCnt[words[i][j]-'a']++
+            }
+        }
+        return res
+    }
+
+    return backtrack(0)
+}
+
+func max(a, b int) int {
+    if a > b {
+        return a
+    }
+    return b
+}
+```
+
+```kotlin
+class Solution {
+    private lateinit var letterCnt: IntArray
+    private lateinit var score: IntArray
+    private lateinit var words: Array<String>
+
+    fun maxScoreWords(words: Array<String>, letters: CharArray, score: IntArray): Int {
+        this.words = words
+        this.score = score
+        this.letterCnt = IntArray(26)
+
+        for (c in letters) {
+            letterCnt[c - 'a']++
+        }
+
+        return backtrack(0)
+    }
+
+    private fun canFormWord(word: String): Boolean {
+        val wordCnt = IntArray(26)
+        for (c in word) {
+            val idx = c - 'a'
+            wordCnt[idx]++
+            if (wordCnt[idx] > letterCnt[idx]) {
+                return false
+            }
+        }
+        return true
+    }
+
+    private fun getScore(word: String): Int {
+        var res = 0
+        for (c in word) {
+            res += score[c - 'a']
+        }
+        return res
+    }
+
+    private fun backtrack(i: Int): Int {
+        if (i == words.size) {
+            return 0
+        }
+
+        var res = backtrack(i + 1)
+        if (canFormWord(words[i])) {
+            for (c in words[i]) {
+                letterCnt[c - 'a']--
+            }
+            res = maxOf(res, getScore(words[i]) + backtrack(i + 1))
+            for (c in words[i]) {
+                letterCnt[c - 'a']++
+            }
+        }
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    private var letterCnt = [Int](repeating: 0, count: 26)
+    private var score = [Int]()
+    private var words = [String]()
+
+    func maxScoreWords(_ words: [String], _ letters: [Character], _ score: [Int]) -> Int {
+        self.words = words
+        self.score = score
+        self.letterCnt = [Int](repeating: 0, count: 26)
+
+        for c in letters {
+            letterCnt[Int(c.asciiValue! - Character("a").asciiValue!)] += 1
+        }
+
+        return backtrack(0)
+    }
+
+    private func canFormWord(_ word: String) -> Bool {
+        var wordCnt = [Int](repeating: 0, count: 26)
+        for c in word {
+            let idx = Int(c.asciiValue! - Character("a").asciiValue!)
+            wordCnt[idx] += 1
+            if wordCnt[idx] > letterCnt[idx] {
+                return false
+            }
+        }
+        return true
+    }
+
+    private func getScore(_ word: String) -> Int {
+        var res = 0
+        for c in word {
+            res += score[Int(c.asciiValue! - Character("a").asciiValue!)]
+        }
+        return res
+    }
+
+    private func backtrack(_ i: Int) -> Int {
+        if i == words.count {
+            return 0
+        }
+
+        var res = backtrack(i + 1)
+        if canFormWord(words[i]) {
+            for c in words[i] {
+                letterCnt[Int(c.asciiValue! - Character("a").asciiValue!)] -= 1
+            }
+            res = max(res, getScore(words[i]) + backtrack(i + 1))
+            for c in words[i] {
+                letterCnt[Int(c.asciiValue! - Character("a").asciiValue!)] += 1
+            }
+        }
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn max_score_words(words: Vec<String>, letters: Vec<char>, score: Vec<i32>) -> i32 {
+        let mut letter_cnt = [0i32; 26];
+        for &c in &letters {
+            letter_cnt[(c as u8 - b'a') as usize] += 1;
+        }
+
+        fn can_form_word(word: &str, letter_cnt: &[i32; 26]) -> bool {
+            let mut word_cnt = [0i32; 26];
+            for c in word.bytes() {
+                let idx = (c - b'a') as usize;
+                word_cnt[idx] += 1;
+                if word_cnt[idx] > letter_cnt[idx] {
+                    return false;
+                }
+            }
+            true
+        }
+
+        fn get_score(word: &str, score: &[i32]) -> i32 {
+            word.bytes().map(|c| score[(c - b'a') as usize]).sum()
+        }
+
+        fn backtrack(i: usize, words: &[String], letter_cnt: &mut [i32; 26], score: &[i32]) -> i32 {
+            if i == words.len() {
+                return 0;
+            }
+            let mut res = backtrack(i + 1, words, letter_cnt, score);
+            if can_form_word(&words[i], letter_cnt) {
+                for c in words[i].bytes() {
+                    letter_cnt[(c - b'a') as usize] -= 1;
+                }
+                res = res.max(get_score(&words[i], score) + backtrack(i + 1, words, letter_cnt, score));
+                for c in words[i].bytes() {
+                    letter_cnt[(c - b'a') as usize] += 1;
+                }
+            }
+            res
+        }
+
+        backtrack(0, &words, &mut letter_cnt, &score)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -222,7 +468,22 @@ class Solution {
 
 ---
 
-## 2. Bactracking + Precomputation
+## 2. Backtracking + Precomputation
+
+### Intuition
+
+The basic backtracking approach recalculates letter frequencies and scores for each word during recursion. We can speed this up by precomputing the frequency array and score for each word upfront. This avoids redundant character-by-character processing and makes the validity check and score lookup constant time operations.
+
+### Algorithm
+
+1. Build a frequency count of available letters.
+2. Precompute for each word:
+    - Its character frequency array (`26` elements for each letter).
+    - Its total score based on the given scoring array.
+3. Use backtracking as before, but now:
+    - Check validity by comparing frequency arrays (`26` comparisons).
+    - Update letter counts by subtracting/adding the precomputed frequencies.
+    - Use the precomputed score directly.
 
 ::tabs-start
 
@@ -440,6 +701,225 @@ class Solution {
 }
 ```
 
+```go
+func maxScoreWords(words []string, letters []byte, score []int) int {
+    letterCnt := make([]int, 26)
+    for _, c := range letters {
+        letterCnt[c-'a']++
+    }
+
+    n := len(words)
+    wordScores := make([]int, n)
+    wordFreqs := make([][]int, n)
+
+    for i := 0; i < n; i++ {
+        wordFreqs[i] = make([]int, 26)
+        for j := 0; j < len(words[i]); j++ {
+            idx := words[i][j] - 'a'
+            wordFreqs[i][idx]++
+            wordScores[i] += score[idx]
+        }
+    }
+
+    var backtrack func(i int) int
+    backtrack = func(i int) int {
+        if i == n {
+            return 0
+        }
+
+        res := backtrack(i + 1)
+        canInclude := true
+
+        for j := 0; j < 26; j++ {
+            if wordFreqs[i][j] > letterCnt[j] {
+                canInclude = false
+                break
+            }
+        }
+
+        if canInclude {
+            for j := 0; j < 26; j++ {
+                letterCnt[j] -= wordFreqs[i][j]
+            }
+            res = max(res, wordScores[i]+backtrack(i+1))
+            for j := 0; j < 26; j++ {
+                letterCnt[j] += wordFreqs[i][j]
+            }
+        }
+        return res
+    }
+
+    return backtrack(0)
+}
+
+func max(a, b int) int {
+    if a > b {
+        return a
+    }
+    return b
+}
+```
+
+```kotlin
+class Solution {
+    private lateinit var letterCnt: IntArray
+    private lateinit var wordScores: IntArray
+    private lateinit var wordFreqs: Array<IntArray>
+    private var n = 0
+
+    fun maxScoreWords(words: Array<String>, letters: CharArray, score: IntArray): Int {
+        letterCnt = IntArray(26)
+        for (c in letters) {
+            letterCnt[c - 'a']++
+        }
+
+        n = words.size
+        wordScores = IntArray(n)
+        wordFreqs = Array(n) { IntArray(26) }
+
+        for (i in 0 until n) {
+            for (c in words[i]) {
+                val idx = c - 'a'
+                wordFreqs[i][idx]++
+                wordScores[i] += score[idx]
+            }
+        }
+
+        return backtrack(0)
+    }
+
+    private fun backtrack(i: Int): Int {
+        if (i == n) {
+            return 0
+        }
+
+        var res = backtrack(i + 1)
+        var canInclude = true
+
+        for (j in 0 until 26) {
+            if (wordFreqs[i][j] > letterCnt[j]) {
+                canInclude = false
+                break
+            }
+        }
+
+        if (canInclude) {
+            for (j in 0 until 26) {
+                letterCnt[j] -= wordFreqs[i][j]
+            }
+            res = maxOf(res, wordScores[i] + backtrack(i + 1))
+            for (j in 0 until 26) {
+                letterCnt[j] += wordFreqs[i][j]
+            }
+        }
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    private var letterCnt = [Int](repeating: 0, count: 26)
+    private var wordScores = [Int]()
+    private var wordFreqs = [[Int]]()
+    private var n = 0
+
+    func maxScoreWords(_ words: [String], _ letters: [Character], _ score: [Int]) -> Int {
+        letterCnt = [Int](repeating: 0, count: 26)
+        for c in letters {
+            letterCnt[Int(c.asciiValue! - Character("a").asciiValue!)] += 1
+        }
+
+        n = words.count
+        wordScores = [Int](repeating: 0, count: n)
+        wordFreqs = [[Int]](repeating: [Int](repeating: 0, count: 26), count: n)
+
+        for i in 0..<n {
+            for c in words[i] {
+                let idx = Int(c.asciiValue! - Character("a").asciiValue!)
+                wordFreqs[i][idx] += 1
+                wordScores[i] += score[idx]
+            }
+        }
+
+        return backtrack(0)
+    }
+
+    private func backtrack(_ i: Int) -> Int {
+        if i == n {
+            return 0
+        }
+
+        var res = backtrack(i + 1)
+        var canInclude = true
+
+        for j in 0..<26 {
+            if wordFreqs[i][j] > letterCnt[j] {
+                canInclude = false
+                break
+            }
+        }
+
+        if canInclude {
+            for j in 0..<26 {
+                letterCnt[j] -= wordFreqs[i][j]
+            }
+            res = max(res, wordScores[i] + backtrack(i + 1))
+            for j in 0..<26 {
+                letterCnt[j] += wordFreqs[i][j]
+            }
+        }
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn max_score_words(words: Vec<String>, letters: Vec<char>, score: Vec<i32>) -> i32 {
+        let mut letter_cnt = [0i32; 26];
+        for &c in &letters {
+            letter_cnt[(c as u8 - b'a') as usize] += 1;
+        }
+
+        let n = words.len();
+        let mut word_scores = vec![0i32; n];
+        let mut word_freqs = vec![[0i32; 26]; n];
+
+        for i in 0..n {
+            for c in words[i].bytes() {
+                let idx = (c - b'a') as usize;
+                word_freqs[i][idx] += 1;
+                word_scores[i] += score[idx];
+            }
+        }
+
+        fn backtrack(
+            i: usize, n: usize, letter_cnt: &mut [i32; 26],
+            word_freqs: &[[i32; 26]], word_scores: &[i32],
+        ) -> i32 {
+            if i == n {
+                return 0;
+            }
+            let mut res = backtrack(i + 1, n, letter_cnt, word_freqs, word_scores);
+            let can_include = (0..26).all(|j| word_freqs[i][j] <= letter_cnt[j]);
+            if can_include {
+                for j in 0..26 {
+                    letter_cnt[j] -= word_freqs[i][j];
+                }
+                res = res.max(word_scores[i] + backtrack(i + 1, n, letter_cnt, word_freqs, word_scores));
+                for j in 0..26 {
+                    letter_cnt[j] += word_freqs[i][j];
+                }
+            }
+            res
+        }
+
+        backtrack(0, n, &mut letter_cnt, &word_freqs, &word_scores)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -452,6 +932,22 @@ class Solution {
 ---
 
 ## 3. Backtracking (Bit Mask)
+
+### Intuition
+
+Instead of recursive backtracking, we can iterate through all possible subsets using bit manipulation. With `n` words, there are `2^n` possible subsets, each representable as an integer where bit `i` indicates whether word `i` is included. For each subset (bitmask), we check if all included words can be formed simultaneously and calculate the total score.
+
+### Algorithm
+
+1. Precompute frequency arrays and scores for all words.
+2. Iterate through all bitmasks from `0` to `2^n - 1`:
+    - For each bitmask, create a copy of the available letter counts.
+    - For each bit set in the mask:
+        - Check if the corresponding word can be formed with remaining letters.
+        - If not, mark this subset as invalid and break.
+        - If yes, subtract the word's letters and add its score.
+    - If the subset is valid, update the maximum score.
+3. Return the maximum score found.
 
 ::tabs-start
 
@@ -668,6 +1164,220 @@ class Solution {
 }
 ```
 
+```go
+func maxScoreWords(words []string, letters []byte, score []int) int {
+    letterCnt := make([]int, 26)
+    for _, c := range letters {
+        letterCnt[c-'a']++
+    }
+
+    n := len(words)
+    wordScores := make([]int, n)
+    wordFreqs := make([][]int, n)
+
+    for i := 0; i < n; i++ {
+        wordFreqs[i] = make([]int, 26)
+        for j := 0; j < len(words[i]); j++ {
+            idx := words[i][j] - 'a'
+            wordFreqs[i][idx]++
+            wordScores[i] += score[idx]
+        }
+    }
+
+    res := 0
+    for mask := 0; mask < (1 << n); mask++ {
+        curScore := 0
+        curLetterCnt := make([]int, 26)
+        copy(curLetterCnt, letterCnt)
+        valid := true
+
+        for i := 0; i < n; i++ {
+            if mask&(1<<i) != 0 {
+                for j := 0; j < 26; j++ {
+                    if wordFreqs[i][j] > curLetterCnt[j] {
+                        valid = false
+                        break
+                    }
+                }
+                if !valid {
+                    break
+                }
+
+                for j := 0; j < 26; j++ {
+                    curLetterCnt[j] -= wordFreqs[i][j]
+                }
+                curScore += wordScores[i]
+            }
+        }
+
+        if valid && curScore > res {
+            res = curScore
+        }
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun maxScoreWords(words: Array<String>, letters: CharArray, score: IntArray): Int {
+        val letterCnt = IntArray(26)
+        for (c in letters) {
+            letterCnt[c - 'a']++
+        }
+
+        val n = words.size
+        val wordScores = IntArray(n)
+        val wordFreqs = Array(n) { IntArray(26) }
+
+        for (i in 0 until n) {
+            for (c in words[i]) {
+                val idx = c - 'a'
+                wordFreqs[i][idx]++
+                wordScores[i] += score[idx]
+            }
+        }
+
+        var res = 0
+        for (mask in 0 until (1 shl n)) {
+            var curScore = 0
+            val curLetterCnt = letterCnt.copyOf()
+            var valid = true
+
+            for (i in 0 until n) {
+                if (mask and (1 shl i) != 0) {
+                    for (j in 0 until 26) {
+                        if (wordFreqs[i][j] > curLetterCnt[j]) {
+                            valid = false
+                            break
+                        }
+                    }
+                    if (!valid) break
+
+                    for (j in 0 until 26) {
+                        curLetterCnt[j] -= wordFreqs[i][j]
+                    }
+                    curScore += wordScores[i]
+                }
+            }
+
+            if (valid) {
+                res = maxOf(res, curScore)
+            }
+        }
+
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func maxScoreWords(_ words: [String], _ letters: [Character], _ score: [Int]) -> Int {
+        var letterCnt = [Int](repeating: 0, count: 26)
+        for c in letters {
+            letterCnt[Int(c.asciiValue! - Character("a").asciiValue!)] += 1
+        }
+
+        let n = words.count
+        var wordScores = [Int](repeating: 0, count: n)
+        var wordFreqs = [[Int]](repeating: [Int](repeating: 0, count: 26), count: n)
+
+        for i in 0..<n {
+            for c in words[i] {
+                let idx = Int(c.asciiValue! - Character("a").asciiValue!)
+                wordFreqs[i][idx] += 1
+                wordScores[i] += score[idx]
+            }
+        }
+
+        var res = 0
+        for mask in 0..<(1 << n) {
+            var curScore = 0
+            var curLetterCnt = letterCnt
+            var valid = true
+
+            for i in 0..<n {
+                if mask & (1 << i) != 0 {
+                    for j in 0..<26 {
+                        if wordFreqs[i][j] > curLetterCnt[j] {
+                            valid = false
+                            break
+                        }
+                    }
+                    if !valid { break }
+
+                    for j in 0..<26 {
+                        curLetterCnt[j] -= wordFreqs[i][j]
+                    }
+                    curScore += wordScores[i]
+                }
+            }
+
+            if valid {
+                res = max(res, curScore)
+            }
+        }
+
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn max_score_words(words: Vec<String>, letters: Vec<char>, score: Vec<i32>) -> i32 {
+        let mut letter_cnt = [0i32; 26];
+        for &c in &letters {
+            letter_cnt[(c as u8 - b'a') as usize] += 1;
+        }
+
+        let n = words.len();
+        let mut word_scores = vec![0i32; n];
+        let mut word_freqs = vec![[0i32; 26]; n];
+
+        for i in 0..n {
+            for c in words[i].bytes() {
+                let idx = (c - b'a') as usize;
+                word_freqs[i][idx] += 1;
+                word_scores[i] += score[idx];
+            }
+        }
+
+        let mut res = 0;
+        for mask in 0..(1 << n) {
+            let mut cur_score = 0;
+            let mut cur_letter_cnt = letter_cnt;
+            let mut valid = true;
+
+            for i in 0..n {
+                if mask & (1 << i) != 0 {
+                    for j in 0..26 {
+                        if word_freqs[i][j] > cur_letter_cnt[j] {
+                            valid = false;
+                            break;
+                        }
+                    }
+                    if !valid { break; }
+
+                    for j in 0..26 {
+                        cur_letter_cnt[j] -= word_freqs[i][j];
+                    }
+                    cur_score += word_scores[i];
+                }
+            }
+
+            if valid {
+                res = res.max(cur_score);
+            }
+        }
+
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -676,3 +1386,27 @@ class Solution {
 - Space complexity: $O(n + w)$
 
 > Where $n$ is the number of words, $w$ is the maximum length of a word, $m$ is the size of the array $scores$, and $N$ is the size of the array $letters$.
+
+---
+
+## Common Pitfalls
+
+### Not Restoring Letter Counts After Backtracking
+
+When using backtracking, you must restore the letter counts after exploring the branch where you include a word. Forgetting to add the letters back after the recursive call means subsequent branches operate with incorrect letter availability, leading to wrong results or missing valid combinations.
+
+### Checking Word Validity Too Late
+
+You should verify that a word can be formed with available letters before consuming those letters. If you subtract letters first and then discover the word is invalid, you've already corrupted the state. Always check availability first, then subtract if the word can be formed.
+
+### Counting Letters Incorrectly for Duplicate Characters
+
+When a word contains duplicate characters (e.g., "aab"), you need the letter pool to have enough of each character. A common bug is checking if each character exists at least once, rather than checking if the count is sufficient. Use frequency arrays or counters that properly track multiple occurrences.
+
+### Confusing Word Score with Letter Score
+
+The `score` array maps each letter to its value (index 0 = 'a', index 1 = 'b', etc.). A word's score is the sum of its letters' scores, not a single lookup. Misinterpreting this mapping or forgetting to sum all letters in the word produces incorrect scores.
+
+### Using Greedy Instead of Exhaustive Search
+
+This problem requires exploring all `2^n` subsets of words because including a high-scoring word might prevent including multiple other words that together score higher. Greedy approaches (e.g., always taking the highest-scoring valid word first) don't guarantee the optimal solution.

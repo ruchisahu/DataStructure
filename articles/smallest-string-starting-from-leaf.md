@@ -1,4 +1,28 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Binary Tree Traversal** - Understanding tree structure and how to navigate parent-child relationships
+- **Depth First Search (DFS)** - Recursively exploring all paths from root to leaves
+- **String Manipulation** - Building and comparing strings, particularly prepending characters
+- **Lexicographic Comparison** - Determining which string comes first alphabetically
+
+---
+
 ## 1. Depth First Search
+
+### Intuition
+
+We need to find the lexicographically smallest string that starts at a leaf and ends at the root. Since strings are built from leaf to root, we traverse the tree while building the string by prepending each node's character. When we reach a leaf, we have a complete string to compare. By exploring all paths and keeping track of the minimum string found, we get our answer.
+
+### Algorithm
+
+1. Perform `dfs` from the root, passing the current string built so far.
+2. At each node, prepend the corresponding character (convert node value to 'a' + value) to the current string.
+3. If the node has both children, recursively explore both and return the minimum of the two results.
+4. If the node has only one child, continue `dfs` on that child.
+5. If the node is a leaf (no children), return the current string.
+6. Return the minimum string found across all leaf-to-root paths.
 
 ::tabs-start
 
@@ -154,6 +178,168 @@ class Solution {
 }
 ```
 
+```csharp
+/**
+ * Definition for a binary tree node.
+ * public class TreeNode {
+ *     public int val;
+ *     public TreeNode left;
+ *     public TreeNode right;
+ *     public TreeNode(int val=0, TreeNode left=null, TreeNode right=null) {
+ *         this.val = val;
+ *         this.left = left;
+ *         this.right = right;
+ *     }
+ * }
+ */
+public class Solution {
+    public string SmallestFromLeaf(TreeNode root) {
+        return Dfs(root, "");
+    }
+
+    private string Dfs(TreeNode root, string cur) {
+        if (root == null) return null;
+
+        cur = (char)('a' + root.val) + cur;
+        if (root.left != null && root.right != null) {
+            return Min(Dfs(root.left, cur), Dfs(root.right, cur));
+        }
+
+        if (root.right != null) return Dfs(root.right, cur);
+        if (root.left != null) return Dfs(root.left, cur);
+        return cur;
+    }
+
+    private string Min(string a, string b) {
+        if (a == null) return b;
+        if (b == null) return a;
+        return string.Compare(a, b) < 0 ? a : b;
+    }
+}
+```
+
+```go
+/**
+ * Definition for a binary tree node.
+ * type TreeNode struct {
+ *     Val int
+ *     Left *TreeNode
+ *     Right *TreeNode
+ * }
+ */
+func smallestFromLeaf(root *TreeNode) string {
+    return dfs(root, "")
+}
+
+func dfs(root *TreeNode, cur string) string {
+    if root == nil {
+        return ""
+    }
+
+    cur = string('a'+rune(root.Val)) + cur
+    if root.Left != nil && root.Right != nil {
+        left := dfs(root.Left, cur)
+        right := dfs(root.Right, cur)
+        if left < right {
+            return left
+        }
+        return right
+    }
+
+    if root.Right != nil {
+        return dfs(root.Right, cur)
+    }
+    if root.Left != nil {
+        return dfs(root.Left, cur)
+    }
+    return cur
+}
+```
+
+```kotlin
+/**
+ * Example:
+ * var ti = TreeNode(5)
+ * var v = ti.`val`
+ * Definition for a binary tree node.
+ * class TreeNode(var `val`: Int) {
+ *     var left: TreeNode? = null
+ *     var right: TreeNode? = null
+ * }
+ */
+class Solution {
+    fun smallestFromLeaf(root: TreeNode?): String {
+        return dfs(root, "")
+    }
+
+    private fun dfs(root: TreeNode?, cur: String): String {
+        if (root == null) return ""
+
+        val newCur = ('a' + root.`val`) + cur
+        if (root.left != null && root.right != null) {
+            val left = dfs(root.left, newCur)
+            val right = dfs(root.right, newCur)
+            return if (left < right) left else right
+        }
+
+        if (root.right != null) return dfs(root.right, newCur)
+        if (root.left != null) return dfs(root.left, newCur)
+        return newCur
+    }
+}
+```
+
+```swift
+class Solution {
+    func smallestFromLeaf(_ root: TreeNode?) -> String {
+        return dfs(root, "")
+    }
+
+    private func dfs(_ root: TreeNode?, _ cur: String) -> String {
+        guard let root = root else { return "" }
+
+        let newCur = String(Character(UnicodeScalar(97 + root.val)!)) + cur
+        if root.left != nil && root.right != nil {
+            let left = dfs(root.left, newCur)
+            let right = dfs(root.right, newCur)
+            return left < right ? left : right
+        }
+
+        if root.right != nil { return dfs(root.right, newCur) }
+        if root.left != nil { return dfs(root.left, newCur) }
+        return newCur
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn smallest_from_leaf(root: Option<Rc<RefCell<TreeNode>>>) -> String {
+        fn dfs(node: &Option<Rc<RefCell<TreeNode>>>, cur: String) -> Option<String> {
+            let node = node.as_ref()?;
+            let node = node.borrow();
+            let mut cur = format!("{}{}", (b'a' + node.val as u8) as char, cur);
+
+            match (&node.left, &node.right) {
+                (Some(_), Some(_)) => {
+                    let left = dfs(&node.left, cur.clone());
+                    let right = dfs(&node.right, cur);
+                    match (left, right) {
+                        (Some(l), Some(r)) => Some(l.min(r)),
+                        (Some(l), None) => Some(l),
+                        (None, r) => r,
+                    }
+                }
+                (Some(_), None) => dfs(&node.left, cur),
+                (None, Some(_)) => dfs(&node.right, cur),
+                (None, None) => Some(cur),
+            }
+        }
+        dfs(&root, String::new()).unwrap()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -164,6 +350,20 @@ class Solution {
 ---
 
 ## 2. Breadth First Search
+
+### Intuition
+
+Instead of recursion, we can use a queue to traverse the tree level by level. Each queue entry stores a node along with the string built from the root down to that node. When we encounter a leaf, we compare its complete string with the current minimum. BFS naturally explores all paths, and we simply track the smallest leaf-to-root string found.
+
+### Algorithm
+
+1. Initialize a queue with the root node and an empty string.
+2. While the queue is not empty:
+    - Dequeue a node and its associated string.
+    - Prepend the current node's character to the string.
+    - If the node is a leaf, update the result if this string is smaller.
+    - Enqueue left and right children (if they exist) with the updated string.
+3. Return the smallest string found.
 
 ::tabs-start
 
@@ -311,6 +511,37 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn smallest_from_leaf(root: Option<Rc<RefCell<TreeNode>>>) -> String {
+        let mut q = VecDeque::new();
+        q.push_back((root.unwrap(), String::new()));
+        let mut res: Option<String> = None;
+
+        while let Some((node, cur)) = q.pop_front() {
+            let node = node.borrow();
+            let new_cur = format!("{}{}", (b'a' + node.val as u8) as char, cur);
+
+            if node.left.is_none() && node.right.is_none() {
+                res = Some(match res {
+                    Some(r) => r.min(new_cur.clone()),
+                    None => new_cur.clone(),
+                });
+            }
+
+            if let Some(ref left) = node.left {
+                q.push_back((Rc::clone(left), new_cur.clone()));
+            }
+            if let Some(ref right) = node.right {
+                q.push_back((Rc::clone(right), new_cur));
+            }
+        }
+
+        res.unwrap()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -321,6 +552,20 @@ class Solution {
 ---
 
 ## 3. Iterative DFS
+
+### Intuition
+
+This approach mirrors the recursive DFS but uses an explicit stack instead of the call stack. We push nodes along with their accumulated strings onto the stack. By processing nodes in LIFO order, we achieve depth-first traversal. The logic for building strings and comparing at leaves remains the same as the recursive version.
+
+### Algorithm
+
+1. Initialize a stack with the root node and an empty string.
+2. While the stack is not empty:
+    - Pop a node and its associated string.
+    - Prepend the current node's character to the string.
+    - If the node is a leaf, update the result if this string is smaller.
+    - Push right child first, then left child (so left is processed first due to LIFO).
+3. Return the smallest string found.
 
 ::tabs-start
 
@@ -466,9 +711,55 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn smallest_from_leaf(root: Option<Rc<RefCell<TreeNode>>>) -> String {
+        let mut stack = vec![(root.unwrap(), String::new())];
+        let mut res: Option<String> = None;
+
+        while let Some((node, cur)) = stack.pop() {
+            let node = node.borrow();
+            let new_cur = format!("{}{}", (b'a' + node.val as u8) as char, cur);
+
+            if node.left.is_none() && node.right.is_none() {
+                res = Some(match res {
+                    Some(r) => r.min(new_cur.clone()),
+                    None => new_cur.clone(),
+                });
+            }
+
+            if let Some(ref right) = node.right {
+                stack.push((Rc::clone(right), new_cur.clone()));
+            }
+            if let Some(ref left) = node.left {
+                stack.push((Rc::clone(left), new_cur));
+            }
+        }
+
+        res.unwrap()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n ^ 2)$
 - Space complexity: $O(n ^ 2)$
+
+---
+
+## Common Pitfalls
+
+### Building the String in the Wrong Direction
+
+The string must be built from leaf to root, not root to leaf. This means prepending each character as you traverse down the tree. A common mistake is appending characters during traversal, which produces the reversed string. Always use `cur = char + cur` (prepend), not `cur = cur + char` (append).
+
+### Comparing Incomplete Strings at Non-Leaf Nodes
+
+Only complete strings from leaf nodes should be compared. If you compare strings at internal nodes, you might select a prefix that leads to a suboptimal complete string. Always ensure comparisons only happen when `node.left == null && node.right == null`, confirming the node is truly a leaf.
+
+### Ignoring Single-Child Nodes
+
+When a node has only one child, you must continue traversal on that child. A common bug is treating nodes with one child as leaves or skipping the single child entirely. This causes valid paths to be missed. Always check for left-only and right-only cases separately from the two-children and no-children cases.

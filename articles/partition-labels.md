@@ -1,4 +1,47 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Hash Maps** - Used to store and quickly lookup the last occurrence index of each character
+- **Greedy Algorithms** - The solution makes locally optimal choices (extending partition to farthest last occurrence) to achieve the global optimum
+- **Two Pointers / Sliding Window** - Tracking the current position and the end boundary of each partition
+
+---
+
 ## 1. Two Pointers (Greedy)
+
+### Intuition
+
+We want to split the string into as many parts as possible such that **each letter appears in at most one part**.
+
+The key observation is:
+
+- for any character, we must include **all occurrences** of that character in the same partition
+- so if a character appears later in the string, the current partition must extend at least up to that last occurrence
+
+By knowing the **last index** of every character, we can greedily decide where to end each partition.
+
+As we scan the string:
+
+- we keep extending the current partition to the farthest last occurrence of any character seen so far
+- once we reach that farthest point, the partition can safely end
+
+### Algorithm
+
+1. First, record the last index of every character in the string.
+2. Initialize:
+    - an empty list `res` to store partition sizes
+    - `size = 0` for the current partition length
+    - `end = 0` for the farthest index the current partition must reach
+3. Iterate through the string with index `i`:
+4. For each character `c`:
+    - increment the current partition size
+    - update `end = max(end, lastIndex[c])`
+5. If `i == end`:
+    - we have reached the end of the current partition
+    - append `size` to `res`
+    - reset `size` to `0`
+6. After processing the whole string, return `res`
 
 ::tabs-start
 
@@ -195,11 +238,53 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn partition_labels(s: String) -> Vec<i32> {
+        let mut last_index = HashMap::new();
+        for (i, c) in s.chars().enumerate() {
+            last_index.insert(c, i);
+        }
+
+        let mut res = Vec::new();
+        let mut size = 0;
+        let mut end = 0;
+        for (i, c) in s.chars().enumerate() {
+            size += 1;
+            end = end.max(*last_index.get(&c).unwrap());
+
+            if i == end {
+                res.push(size);
+                size = 0;
+            }
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
-- Space complexity: $O(m)$
+- Space complexity: $O(1)$
+    - The last-index map contains at most $26$ entries because `s` consists only of lowercase English letters. More generally, this is $O(m)$, where $m$ is the alphabet size.
 
-> Where $n$ is the length of the string $s$ and $m$ is the number of unique characters in the string $s$.
+> Where $n$ is the length of the string $s$.
+
+---
+
+## Common Pitfalls
+
+### Not Precomputing Last Indices
+
+A common mistake is trying to find the last occurrence of each character on the fly during the main traversal. This leads to O(n^2) time complexity. You must precompute the last index of every character in a first pass to achieve O(n) time.
+
+### Forgetting to Reset Partition Size
+
+After completing a partition (when `i == end`), forgetting to reset the `size` counter to 0 causes partition sizes to accumulate incorrectly. Each new partition must start with a fresh count.
+
+### Off-by-One Errors with Partition Boundaries
+
+When checking if the current index equals the end of the partition, make sure to use the correct comparison. The partition ends when `i == end`, not `i > end` or `i >= end`. An off-by-one error here will either split partitions prematurely or merge partitions that should be separate.

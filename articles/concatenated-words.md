@@ -1,4 +1,27 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Hash Sets** - Using sets for O(1) lookups to check if a word exists in the dictionary
+- **Recursion** - Breaking down strings into prefix/suffix and recursively checking validity
+- **Dynamic Programming** - Using memoization to avoid recomputing results for the same substrings
+- **String Manipulation** - Splitting strings into substrings and concatenating words
+
+---
+
 ## 1. Brute Force (Backtracking)
+
+### Intuition
+
+We can generate all possible concatenations of words and check if any concatenation exists in our word set. By building concatenations through backtracking and checking membership, we find words that are formed by joining two or more shorter words.
+
+### Algorithm
+
+1. Build a hash set from all words and find the maximum word length.
+2. Use backtracking to generate all possible concatenations of words.
+3. When a concatenation has more than one word and exists in the word set, add it to results and remove it from the set to avoid duplicates.
+4. Prune branches where the current length exceeds the maximum word length.
+5. Return all found concatenated words.
 
 ::tabs-start
 
@@ -193,6 +216,144 @@ public class Solution {
 }
 ```
 
+```go
+func findAllConcatenatedWordsInADict(words []string) []string {
+    wordSet := make(map[string]bool)
+    maxLen := 0
+    for _, w := range words {
+        wordSet[w] = true
+        if len(w) > maxLen {
+            maxLen = len(w)
+        }
+    }
+
+    var res []string
+    var dfs func(concatWord []string, totLen int)
+    dfs = func(concatWord []string, totLen int) {
+        if len(concatWord) > 1 {
+            word := strings.Join(concatWord, "")
+            if wordSet[word] {
+                res = append(res, word)
+                delete(wordSet, word)
+            }
+        }
+
+        for _, w := range words {
+            if totLen+len(w) > maxLen {
+                continue
+            }
+            concatWord = append(concatWord, w)
+            dfs(concatWord, totLen+len(w))
+            concatWord = concatWord[:len(concatWord)-1]
+        }
+    }
+
+    dfs([]string{}, 0)
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun findAllConcatenatedWordsInADict(words: Array<String>): List<String> {
+        val wordSet = words.toMutableSet()
+        var maxLen = 0
+        for (w in words) {
+            maxLen = maxOf(maxLen, w.length)
+        }
+
+        val res = mutableListOf<String>()
+
+        fun dfs(concatWord: MutableList<String>, totLen: Int) {
+            if (concatWord.size > 1) {
+                val word = concatWord.joinToString("")
+                if (word in wordSet) {
+                    res.add(word)
+                    wordSet.remove(word)
+                }
+            }
+
+            for (w in words) {
+                if (totLen + w.length > maxLen) continue
+                concatWord.add(w)
+                dfs(concatWord, totLen + w.length)
+                concatWord.removeAt(concatWord.size - 1)
+            }
+        }
+
+        dfs(mutableListOf(), 0)
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func findAllConcatenatedWordsInADict(_ words: [String]) -> [String] {
+        var wordSet = Set(words)
+        var maxLen = 0
+        for w in words {
+            maxLen = max(maxLen, w.count)
+        }
+
+        var res = [String]()
+
+        func dfs(_ concatWord: inout [String], _ totLen: Int) {
+            if concatWord.count > 1 {
+                let word = concatWord.joined()
+                if wordSet.contains(word) {
+                    res.append(word)
+                    wordSet.remove(word)
+                }
+            }
+
+            for w in words {
+                if totLen + w.count > maxLen { continue }
+                concatWord.append(w)
+                dfs(&concatWord, totLen + w.count)
+                concatWord.removeLast()
+            }
+        }
+
+        var concatWord = [String]()
+        dfs(&concatWord, 0)
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn find_all_concatenated_words_in_a_dict(words: Vec<String>) -> Vec<String> {
+        let mut word_set: HashSet<String> = words.iter().cloned().collect();
+        let max_len = words.iter().map(|w| w.len()).max().unwrap_or(0);
+        let mut res = Vec::new();
+
+        fn dfs(
+            words: &[String], word_set: &mut HashSet<String>, max_len: usize,
+            concat_word: &mut Vec<String>, tot_len: usize, res: &mut Vec<String>,
+        ) {
+            if concat_word.len() > 1 {
+                let word: String = concat_word.concat();
+                if word_set.contains(&word) {
+                    res.push(word.clone());
+                    word_set.remove(&word);
+                }
+            }
+            for w in words {
+                if tot_len + w.len() > max_len { continue; }
+                concat_word.push(w.clone());
+                dfs(words, word_set, max_len, concat_word, tot_len + w.len(), res);
+                concat_word.pop();
+            }
+        }
+
+        dfs(&words, &mut word_set, max_len, &mut vec![], 0, &mut res);
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -205,6 +366,18 @@ public class Solution {
 ---
 
 ## 2. Recursion
+
+### Intuition
+
+For each word, we check if it can be split into parts where each part exists in the word set. We try every possible prefix; if a prefix is in the set, we recursively check if the remaining suffix can also be decomposed (or is itself in the set).
+
+### Algorithm
+
+1. Build a hash set from all words for `O(1)` lookup.
+2. For each word, define a recursive function that tries to split it.
+3. At each position, check all possible prefixes. If a prefix exists in the set, check if the suffix also exists or can be recursively split.
+4. If the entire word can be decomposed into at least two parts from the set, add it to results.
+5. Return all concatenated words found.
 
 ::tabs-start
 
@@ -353,6 +526,118 @@ public class Solution {
 }
 ```
 
+```go
+func findAllConcatenatedWordsInADict(words []string) []string {
+    wordSet := make(map[string]bool)
+    for _, w := range words {
+        wordSet[w] = true
+    }
+
+    var dfs func(word string) bool
+    dfs = func(word string) bool {
+        for i := 1; i < len(word); i++ {
+            prefix, suffix := word[:i], word[i:]
+            if (wordSet[prefix] && wordSet[suffix]) ||
+                (wordSet[prefix] && dfs(suffix)) {
+                return true
+            }
+        }
+        return false
+    }
+
+    var res []string
+    for _, w := range words {
+        if dfs(w) {
+            res = append(res, w)
+        }
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun findAllConcatenatedWordsInADict(words: Array<String>): List<String> {
+        val wordSet = words.toHashSet()
+
+        fun dfs(word: String): Boolean {
+            for (i in 1 until word.length) {
+                val prefix = word.substring(0, i)
+                val suffix = word.substring(i)
+                if ((prefix in wordSet && suffix in wordSet) ||
+                    (prefix in wordSet && dfs(suffix))) {
+                    return true
+                }
+            }
+            return false
+        }
+
+        val res = mutableListOf<String>()
+        for (w in words) {
+            if (dfs(w)) {
+                res.add(w)
+            }
+        }
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func findAllConcatenatedWordsInADict(_ words: [String]) -> [String] {
+        let wordSet = Set(words)
+
+        func dfs(_ word: String) -> Bool {
+            for i in 1..<word.count {
+                let prefixEnd = word.index(word.startIndex, offsetBy: i)
+                let prefix = String(word[..<prefixEnd])
+                let suffix = String(word[prefixEnd...])
+                if (wordSet.contains(prefix) && wordSet.contains(suffix)) ||
+                    (wordSet.contains(prefix) && dfs(suffix)) {
+                    return true
+                }
+            }
+            return false
+        }
+
+        var res = [String]()
+        for w in words {
+            if dfs(w) {
+                res.append(w)
+            }
+        }
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn find_all_concatenated_words_in_a_dict(words: Vec<String>) -> Vec<String> {
+        let word_set: HashSet<&str> = words.iter().map(|s| s.as_str()).collect();
+
+        fn dfs(word: &str, word_set: &HashSet<&str>) -> bool {
+            for i in 1..word.len() {
+                let prefix = &word[..i];
+                let suffix = &word[i..];
+                if (word_set.contains(prefix) && word_set.contains(suffix))
+                    || (word_set.contains(prefix) && dfs(suffix, word_set))
+                {
+                    return true;
+                }
+            }
+            false
+        }
+
+        words.iter()
+            .filter(|w| dfs(w, &word_set))
+            .cloned()
+            .collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -365,6 +650,18 @@ public class Solution {
 ---
 
 ## 3. Dynamic Programming (Top-Down)
+
+### Intuition
+
+The recursive approach has overlapping subproblems since the same suffix may be checked multiple times. By memoizing results for each suffix, we avoid recomputing whether a substring can be decomposed.
+
+### Algorithm
+
+1. Build a hash set from all words and create a memoization dictionary.
+2. For each word, use a recursive function with memoization to check if it can be split.
+3. Before computing, check if the result for the current word exists in memo.
+4. Try all prefixes; if a prefix is in the word set and the suffix can be decomposed, cache and return `true`.
+5. Cache `false` results as well to avoid recomputation. Add words that return `true` to the result.
 
 ::tabs-start
 
@@ -550,6 +847,148 @@ public class Solution {
 }
 ```
 
+```go
+func findAllConcatenatedWordsInADict(words []string) []string {
+    wordSet := make(map[string]bool)
+    for _, w := range words {
+        wordSet[w] = true
+    }
+    dp := make(map[string]bool)
+    dpSet := make(map[string]bool)
+
+    var dfs func(word string) bool
+    dfs = func(word string) bool {
+        if val, ok := dpSet[word]; ok {
+            return val
+        }
+
+        for i := 1; i < len(word); i++ {
+            prefix, suffix := word[:i], word[i:]
+            if (wordSet[prefix] && wordSet[suffix]) ||
+                (wordSet[prefix] && dfs(suffix)) {
+                dp[word] = true
+                dpSet[word] = true
+                return true
+            }
+        }
+        dp[word] = false
+        dpSet[word] = true
+        return false
+    }
+
+    var res []string
+    for _, w := range words {
+        if dfs(w) {
+            res = append(res, w)
+        }
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun findAllConcatenatedWordsInADict(words: Array<String>): List<String> {
+        val wordSet = words.toHashSet()
+        val dp = mutableMapOf<String, Boolean>()
+
+        fun dfs(word: String): Boolean {
+            if (word in dp) {
+                return dp[word]!!
+            }
+
+            for (i in 1 until word.length) {
+                val prefix = word.substring(0, i)
+                val suffix = word.substring(i)
+                if ((prefix in wordSet && suffix in wordSet) ||
+                    (prefix in wordSet && dfs(suffix))) {
+                    dp[word] = true
+                    return true
+                }
+            }
+            dp[word] = false
+            return false
+        }
+
+        val res = mutableListOf<String>()
+        for (w in words) {
+            if (dfs(w)) {
+                res.add(w)
+            }
+        }
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func findAllConcatenatedWordsInADict(_ words: [String]) -> [String] {
+        let wordSet = Set(words)
+        var dp = [String: Bool]()
+
+        func dfs(_ word: String) -> Bool {
+            if let val = dp[word] {
+                return val
+            }
+
+            for i in 1..<word.count {
+                let prefixEnd = word.index(word.startIndex, offsetBy: i)
+                let prefix = String(word[..<prefixEnd])
+                let suffix = String(word[prefixEnd...])
+                if (wordSet.contains(prefix) && wordSet.contains(suffix)) ||
+                    (wordSet.contains(prefix) && dfs(suffix)) {
+                    dp[word] = true
+                    return true
+                }
+            }
+            dp[word] = false
+            return false
+        }
+
+        var res = [String]()
+        for w in words {
+            if dfs(w) {
+                res.append(w)
+            }
+        }
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn find_all_concatenated_words_in_a_dict(words: Vec<String>) -> Vec<String> {
+        let word_set: HashSet<String> = words.iter().cloned().collect();
+        let mut dp = HashMap::new();
+
+        fn dfs(word: &str, word_set: &HashSet<String>, dp: &mut HashMap<String, bool>) -> bool {
+            if let Some(&val) = dp.get(word) {
+                return val;
+            }
+            for i in 1..word.len() {
+                let prefix = &word[..i];
+                let suffix = &word[i..];
+                if (word_set.contains(prefix) && word_set.contains(suffix))
+                    || (word_set.contains(prefix) && dfs(suffix, word_set, dp))
+                {
+                    dp.insert(word.to_string(), true);
+                    return true;
+                }
+            }
+            dp.insert(word.to_string(), false);
+            false
+        }
+
+        words.iter()
+            .filter(|w| dfs(w, &word_set, &mut dp))
+            .cloned()
+            .collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -562,6 +1001,18 @@ public class Solution {
 ---
 
 ## 4. Dynamic Programming (Bottom-Up)
+
+### Intuition
+
+For each word, we use a DP array where `dp[i]` indicates whether the substring from index `0` to `i` can be formed by concatenating words from the set. We build this array iteratively by checking all possible split points.
+
+### Algorithm
+
+1. Build a hash set from all words.
+2. For each word, create a boolean DP array of size `m+1` with `dp[0] = true`.
+3. For each position `i` from `1` to `m`, check all previous positions `j`. If `dp[j]` is `true` and the substring from `j` to `i` exists in the set, set `dp[i] = true`.
+4. Skip the case where `j = 0` and `i = m` to ensure the word is not just itself.
+5. If `dp[m]` is `true`, the word is concatenated; add it to results.
 
 ::tabs-start
 
@@ -717,6 +1168,131 @@ public class Solution {
 }
 ```
 
+```go
+func findAllConcatenatedWordsInADict(words []string) []string {
+    wordSet := make(map[string]bool)
+    for _, w := range words {
+        wordSet[w] = true
+    }
+
+    var res []string
+    for _, word := range words {
+        m := len(word)
+        dp := make([]bool, m+1)
+        dp[0] = true
+
+        for i := 1; i <= m; i++ {
+            for j := 0; j < i; j++ {
+                if j == 0 && i == m {
+                    continue
+                }
+                if dp[j] && wordSet[word[j:i]] {
+                    dp[i] = true
+                    break
+                }
+            }
+        }
+
+        if dp[m] {
+            res = append(res, word)
+        }
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun findAllConcatenatedWordsInADict(words: Array<String>): List<String> {
+        val wordSet = words.toHashSet()
+        val res = mutableListOf<String>()
+
+        for (word in words) {
+            val m = word.length
+            val dp = BooleanArray(m + 1)
+            dp[0] = true
+
+            for (i in 1..m) {
+                for (j in 0 until i) {
+                    if (j == 0 && i == m) continue
+                    if (dp[j] && word.substring(j, i) in wordSet) {
+                        dp[i] = true
+                        break
+                    }
+                }
+            }
+
+            if (dp[m]) {
+                res.add(word)
+            }
+        }
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func findAllConcatenatedWordsInADict(_ words: [String]) -> [String] {
+        let wordSet = Set(words)
+        var res = [String]()
+
+        for word in words {
+            let m = word.count
+            var dp = [Bool](repeating: false, count: m + 1)
+            dp[0] = true
+            let chars = Array(word)
+
+            for i in 1...m {
+                for j in 0..<i {
+                    if j == 0 && i == m { continue }
+                    if dp[j] && wordSet.contains(String(chars[j..<i])) {
+                        dp[i] = true
+                        break
+                    }
+                }
+            }
+
+            if dp[m] {
+                res.append(word)
+            }
+        }
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn find_all_concatenated_words_in_a_dict(words: Vec<String>) -> Vec<String> {
+        let word_set: HashSet<&str> = words.iter().map(|s| s.as_str()).collect();
+        let mut res = Vec::new();
+
+        for word in &words {
+            let m = word.len();
+            let mut dp = vec![false; m + 1];
+            dp[0] = true;
+
+            for i in 1..=m {
+                for j in 0..i {
+                    if j == 0 && i == m { continue; }
+                    if dp[j] && word_set.contains(&word[j..i]) {
+                        dp[i] = true;
+                        break;
+                    }
+                }
+            }
+
+            if dp[m] {
+                res.push(word.clone());
+            }
+        }
+
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -725,3 +1301,49 @@ public class Solution {
 - Space complexity: $O(n * m)$
 
 > Where $n$ is the size of the string array $words$ and $m$ is the length of the longest word in the array.
+
+---
+
+## Common Pitfalls
+
+### Counting a Word as Its Own Concatenation
+
+A concatenated word must be formed by at least two other words. If you check whether the entire word exists in the set without excluding it, every word would trivially match itself.
+
+```python
+# Wrong: allows word to match itself
+if word[j:i] in wordSet:
+    dp[i] = True
+
+# Correct: skip the case where the entire word is checked
+if j == 0 and i == m:
+    continue
+```
+
+### Not Requiring Multiple Words
+
+The problem requires concatenation of two or more words. Checking only that the word can be split into valid parts without ensuring at least two parts will incorrectly include single words that exist in the dictionary.
+
+### Missing Memoization Leading to TLE
+
+Without memoization, the same suffix may be checked exponentially many times. For long words with many valid prefixes, this causes timeout.
+
+```python
+# Wrong: no caching
+def dfs(word):
+    for i in range(1, len(word)):
+        if prefix in wordSet and dfs(suffix):
+            return True
+
+# Correct: cache results
+if word in dp:
+    return dp[word]
+```
+
+### Incorrect Substring Indices
+
+Off-by-one errors when splitting the word into prefix and suffix are common. The prefix should be `word[0:i]` and suffix should be `word[i:]`, where `i` ranges from `1` to `len(word)-1`.
+
+### Forgetting Empty String Edge Case
+
+If the word list contains an empty string, it could match infinitely. Most solutions implicitly handle this since the loop starts at `i=1`, but explicitly filtering empty strings from the word set is safer.

@@ -1,4 +1,36 @@
+## Prerequisites
+Before attempting this problem, you should be comfortable with:
+- **Graph Traversal (DFS/BFS)** - Exploring grid cells using depth-first or breadth-first search with 4-directional movement
+- **Binary Search** - Using binary search on the answer to optimize searching for the minimum valid time
+- **Dijkstra's Algorithm** - Finding shortest paths with modified cost function (minimizing maximum edge weight)
+- **Union-Find (Disjoint Set Union)** - Tracking connected components as cells become accessible over time
+- **Priority Queue / Min-Heap** - Efficiently selecting the next cell with minimum cost in greedy approaches
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+This brute force tries **every possible path** from the top-left to the bottom-right.
+
+While walking, your “time” is not the number of steps — it’s the **maximum height value you have stepped on so far**, because you must wait until water rises to at least that height to pass those cells.
+
+So for each path:
+- The cost of the path = **max cell value on that path**
+- We want the path with the **minimum** such cost (minimize the worst height you had to cross).
+
+The DFS explores all routes, keeps a `visited` grid to avoid looping, and returns the best (minimum) possible maximum-height value among all paths.
+
+### Algorithm
+1. Start `dfs` from `(0, 0)` with initial time `t = 0`.
+2. For a cell `(r, c)`:
+   - If out of bounds or already visited → return a very large number (invalid path).
+   - Update `t = max(t, grid[r][c])` (time needed to stand on this cell).
+   - If `(r, c)` is the destination `(n-1, n-1)` → return `t`.
+3. Mark `(r, c)` as visited.
+4. Recursively try all 4 directions (up, down, left, right).
+5. Take the minimum result among the 4 recursive calls (best path from here).
+6. Unmark `(r, c)` (backtrack) and return that minimum.
 
 ::tabs-start
 
@@ -257,6 +289,39 @@ class Solution {
 }
 ```
 
+
+```rust
+impl Solution {
+    pub fn swim_in_water(grid: Vec<Vec<i32>>) -> i32 {
+        let n = grid.len();
+        let mut visit = vec![vec![false; n]; n];
+
+        fn dfs(
+            grid: &Vec<Vec<i32>>, visit: &mut Vec<Vec<bool>>,
+            r: i32, c: i32, t: i32,
+        ) -> i32 {
+            let n = grid.len() as i32;
+            if r < 0 || c < 0 || r >= n || c >= n || visit[r as usize][c as usize] {
+                return 1_000_000;
+            }
+            let t = t.max(grid[r as usize][c as usize]);
+            if r == n - 1 && c == n - 1 {
+                return t;
+            }
+            visit[r as usize][c as usize] = true;
+            let res = dfs(grid, visit, r + 1, c, t)
+                .min(dfs(grid, visit, r - 1, c, t))
+                .min(dfs(grid, visit, r, c + 1, t))
+                .min(dfs(grid, visit, r, c - 1, t));
+            visit[r as usize][c as usize] = false;
+            res
+        }
+
+        dfs(&grid, &mut visit, 0, 0, 0)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -267,6 +332,32 @@ class Solution {
 ---
 
 ## 2. Depth First Search
+
+### Intuition
+Here we turn the problem into a **yes/no question**:
+
+> “If the water level is `t`, can I reach the bottom-right?”
+
+At water level `t`, you are only allowed to step on cells with `grid[r][c] <= t`.  
+So we try a DFS that only walks through “allowed” cells.  
+Then we **increase `t` gradually** from the smallest possible height to the largest, and return the first `t` where reaching the end becomes possible.
+
+### Algorithm
+1. Compute:
+   - `minH` = minimum value in the grid (smallest possible water level to consider)
+   - `maxH` = maximum value in the grid (guaranteed enough water level)
+2. Define `canReach(t)` using `dfs`:
+   - Start from `(0,0)`
+   - You can move 4 directions.
+   - You **cannot** enter a cell if:
+     - it is out of bounds, or
+     - already visited, or
+     - its height `> t` (not flooded enough yet)
+   - If you reach `(n-1, n-1)`, return `true`.
+3. For `t` from `minH` to `maxH`:
+   - If `canReach(t)` is `true`, return `t` (first possible time).
+   - Otherwise reset `visited` and try the next `t`.
+4. If none worked earlier, return `maxH`.
 
 ::tabs-start
 
@@ -620,6 +711,56 @@ class Solution {
 }
 ```
 
+
+```rust
+impl Solution {
+    pub fn swim_in_water(grid: Vec<Vec<i32>>) -> i32 {
+        let n = grid.len();
+        let mut min_h = grid[0][0];
+        let mut max_h = grid[0][0];
+        for row in &grid {
+            for &val in row {
+                min_h = min_h.min(val);
+                max_h = max_h.max(val);
+            }
+        }
+
+        let mut visit = vec![vec![false; n]; n];
+
+        fn dfs(
+            grid: &Vec<Vec<i32>>, visit: &mut Vec<Vec<bool>>,
+            r: i32, c: i32, t: i32,
+        ) -> bool {
+            let n = grid.len() as i32;
+            if r < 0 || c < 0 || r >= n || c >= n
+                || visit[r as usize][c as usize]
+                || grid[r as usize][c as usize] > t
+            {
+                return false;
+            }
+            if r == n - 1 && c == n - 1 {
+                return true;
+            }
+            visit[r as usize][c as usize] = true;
+            dfs(grid, visit, r + 1, c, t)
+                || dfs(grid, visit, r - 1, c, t)
+                || dfs(grid, visit, r, c + 1, t)
+                || dfs(grid, visit, r, c - 1, t)
+        }
+
+        for t in min_h..max_h {
+            if dfs(&grid, &mut visit, 0, 0, t) {
+                return t;
+            }
+            for row in visit.iter_mut() {
+                row.fill(false);
+            }
+        }
+        max_h
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -630,6 +771,36 @@ class Solution {
 ---
 
 ## 3. Binary Search + DFS
+
+### Intuition
+Instead of trying every water level `t` one by one, we **binary search the answer**.
+
+Key idea:
+- If you **can** reach the bottom-right at water level `t`, then you can also reach it at any **higher** level (`t+1, t+2, ...`).  
+- If you **cannot** reach at `t`, you also cannot reach at any **lower** level.
+
+So the condition “reachable at `t`” is **monotonic** → perfect for binary search.
+
+To test a fixed `t`, run a **DFS** from `(0,0)` and only move through cells with `height <= t`.
+
+### Algorithm
+1. Compute the search range:
+   - `low = minimum height in grid`
+   - `high = maximum height in grid`
+2. Define `canReach(t)` using `dfs`:
+   - Start at `(0,0)`
+   - Move in 4 directions.
+   - Reject moves that are:
+     - out of bounds, or
+     - already visited, or
+     - on a cell with `grid[r][c] > t`
+   - If `dfs` reaches `(n-1, n-1)`, return `true`, else `false`.
+3. Binary search on `t`:
+   - `mid = (low + high) // 2`
+   - If `canReach(mid)` is `true` → try smaller time: `high = mid`
+   - Else → need more water: `low = mid + 1`
+   - Reset `visited` before the next `dfs` check.
+4. When `low == high`, that value is the minimum time needed.
 
 ::tabs-start
 
@@ -1019,16 +1190,93 @@ class Solution {
 }
 ```
 
+
+```rust
+impl Solution {
+    pub fn swim_in_water(grid: Vec<Vec<i32>>) -> i32 {
+        let n = grid.len();
+        let mut min_h = grid[0][0];
+        let mut max_h = grid[0][0];
+        for row in &grid {
+            for &val in row {
+                min_h = min_h.min(val);
+                max_h = max_h.max(val);
+            }
+        }
+
+        let mut visit = vec![vec![false; n]; n];
+
+        fn dfs(
+            grid: &Vec<Vec<i32>>, visit: &mut Vec<Vec<bool>>,
+            r: i32, c: i32, t: i32,
+        ) -> bool {
+            let n = grid.len() as i32;
+            if r < 0 || c < 0 || r >= n || c >= n
+                || visit[r as usize][c as usize]
+                || grid[r as usize][c as usize] > t
+            {
+                return false;
+            }
+            if r == n - 1 && c == n - 1 {
+                return true;
+            }
+            visit[r as usize][c as usize] = true;
+            dfs(grid, visit, r + 1, c, t)
+                || dfs(grid, visit, r - 1, c, t)
+                || dfs(grid, visit, r, c + 1, t)
+                || dfs(grid, visit, r, c - 1, t)
+        }
+
+        let (mut lo, mut hi) = (min_h, max_h);
+        while lo < hi {
+            let mid = (lo + hi) >> 1;
+            if dfs(&grid, &mut visit, 0, 0, mid) {
+                hi = mid;
+            } else {
+                lo = mid + 1;
+            }
+            for row in visit.iter_mut() {
+                row.fill(false);
+            }
+        }
+        hi
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n ^ 2 \log n)$
+    - The binary search runs for $O(\log(n ^ 2))$ iterations because the height range contains at most $n ^ 2$ values. Since $\log(n ^ 2) = 2\log n$, this simplifies to $O(\log n)$ iterations, with each DFS taking $O(n ^ 2)$ time.
 - Space complexity: $O(n ^ 2)$
 
 ---
 
 ## 4. Dijkstra's Algorithm
+
+### Intuition
+Think of each cell’s height as the **earliest time** you’re allowed to stand on it (water must be at least that high).  
+While moving from start to end, the **total time of a path** is not the sum — it’s the **maximum height** you ever step on (because water must rise to that max).
+
+So the problem becomes:
+> Find a path from (0,0) to (n-1,n-1) that **minimizes the maximum cell height** along the path.
+
+That is exactly what Dijkstra can solve if we define:
+- **cost to reach a cell** = smallest possible “maximum height so far”.
+
+### Algorithm
+1. Use a min-heap storing states: `(timeSoFar, r, c)`, where `timeSoFar = max height on the path up to (r,c)`.
+2. Start by pushing the start cell: `(grid[0][0], 0, 0)`.
+3. Repeatedly:
+   - Pop the cell with the **smallest** `timeSoFar`.
+   - If it's the destination, return `timeSoFar` (this is optimal).
+   - For each of 4 neighbors:
+     - If valid and not visited, compute:
+       - `newTime = max(timeSoFar, grid[nr][nc])`
+     - Push `(newTime, nr, nc)` into the heap.
+4. Use a `visited` set so each cell is processed once (when it's popped with the best possible `timeSoFar`).
 
 ::tabs-start
 
@@ -1226,21 +1474,33 @@ type Node struct {
     time, r, c int
 }
 
+type MinHeap []Node
+
+func (h MinHeap) Len() int            { return len(h) }
+func (h MinHeap) Less(i, j int) bool  { return h[i].time < h[j].time }
+func (h MinHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
+func (h *MinHeap) Push(x interface{}) { *h = append(*h, x.(Node)) }
+func (h *MinHeap) Pop() interface{} {
+    old := *h
+    n := len(old)
+    x := old[n-1]
+    *h = old[:n-1]
+    return x
+}
+
 func swimInWater(grid [][]int) int {
     N := len(grid)
     directions := [][2]int{{0, 1}, {0, -1}, {1, 0}, {-1, 0}}
 
-    pq := priorityqueue.NewWith(func(a, b interface{}) int {
-        return utils.IntComparator(a.(Node).time, b.(Node).time)
-    })
+    pq := &MinHeap{}
+    heap.Init(pq)
 
-    pq.Enqueue(Node{grid[0][0], 0, 0})
+    heap.Push(pq, Node{grid[0][0], 0, 0})
     visited := make(map[[2]int]bool)
     visited[[2]int{0, 0}] = true
 
-    for !pq.Empty() {
-        item, _ := pq.Dequeue()
-        node := item.(Node)
+    for pq.Len() > 0 {
+        node := heap.Pop(pq).(Node)
         t, r, c := node.time, node.r, node.c
 
         if r == N-1 && c == N-1 {
@@ -1255,7 +1515,7 @@ func swimInWater(grid [][]int) int {
             }
 
             visited[[2]int{neiR, neiC}] = true
-            pq.Enqueue(Node{max(t, grid[neiR][neiC]), neiR, neiC})
+            heap.Push(pq, Node{max(t, grid[neiR][neiC]), neiR, neiC})
         }
     }
 
@@ -1350,6 +1610,39 @@ class Solution {
 }
 ```
 
+
+```rust
+impl Solution {
+    pub fn swim_in_water(grid: Vec<Vec<i32>>) -> i32 {
+        let n = grid.len();
+        let mut visit = vec![vec![false; n]; n];
+        let mut heap = BinaryHeap::new();
+        let directions = [(0i32, 1i32), (0, -1), (1, 0), (-1, 0)];
+
+        heap.push(Reverse((grid[0][0], 0usize, 0usize)));
+        visit[0][0] = true;
+
+        while let Some(Reverse((t, r, c))) = heap.pop() {
+            if r == n - 1 && c == n - 1 {
+                return t;
+            }
+            for &(dr, dc) in &directions {
+                let nr = r as i32 + dr;
+                let nc = c as i32 + dc;
+                if nr >= 0 && nc >= 0 && (nr as usize) < n && (nc as usize) < n {
+                    let (nr, nc) = (nr as usize, nc as usize);
+                    if !visit[nr][nc] {
+                        visit[nr][nc] = true;
+                        heap.push(Reverse((t.max(grid[nr][nc]), nr, nc)));
+                    }
+                }
+            }
+        }
+        n as i32 * n as i32
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1360,6 +1653,25 @@ class Solution {
 ---
 
 ## 5. Kruskal's Algorithm
+
+### Intuition
+Water level `t` rises over time. At time `t`, you’re allowed to step only on cells with height `<= t`.  
+So as `t` increases, **more cells become “open”** and neighboring open cells form bigger connected regions.
+
+We want the **earliest time `t`** when the start cell `(0,0)` and end cell `(N-1,N-1)` become part of the **same connected component**.
+
+DSU (Union-Find) is perfect for this: it quickly merges neighboring open cells and checks if start and end are connected.
+
+### Algorithm (Kruskal-style using DSU)
+1. Create a list of all cells as `(height, r, c)` and sort by `height` (smallest first).
+2. Initialize `dsu` for `N*N` cells (each cell is a node with `id = r*N + c`).
+3. Process cells in increasing height order:
+   - Current cell `(r,c)` becomes "open" at time `t = height`.
+   - For each of its 4 neighbors:
+     - If the neighbor's height `<= t`, it is already open (or also open now), so **union** the two cells.
+   - After unions, check if `start` (`0`) and `end` (`N*N-1`) are connected.
+   - The first `t` where they connect is the answer.
+4. Return that `t`.
 
 ::tabs-start
 
@@ -1879,9 +2191,106 @@ class Solution {
 }
 ```
 
+
+```rust
+struct DSU {
+    parent: Vec<usize>,
+    size: Vec<usize>,
+}
+
+impl DSU {
+    fn new(n: usize) -> Self {
+        Self {
+            parent: (0..n).collect(),
+            size: vec![1; n],
+        }
+    }
+
+    fn find(&mut self, x: usize) -> usize {
+        if self.parent[x] != x {
+            self.parent[x] = self.find(self.parent[x]);
+        }
+        self.parent[x]
+    }
+
+    fn union(&mut self, u: usize, v: usize) -> bool {
+        let (mut pu, mut pv) = (self.find(u), self.find(v));
+        if pu == pv {
+            return false;
+        }
+        if self.size[pu] < self.size[pv] {
+            std::mem::swap(&mut pu, &mut pv);
+        }
+        self.size[pu] += self.size[pv];
+        self.parent[pv] = pu;
+        true
+    }
+
+    fn connected(&mut self, u: usize, v: usize) -> bool {
+        self.find(u) == self.find(v)
+    }
+}
+
+impl Solution {
+    pub fn swim_in_water(grid: Vec<Vec<i32>>) -> i32 {
+        let n = grid.len();
+        let mut dsu = DSU::new(n * n);
+        let mut positions: Vec<(i32, usize, usize)> = Vec::new();
+        for r in 0..n {
+            for c in 0..n {
+                positions.push((grid[r][c], r, c));
+            }
+        }
+        positions.sort();
+        let directions: [(i32, i32); 4] = [(0, 1), (1, 0), (0, -1), (-1, 0)];
+
+        for &(t, r, c) in &positions {
+            for &(dr, dc) in &directions {
+                let nr = r as i32 + dr;
+                let nc = c as i32 + dc;
+                if nr >= 0 && nc >= 0 && (nr as usize) < n && (nc as usize) < n {
+                    let (nr, nc) = (nr as usize, nc as usize);
+                    if grid[nr][nc] <= t {
+                        dsu.union(r * n + c, nr * n + nc);
+                    }
+                }
+            }
+            if dsu.connected(0, n * n - 1) {
+                return t;
+            }
+        }
+        n as i32 * n as i32
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n ^ 2 \log n)$
 - Space complexity: $O(n ^ 2)$
+
+---
+
+## Common Pitfalls
+
+### Confusing Time with Step Count
+
+A common mistake is treating "time" as the number of steps taken. In this problem, time represents the **maximum height** you must wait for the water to rise to before you can traverse your chosen path. It is not the path length.
+
+### Forgetting to Include Start and End Cells
+
+When calculating the minimum time, you must include both `grid[0][0]` and `grid[n-1][n-1]` in your considerations. The answer is at least `max(grid[0][0], grid[n-1][n-1])` since you must be able to stand on both endpoints.
+
+### Incorrect Binary Search Bounds
+
+When using binary search, setting the wrong initial bounds can cause issues. The lower bound should be the minimum value in the grid (or at least `grid[0][0]`), and the upper bound should be the maximum value. Using `0` to `n*n-1` works but is less precise.
+
+### Not Resetting Visited Array Between Searches
+
+In both the linear search and binary search DFS approaches, forgetting to reset the `visited` array between different attempts (for different time values) leads to incorrect results. Each DFS with a new threshold needs a fresh visited state.
+
+### Union-Find: Incorrect Node Indexing
+
+When using Kruskal's algorithm with DSU, a frequent bug is incorrectly converting 2D coordinates to 1D indices. The formula `r * N + c` must be used consistently, and you must ensure neighbors are already "open" (have height <= current time) before attempting to union them.

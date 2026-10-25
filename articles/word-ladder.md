@@ -1,4 +1,28 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Breadth-First Search (BFS)** - Finding the shortest path in an unweighted graph using level-order traversal
+- **Graph Representation** - Building adjacency lists and understanding implicit graphs where nodes are words
+- **Hash Maps and Hash Sets** - For O(1) word lookups and tracking visited nodes
+- **String Manipulation** - Generating neighbor words by changing one character at a time
+- **Queue Data Structure** - Essential for implementing BFS traversal
+
+---
+
 ## 1. Breadth First Search - I
+
+### Intuition
+
+This problem can be modeled as finding the shortest path in an unweighted graph where each word is a node and edges connect words that differ by exactly one character. We precompute the adjacency list by comparing all pairs of words. BFS naturally finds the shortest path because it explores all nodes at distance `k` before any node at distance `k+1`.
+
+### Algorithm
+
+1. Create a mapping from each word to its index in the word list.
+2. Build an adjacency list by comparing all word pairs; connect words that differ by exactly one character.
+3. Find all words that differ by one character from beginWord and add them to the BFS queue.
+4. Process the queue level by level, incrementing the distance counter at each level.
+5. When endWord is found, return the current distance. If the queue empties, return 0.
 
 ::tabs-start
 
@@ -571,6 +595,74 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn ladder_length(begin_word: String, end_word: String, word_list: Vec<String>) -> i32 {
+        if !word_list.contains(&end_word) || begin_word == end_word {
+            return 0;
+        }
+
+        let n = word_list.len();
+        let m = word_list[0].len();
+        let mut adj = vec![vec![]; n];
+        let mut mp = HashMap::new();
+        for i in 0..n {
+            mp.insert(&word_list[i], i);
+        }
+
+        let words_bytes: Vec<&[u8]> = word_list.iter().map(|w| w.as_bytes()).collect();
+        for i in 0..n {
+            for j in (i + 1)..n {
+                let cnt = (0..m).filter(|&k| words_bytes[i][k] != words_bytes[j][k]).count();
+                if cnt == 1 {
+                    adj[i].push(j);
+                    adj[j].push(i);
+                }
+            }
+        }
+
+        let mut q = VecDeque::new();
+        let mut res = 1;
+        let mut visit = HashSet::new();
+        let begin_bytes = begin_word.as_bytes();
+
+        for i in 0..m {
+            for c in b'a'..=b'z' {
+                if c == begin_bytes[i] {
+                    continue;
+                }
+                let mut word = begin_word.clone().into_bytes();
+                word[i] = c;
+                let word = String::from_utf8(word).unwrap();
+                if let Some(&idx) = mp.get(&word) {
+                    if visit.insert(idx) {
+                        q.push_back(idx);
+                    }
+                }
+            }
+        }
+
+        while !q.is_empty() {
+            res += 1;
+            let size = q.len();
+            for _ in 0..size {
+                let node = q.pop_front().unwrap();
+                if word_list[node] == end_word {
+                    return res;
+                }
+                for &nei in &adj[node] {
+                    if visit.insert(nei) {
+                        q.push_back(nei);
+                    }
+                }
+            }
+        }
+
+        0
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -583,6 +675,18 @@ class Solution {
 ---
 
 ## 2. Breadth First Search - II
+
+### Intuition
+
+Instead of precomputing the entire adjacency graph, we can generate neighbors on the fly. For each word, we try replacing each character with all 26 letters. If the resulting word exists in our word set, it is a valid neighbor. This approach trades precomputation time for potentially more neighbor generation during `BFS`.
+
+### Algorithm
+
+1. Convert the word list to a set for O(1) lookups.
+2. Start BFS from beginWord with distance counter set to 0.
+3. For each word in the current level, generate all possible words by changing one character at a time.
+4. If a generated word is in the word set, add it to the queue and remove it from the set to mark as visited.
+5. Return the distance when endWord is found, or 0 if the queue empties.
 
 ::tabs-start
 
@@ -890,6 +994,46 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn ladder_length(begin_word: String, end_word: String, word_list: Vec<String>) -> i32 {
+        let mut words: HashSet<String> = word_list.into_iter().collect();
+        if !words.contains(&end_word) || begin_word == end_word {
+            return 0;
+        }
+        let mut res = 0;
+        let mut q = VecDeque::new();
+        q.push_back(begin_word);
+
+        while !q.is_empty() {
+            res += 1;
+            let size = q.len();
+            for _ in 0..size {
+                let node = q.pop_front().unwrap();
+                if node == end_word {
+                    return res;
+                }
+                let node_bytes = node.as_bytes().to_vec();
+                for j in 0..node_bytes.len() {
+                    for c in b'a'..=b'z' {
+                        if c == node_bytes[j] {
+                            continue;
+                        }
+                        let mut nei = node_bytes.clone();
+                        nei[j] = c;
+                        let nei = String::from_utf8(nei).unwrap();
+                        if words.remove(&nei) {
+                            q.push_back(nei);
+                        }
+                    }
+                }
+            }
+        }
+        0
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -902,6 +1046,18 @@ class Solution {
 ---
 
 ## 3. Breadth First Search - III
+
+### Intuition
+
+We can use wildcard patterns to efficiently group words that are one character apart. For each word, create patterns by replacing each character with a wildcard. Words sharing the same pattern are neighbors. This precomputation allows `O(1)` neighbor lookup during `BFS`, as we only need to check the pattern buckets.
+
+### Algorithm
+
+1. For each word in the list (including beginWord), generate patterns by replacing each character with '\*' and group words by these patterns.
+2. Start BFS from beginWord, maintaining a visited set.
+3. For the current word, generate its patterns and look up all words in corresponding pattern buckets.
+4. Add unvisited neighbors to the queue and mark them visited.
+5. Return the level count when endWord is reached, or 0 if unreachable.
 
 ::tabs-start
 
@@ -1286,6 +1442,62 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn ladder_length(begin_word: String, end_word: String, mut word_list: Vec<String>) -> i32 {
+        if !word_list.contains(&end_word) {
+            return 0;
+        }
+
+        let mut nei: HashMap<String, Vec<String>> = HashMap::new();
+        word_list.push(begin_word.clone());
+        for word in &word_list {
+            let bytes = word.as_bytes();
+            for j in 0..bytes.len() {
+                let pattern = format!(
+                    "{}*{}",
+                    &word[..j],
+                    &word[j + 1..]
+                );
+                nei.entry(pattern).or_default().push(word.clone());
+            }
+        }
+
+        let mut visit = HashSet::new();
+        visit.insert(begin_word.clone());
+        let mut q = VecDeque::new();
+        q.push_back(begin_word);
+        let mut res = 1;
+
+        while !q.is_empty() {
+            let size = q.len();
+            for _ in 0..size {
+                let word = q.pop_front().unwrap();
+                if word == end_word {
+                    return res;
+                }
+                for j in 0..word.len() {
+                    let pattern = format!(
+                        "{}*{}",
+                        &word[..j],
+                        &word[j + 1..]
+                    );
+                    if let Some(neighbors) = nei.get(&pattern) {
+                        for nei_word in neighbors {
+                            if visit.insert(nei_word.clone()) {
+                                q.push_back(nei_word.clone());
+                            }
+                        }
+                    }
+                }
+            }
+            res += 1;
+        }
+        0
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1298,6 +1510,19 @@ class Solution {
 ---
 
 ## 4. Meet In The Middle (BFS)
+
+### Intuition
+
+Standard `BFS` explores exponentially more nodes as distance increases. By running two `BFS` searches simultaneously from `beginWord` and `endWord`, we can meet in the middle, effectively halving the search depth and dramatically reducing the search space. At each step, we expand the smaller frontier to balance the workload.
+
+### Algorithm
+
+1. Initialize two queues: one from beginWord and one from endWord.
+2. Maintain two maps tracking the distance from each end for visited words.
+3. Always expand the smaller queue to minimize work.
+4. For each word, generate neighbors by changing one character at a time.
+5. If a neighbor is already visited by the other search, return the sum of both distances.
+6. Otherwise, if unvisited by the current search, add to queue and record distance.
 
 ::tabs-start
 
@@ -1713,6 +1938,62 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn ladder_length(begin_word: String, end_word: String, word_list: Vec<String>) -> i32 {
+        let word_set: HashSet<String> = word_list.into_iter().collect();
+        if !word_set.contains(&end_word) || begin_word == end_word {
+            return 0;
+        }
+
+        let m = begin_word.len();
+        let mut qb = VecDeque::new();
+        let mut qe = VecDeque::new();
+        let mut from_begin: HashMap<String, i32> = HashMap::new();
+        let mut from_end: HashMap<String, i32> = HashMap::new();
+        qb.push_back(begin_word.clone());
+        qe.push_back(end_word.clone());
+        from_begin.insert(begin_word, 1);
+        from_end.insert(end_word, 1);
+
+        while !qb.is_empty() && !qe.is_empty() {
+            if qb.len() > qe.len() {
+                std::mem::swap(&mut qb, &mut qe);
+                std::mem::swap(&mut from_begin, &mut from_end);
+            }
+            let size = qb.len();
+            for _ in 0..size {
+                let word = qb.pop_front().unwrap();
+                let steps = from_begin[&word];
+                let mut word_bytes = word.into_bytes();
+                for i in 0..m {
+                    let orig = word_bytes[i];
+                    for c in b'a'..=b'z' {
+                        if c == orig {
+                            continue;
+                        }
+                        word_bytes[i] = c;
+                        let nei = String::from_utf8(word_bytes.clone()).unwrap();
+                        if !word_set.contains(&nei) {
+                            continue;
+                        }
+                        if let Some(&end_steps) = from_end.get(&nei) {
+                            return steps + end_steps;
+                        }
+                        if !from_begin.contains_key(&nei) {
+                            from_begin.insert(nei.clone(), steps + 1);
+                            qb.push_back(nei);
+                        }
+                    }
+                    word_bytes[i] = orig;
+                }
+            }
+        }
+        0
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1721,3 +2002,90 @@ class Solution {
 - Space complexity: $O(m ^ 2 * n)$
 
 > Where $n$ is the number of words and $m$ is the length of the word.
+
+---
+
+## Common Pitfalls
+
+### Returning Distance Instead of Word Count
+
+The problem asks for the number of words in the transformation sequence, not the number of transformations (edges). Off-by-one errors occur when returning the edge count instead of the node count.
+
+```python
+# Wrong: returns number of transformations
+res = 0  # starts at 0, counts edges
+while q:
+    res += 1
+    # ...
+    if word == endWord:
+        return res  # off by one
+
+# Correct: count includes beginWord
+res = 1  # starts at 1, counts nodes
+```
+
+### Forgetting to Check if endWord Exists in wordList
+
+If the endWord is not in the word list, transformation is impossible. Skipping this check leads to unnecessary BFS traversal and potential incorrect results.
+
+```python
+# Wrong: missing check
+def ladderLength(beginWord, endWord, wordList):
+    # starts BFS immediately...
+
+# Correct: check first
+if endWord not in wordList:
+    return 0
+```
+
+### Not Marking Words as Visited Before Adding to Queue
+
+Adding a word to the queue without immediately marking it visited allows the same word to be added multiple times from different neighbors, causing duplicate processing and incorrect distance calculations.
+
+```python
+# Wrong: mark visited when dequeuing
+node = q.popleft()
+visit.add(node)  # too late, duplicates already in queue
+
+# Correct: mark visited when enqueuing
+if nei in words and nei not in visit:
+    visit.add(nei)  # mark immediately
+    q.append(nei)
+```
+
+### Comparing Characters at Same Position in Neighbor Generation
+
+When generating neighbor words by changing one character, forgetting to skip the original character at each position generates the same word as a "neighbor."
+
+```python
+# Wrong: includes original word as neighbor
+for c in 'abcdefghijklmnopqrstuvwxyz':
+    nei = word[:i] + c + word[i+1:]  # when c == word[i]
+
+# Correct: skip the original character
+for c in 'abcdefghijklmnopqrstuvwxyz':
+    if c == word[i]:
+        continue
+    nei = word[:i] + c + word[i+1:]
+```
+
+### Using DFS Instead of BFS for Shortest Path
+
+DFS finds _a_ path but not necessarily the shortest. BFS guarantees the shortest path in an unweighted graph by exploring all nodes at distance k before distance k+1.
+
+```python
+# Wrong: DFS may find longer path first
+def dfs(word, depth):
+    if word == endWord:
+        return depth
+    for nei in getNeighbors(word):
+        result = dfs(nei, depth + 1)
+        if result:
+            return result  # not necessarily shortest
+
+# Correct: BFS guarantees shortest path
+while q:
+    word = q.popleft()
+    if word == endWord:
+        return distance[word]  # guaranteed shortest
+```

@@ -1,4 +1,28 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **2D Matrix Traversal** - Understanding how to iterate through rows and columns of a matrix
+- **Greedy Algorithms** - Making locally optimal choices to find a global optimum
+- **Sorting** - Sorting arrays and understanding how sorted order enables efficient computations
+- **Histogram/Height Arrays** - Building cumulative heights column-wise (similar to "Largest Rectangle in Histogram")
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+We can rearrange columns in any order, so the key is to find which columns can form a rectangle of all `1`s. For each starting row, we track which columns have continuous `1`s from that row downward. As we extend the rectangle row by row, columns with a `0` are eliminated. The area at each step is the number of surviving columns multiplied by the current height.
+
+### Algorithm
+
+1. For each starting row, initialize a set containing all column indices.
+2. Iterate through each subsequent row:
+    - Remove columns that have a `0` in the current row.
+    - Calculate the area as `(remaining columns) * (current height)`.
+    - Update the maximum area found.
+3. Return the maximum area.
 
 ::tabs-start
 
@@ -120,6 +144,160 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int LargestSubmatrix(int[][] matrix) {
+        int ROWS = matrix.Length;
+        int COLS = matrix[0].Length;
+        int res = 0;
+
+        for (int startRow = 0; startRow < ROWS; startRow++) {
+            Queue<int> ones = new Queue<int>();
+            for (int i = 0; i < COLS; i++) {
+                ones.Enqueue(i);
+            }
+
+            for (int r = startRow; r < ROWS; r++) {
+                if (ones.Count == 0) break;
+
+                int size = ones.Count;
+                for (int k = 0; k < size; k++) {
+                    int c = ones.Dequeue();
+                    if (matrix[r][c] == 1) {
+                        ones.Enqueue(c);
+                    }
+                }
+
+                res = Math.Max(res, ones.Count * (r - startRow + 1));
+            }
+        }
+
+        return res;
+    }
+}
+```
+
+```go
+func largestSubmatrix(matrix [][]int) int {
+    ROWS, COLS := len(matrix), len(matrix[0])
+    res := 0
+
+    for startRow := 0; startRow < ROWS; startRow++ {
+        ones := make([]int, 0, COLS)
+        for c := 0; c < COLS; c++ {
+            ones = append(ones, c)
+        }
+
+        for r := startRow; r < ROWS; r++ {
+            if len(ones) == 0 {
+                break
+            }
+
+            newOnes := make([]int, 0)
+            for _, c := range ones {
+                if matrix[r][c] == 1 {
+                    newOnes = append(newOnes, c)
+                }
+            }
+            ones = newOnes
+
+            if len(ones)*(r-startRow+1) > res {
+                res = len(ones) * (r - startRow + 1)
+            }
+        }
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun largestSubmatrix(matrix: Array<IntArray>): Int {
+        val ROWS = matrix.size
+        val COLS = matrix[0].size
+        var res = 0
+
+        for (startRow in 0 until ROWS) {
+            val ones = ArrayDeque<Int>()
+            for (c in 0 until COLS) {
+                ones.addLast(c)
+            }
+
+            for (r in startRow until ROWS) {
+                if (ones.isEmpty()) break
+
+                repeat(ones.size) {
+                    val c = ones.removeFirst()
+                    if (matrix[r][c] == 1) {
+                        ones.addLast(c)
+                    }
+                }
+
+                res = maxOf(res, ones.size * (r - startRow + 1))
+            }
+        }
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func largestSubmatrix(_ matrix: [[Int]]) -> Int {
+        let ROWS = matrix.count, COLS = matrix[0].count
+        var res = 0
+
+        for startRow in 0..<ROWS {
+            var ones = Array(0..<COLS)
+
+            for r in startRow..<ROWS {
+                if ones.isEmpty { break }
+
+                var newOnes = [Int]()
+                for c in ones {
+                    if matrix[r][c] == 1 {
+                        newOnes.append(c)
+                    }
+                }
+                ones = newOnes
+
+                res = max(res, ones.count * (r - startRow + 1))
+            }
+        }
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn largest_submatrix(matrix: Vec<Vec<i32>>) -> i32 {
+        let rows = matrix.len();
+        let cols = matrix[0].len();
+        let mut res = 0;
+
+        for start_row in 0..rows {
+            let mut ones: VecDeque<usize> = (0..cols).collect();
+
+            for r in start_row..rows {
+                if ones.is_empty() {
+                    break;
+                }
+                let size = ones.len();
+                for _ in 0..size {
+                    let c = ones.pop_front().unwrap();
+                    if matrix[r][c] == 1 {
+                        ones.push_back(c);
+                    }
+                }
+                res = res.max(ones.len() * (r - start_row + 1));
+            }
+        }
+        res as i32
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -132,6 +310,19 @@ class Solution {
 ---
 
 ## 2. Greedy + Sorting
+
+### Intuition
+
+Think of each cell as the height of a bar extending upward through consecutive `1`s. For each row, compute these heights based on the previous row. Since we can rearrange columns, sort the heights in descending order. Then greedily compute the largest rectangle: the first column can use its full height, the first two columns are limited by the second height, and so on.
+
+### Algorithm
+
+1. Maintain a `heights` array tracking consecutive `1`s above each cell.
+2. For each row:
+    - Update heights: if the cell is `1`, add the previous height; otherwise reset to `0`.
+    - Sort heights in descending order.
+    - For each position `i`, compute area as `(i + 1) * heights[i]` and track the maximum.
+3. Return the maximum area found.
 
 ::tabs-start
 
@@ -253,6 +444,160 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int LargestSubmatrix(int[][] matrix) {
+        int ROWS = matrix.Length;
+        int COLS = matrix[0].Length;
+        int res = 0;
+        int[] prevHeights = new int[COLS];
+
+        for (int r = 0; r < ROWS; r++) {
+            int[] heights = new int[COLS];
+            Array.Copy(matrix[r], heights, COLS);
+
+            for (int c = 0; c < COLS; c++) {
+                if (heights[c] > 0) {
+                    heights[c] += prevHeights[c];
+                }
+            }
+
+            int[] sortedHeights = (int[])heights.Clone();
+            Array.Sort(sortedHeights);
+            Array.Reverse(sortedHeights);
+
+            for (int i = 0; i < COLS; i++) {
+                res = Math.Max(res, (i + 1) * sortedHeights[i]);
+            }
+
+            prevHeights = heights;
+        }
+
+        return res;
+    }
+}
+```
+
+```go
+func largestSubmatrix(matrix [][]int) int {
+    ROWS, COLS := len(matrix), len(matrix[0])
+    res := 0
+    prevHeights := make([]int, COLS)
+
+    for r := 0; r < ROWS; r++ {
+        heights := make([]int, COLS)
+        copy(heights, matrix[r])
+
+        for c := 0; c < COLS; c++ {
+            if heights[c] > 0 {
+                heights[c] += prevHeights[c]
+            }
+        }
+
+        sortedHgts := make([]int, COLS)
+        copy(sortedHgts, heights)
+        sort.Sort(sort.Reverse(sort.IntSlice(sortedHgts)))
+
+        for i := 0; i < COLS; i++ {
+            if (i+1)*sortedHgts[i] > res {
+                res = (i + 1) * sortedHgts[i]
+            }
+        }
+
+        prevHeights = heights
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun largestSubmatrix(matrix: Array<IntArray>): Int {
+        val ROWS = matrix.size
+        val COLS = matrix[0].size
+        var res = 0
+        var prevHeights = IntArray(COLS)
+
+        for (r in 0 until ROWS) {
+            val heights = matrix[r].copyOf()
+
+            for (c in 0 until COLS) {
+                if (heights[c] > 0) {
+                    heights[c] += prevHeights[c]
+                }
+            }
+
+            val sortedHgts = heights.sortedDescending()
+            for (i in 0 until COLS) {
+                res = maxOf(res, (i + 1) * sortedHgts[i])
+            }
+
+            prevHeights = heights
+        }
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func largestSubmatrix(_ matrix: [[Int]]) -> Int {
+        let ROWS = matrix.count, COLS = matrix[0].count
+        var res = 0
+        var prevHeights = [Int](repeating: 0, count: COLS)
+
+        for r in 0..<ROWS {
+            var heights = matrix[r]
+
+            for c in 0..<COLS {
+                if heights[c] > 0 {
+                    heights[c] += prevHeights[c]
+                }
+            }
+
+            let sortedHgts = heights.sorted(by: >)
+            for i in 0..<COLS {
+                res = max(res, (i + 1) * sortedHgts[i])
+            }
+
+            prevHeights = heights
+        }
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn largest_submatrix(matrix: Vec<Vec<i32>>) -> i32 {
+        let rows = matrix.len();
+        let cols = matrix[0].len();
+        let mut res = 0;
+        let mut prev_heights = vec![0; cols];
+
+        for r in 0..rows {
+            let mut heights = matrix[r].clone();
+            let mut sorted_hgts = matrix[r].clone();
+
+            for c in 0..cols {
+                if heights[c] > 0 {
+                    heights[c] += prev_heights[c];
+                    sorted_hgts[c] = heights[c];
+                }
+            }
+
+            sorted_hgts.sort_unstable();
+            for i in (0..cols).rev() {
+                res = res.max((cols - i) as i32 * sorted_hgts[i]);
+            }
+
+            prev_heights = heights;
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -265,6 +610,19 @@ class Solution {
 ---
 
 ## 3. Greedy + Sorting (Overwriting the Input)
+
+### Intuition
+
+This is the same approach as above but optimizes space by modifying the input matrix directly. Each cell stores the cumulative height of consecutive `1`s ending at that cell. This eliminates the need for a separate heights array.
+
+### Algorithm
+
+1. For each row starting from the second:
+    - If a cell is `1`, add the value from the cell directly above it.
+2. For each row:
+    - Sort the row in descending order.
+    - Compute the maximum area using the greedy formula.
+3. Return the maximum area.
 
 ::tabs-start
 
@@ -369,6 +727,141 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int LargestSubmatrix(int[][] matrix) {
+        int ROWS = matrix.Length;
+        int COLS = matrix[0].Length;
+        int res = 0;
+
+        for (int r = 1; r < ROWS; r++) {
+            for (int c = 0; c < COLS; c++) {
+                if (matrix[r][c] > 0) {
+                    matrix[r][c] += matrix[r - 1][c];
+                }
+            }
+        }
+
+        for (int r = 0; r < ROWS; r++) {
+            int[] row = (int[])matrix[r].Clone();
+            Array.Sort(row);
+            Array.Reverse(row);
+            for (int i = 0; i < COLS; i++) {
+                res = Math.Max(res, (i + 1) * row[i]);
+            }
+        }
+
+        return res;
+    }
+}
+```
+
+```go
+func largestSubmatrix(matrix [][]int) int {
+    ROWS, COLS := len(matrix), len(matrix[0])
+    res := 0
+
+    for r := 1; r < ROWS; r++ {
+        for c := 0; c < COLS; c++ {
+            if matrix[r][c] > 0 {
+                matrix[r][c] += matrix[r-1][c]
+            }
+        }
+    }
+
+    for r := 0; r < ROWS; r++ {
+        row := make([]int, COLS)
+        copy(row, matrix[r])
+        sort.Sort(sort.Reverse(sort.IntSlice(row)))
+        for i := 0; i < COLS; i++ {
+            if (i+1)*row[i] > res {
+                res = (i + 1) * row[i]
+            }
+        }
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun largestSubmatrix(matrix: Array<IntArray>): Int {
+        val ROWS = matrix.size
+        val COLS = matrix[0].size
+        var res = 0
+
+        for (r in 1 until ROWS) {
+            for (c in 0 until COLS) {
+                if (matrix[r][c] > 0) {
+                    matrix[r][c] += matrix[r - 1][c]
+                }
+            }
+        }
+
+        for (r in 0 until ROWS) {
+            val row = matrix[r].sortedDescending()
+            for (i in 0 until COLS) {
+                res = maxOf(res, (i + 1) * row[i])
+            }
+        }
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func largestSubmatrix(_ matrix: [[Int]]) -> Int {
+        var matrix = matrix
+        let ROWS = matrix.count, COLS = matrix[0].count
+        var res = 0
+
+        for r in 1..<ROWS {
+            for c in 0..<COLS {
+                if matrix[r][c] > 0 {
+                    matrix[r][c] += matrix[r - 1][c]
+                }
+            }
+        }
+
+        for r in 0..<ROWS {
+            let row = matrix[r].sorted(by: >)
+            for i in 0..<COLS {
+                res = max(res, (i + 1) * row[i])
+            }
+        }
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn largest_submatrix(mut matrix: Vec<Vec<i32>>) -> i32 {
+        let rows = matrix.len();
+        let cols = matrix[0].len();
+        let mut res = 0;
+
+        for r in 1..rows {
+            for c in 0..cols {
+                if matrix[r][c] > 0 {
+                    matrix[r][c] += matrix[r - 1][c];
+                }
+            }
+        }
+
+        for r in 0..rows {
+            let mut row = matrix[r].clone();
+            row.sort_unstable();
+            for i in 0..cols {
+                res = res.max((cols - i) as i32 * row[i]);
+            }
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -381,6 +874,19 @@ class Solution {
 ---
 
 ## 4. Greedy
+
+### Intuition
+
+We can avoid sorting entirely by maintaining a sorted order implicitly. Track the column indices that had continuous `1`s from the previous row. For the current row, first process columns from the previous list (they have taller heights), then add new columns that just started with a `1`. This naturally keeps columns ordered by height in descending order.
+
+### Algorithm
+
+1. Maintain a list of column indices from the previous row that had continuous `1`s.
+2. For each row:
+    - Create a new list starting with columns from the previous list that still have a `1` (incrementing their height in the matrix).
+    - Append columns where the current cell is `1` but was `0` before (new columns starting at height `1`).
+    - Compute the maximum area: position `i` gives area `(i + 1) * matrix[r][heights[i]]`.
+3. Return the maximum area.
 
 ::tabs-start
 
@@ -517,6 +1023,182 @@ class Solution {
 }
 ```
 
+```csharp
+public class Solution {
+    public int LargestSubmatrix(int[][] matrix) {
+        int ROWS = matrix.Length;
+        int COLS = matrix[0].Length;
+        int res = 0;
+        List<int> prevHeights = new List<int>();
+
+        for (int r = 0; r < ROWS; r++) {
+            List<int> heights = new List<int>();
+
+            foreach (int c in prevHeights) {
+                if (matrix[r][c] > 0) {
+                    matrix[r][c] += matrix[r - 1][c];
+                    heights.Add(c);
+                }
+            }
+
+            for (int c = 0; c < COLS; c++) {
+                if (matrix[r][c] == 1) {
+                    heights.Add(c);
+                }
+            }
+
+            for (int i = 0; i < heights.Count; i++) {
+                int c = heights[i];
+                res = Math.Max(res, (i + 1) * matrix[r][c]);
+            }
+
+            prevHeights = heights;
+        }
+
+        return res;
+    }
+}
+```
+
+```go
+func largestSubmatrix(matrix [][]int) int {
+    ROWS, COLS := len(matrix), len(matrix[0])
+    res := 0
+    prevHeights := []int{}
+
+    for r := 0; r < ROWS; r++ {
+        heights := []int{}
+
+        for _, c := range prevHeights {
+            if matrix[r][c] == 1 {
+                matrix[r][c] += matrix[r-1][c]
+                heights = append(heights, c)
+            }
+        }
+
+        for c := 0; c < COLS; c++ {
+            if matrix[r][c] == 1 {
+                heights = append(heights, c)
+            }
+        }
+
+        for i, c := range heights {
+            if (i+1)*matrix[r][c] > res {
+                res = (i + 1) * matrix[r][c]
+            }
+        }
+
+        prevHeights = heights
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun largestSubmatrix(matrix: Array<IntArray>): Int {
+        val ROWS = matrix.size
+        val COLS = matrix[0].size
+        var res = 0
+        var prevHeights = mutableListOf<Int>()
+
+        for (r in 0 until ROWS) {
+            val heights = mutableListOf<Int>()
+
+            for (c in prevHeights) {
+                if (matrix[r][c] == 1) {
+                    matrix[r][c] += matrix[r - 1][c]
+                    heights.add(c)
+                }
+            }
+
+            for (c in 0 until COLS) {
+                if (matrix[r][c] == 1) {
+                    heights.add(c)
+                }
+            }
+
+            for ((i, c) in heights.withIndex()) {
+                res = maxOf(res, (i + 1) * matrix[r][c])
+            }
+
+            prevHeights = heights
+        }
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func largestSubmatrix(_ matrix: [[Int]]) -> Int {
+        var matrix = matrix
+        let ROWS = matrix.count, COLS = matrix[0].count
+        var res = 0
+        var prevHeights = [Int]()
+
+        for r in 0..<ROWS {
+            var heights = [Int]()
+
+            for c in prevHeights {
+                if matrix[r][c] == 1 {
+                    matrix[r][c] += matrix[r - 1][c]
+                    heights.append(c)
+                }
+            }
+
+            for c in 0..<COLS {
+                if matrix[r][c] == 1 {
+                    heights.append(c)
+                }
+            }
+
+            for (i, c) in heights.enumerated() {
+                res = max(res, (i + 1) * matrix[r][c])
+            }
+
+            prevHeights = heights
+        }
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn largest_submatrix(mut matrix: Vec<Vec<i32>>) -> i32 {
+        let rows = matrix.len();
+        let cols = matrix[0].len();
+        let mut res = 0;
+        let mut prev_heights: Vec<usize> = Vec::new();
+
+        for r in 0..rows {
+            let mut heights: Vec<usize> = Vec::new();
+
+            for &c in &prev_heights {
+                if matrix[r][c] == 1 {
+                    matrix[r][c] += matrix[r - 1][c];
+                    heights.push(c);
+                }
+            }
+
+            for c in 0..cols {
+                if matrix[r][c] == 1 {
+                    heights.push(c);
+                }
+            }
+
+            for (i, &c) in heights.iter().enumerate() {
+                res = res.max((i as i32 + 1) * matrix[r][c]);
+            }
+
+            prev_heights = heights;
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -525,3 +1207,19 @@ class Solution {
 - Space complexity: $O(n)$
 
 > Where $m$ is the number of rows and $n$ is the number of columns.
+
+---
+
+## Common Pitfalls
+
+### Resetting Heights on Zero Cells
+
+When building the height array row by row, encountering a `0` should reset the height to `0` for that column. A common mistake is to simply add the previous height regardless of the current cell value, which incorrectly extends heights through `0` cells and produces invalid rectangles.
+
+### Forgetting Column Rearrangement is Allowed
+
+Unlike the standard largest rectangle in histogram problem, columns can be rearranged here. Attempting to use a monotonic stack approach without sorting the heights misses the key insight. Sorting heights in descending order allows greedy computation of the maximum area at each width.
+
+### Incorrect Area Formula After Sorting
+
+After sorting heights in descending order, the area at position `i` is `(i + 1) * heights[i]`, not `i * heights[i]`. The width is the number of columns considered so far (1-indexed), so using `i` instead of `i + 1` underestimates the width by one column.

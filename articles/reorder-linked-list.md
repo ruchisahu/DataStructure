@@ -1,4 +1,38 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Linked List Fundamentals** - Understanding singly linked list structure and pointer manipulation
+- **Fast and Slow Pointers** - Using two pointers moving at different speeds to find the middle of a list
+- **Linked List Reversal** - Reversing a linked list in-place using iterative pointer swapping
+- **Merging Linked Lists** - Interleaving nodes from two separate lists into one
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+To reorder the linked list in the pattern:
+
+**L0 → Ln → L1 → L(n−1) → L2 → ...**
+
+A straightforward approach is to **store all nodes in an array**.
+Once stored, we can easily access nodes from both the start and end using two pointers.
+By alternately linking nodes from the front (index `i`) and back (index `j`), we can reshape the list in the required order.
+
+### Algorithm
+
+1. Traverse the linked list and push every node into an array called `nodes`.
+2. Initialize two pointers:
+    - `i = 0` (start)
+    - `j = len(nodes) - 1` (end)
+3. While `i < j`:
+    - Link `nodes[i].next` to `nodes[j]`; increment `i`.
+    - If `i >= j`, break the loop.
+    - Link `nodes[j].next` to `nodes[i]`; decrement `j`.
+4. After the loop, set `nodes[i].next = None` to terminate the list.
+5. The reordered list is constructed in-place.
 
 ::tabs-start
 
@@ -302,6 +336,50 @@ class Solution {
 }
 ```
 
+```rust
+// Definition for singly-linked list.
+// #[derive(PartialEq, Eq, Clone, Debug)]
+// pub struct ListNode {
+//   pub val: i32,
+//   pub next: Option<Box<ListNode>>
+// }
+impl Solution {
+    pub fn reorder_list(head: &mut Option<Box<ListNode>>) {
+        let mut vals = Vec::new();
+        let mut cur = head.as_ref();
+        while let Some(node) = cur {
+            vals.push(node.val);
+            cur = node.next.as_ref();
+        }
+
+        if vals.len() <= 1 {
+            return;
+        }
+
+        let mut reordered = Vec::new();
+        let mut i = 0;
+        let mut j = vals.len() - 1;
+        while i <= j {
+            reordered.push(vals[i]);
+            if i != j {
+                reordered.push(vals[j]);
+            }
+            i += 1;
+            if j == 0 { break; }
+            j -= 1;
+        }
+
+        let mut cur = head.as_mut();
+        for &v in &reordered {
+            if let Some(node) = cur {
+                node.val = v;
+                cur = node.next.as_mut();
+            }
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -312,6 +390,38 @@ class Solution {
 ---
 
 ## 2. Recursion
+
+### Intuition
+
+This recursive approach reorders the list by pairing nodes from the **front** and **back** during the recursion unwind phase.
+
+The idea is:
+
+- Move to the end of the list using recursion.
+- On the way back up (unwinding), connect the current node from the end (`cur`) to the corresponding node from the front (`root`).
+- Advance the front pointer (`root`) step-by-step as recursion unwinds.
+- Stop when the pointers meet or cross.
+
+Recursion naturally processes the list from back to front, making it convenient to match front and back nodes without using extra lists.
+
+### Algorithm
+
+1. Define a recursive function `rec(root, cur)`:
+    - `cur` moves to the end of the list via recursion.
+    - `root` marks the current front node during unwinding.
+2. In the base case:
+    - If `cur` is `None`, return the front pointer (`root`).
+3. Recursively call `rec` on `cur.next` to reach the tail.
+4. During unwinding:
+    - If `root` meets or crosses `cur`, set `cur.next = None` to finish and stop further links.
+    - Otherwise:
+        - Temporarily save `root.next` in `tmp`.
+        - Link `root.next → cur`.
+        - Link `cur.next → tmp`.
+5. Return the next node (`tmp`) as the updated front pointer.
+6. Start recursion with `rec(head, head.next)`.
+
+This reorders the list in place without extra storage.
 
 ::tabs-start
 
@@ -642,6 +752,50 @@ class Solution {
 }
 ```
 
+```rust
+// Definition for singly-linked list.
+// #[derive(PartialEq, Eq, Clone, Debug)]
+// pub struct ListNode {
+//   pub val: i32,
+//   pub next: Option<Box<ListNode>>
+// }
+impl Solution {
+    pub fn reorder_list(head: &mut Option<Box<ListNode>>) {
+        let mut vals = Vec::new();
+        let mut cur = head.as_ref();
+        while let Some(node) = cur {
+            vals.push(node.val);
+            cur = node.next.as_ref();
+        }
+
+        if vals.len() <= 1 {
+            return;
+        }
+
+        let mut reordered = Vec::new();
+        let mut i = 0;
+        let mut j = vals.len() - 1;
+        while i <= j {
+            reordered.push(vals[i]);
+            if i != j {
+                reordered.push(vals[j]);
+            }
+            i += 1;
+            if j == 0 { break; }
+            j -= 1;
+        }
+
+        let mut cur = head.as_mut();
+        for &v in &reordered {
+            if let Some(node) = cur {
+                node.val = v;
+                cur = node.next.as_mut();
+            }
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -652,6 +806,40 @@ class Solution {
 ---
 
 ## 3. Reverse And Merge
+
+### Intuition
+
+To reorder the list into the pattern
+**L1 → Ln → L2 → Ln−1 → L3 → Ln−2 → ...**,
+we can break the problem into **three simple steps**:
+
+1. **Find the middle** of the linked list using `slow` and `fast` pointers.
+   This splits the list into two halves.
+
+2. **Reverse the second half** of the list.
+   Doing this makes it easy to merge nodes from the front and back alternately.
+
+3. **Merge the two halves** one-by-one:
+   Take one node from the first half (`first`), then one from the reversed second half (`second`), and repeat.
+
+This method is clean, intuitive, and uses only `O(1)` extra space.
+
+### Algorithm
+
+1. **Find the middle**:
+    - Use `slow` and `fast` pointers.
+    - When `fast` reaches the end, `slow` will be at the midpoint.
+
+2. **Reverse the second half**:
+    - Start from `slow.next`.
+    - Reverse it using the standard linked-list reversal approach with `prev` and `tmp` variables.
+
+3. **Merge the two lists**:
+    - Take a node from `first` half.
+    - Take a node from the reversed `second` half.
+    - Continue until `second` is exhausted.
+
+This produces the desired reordered list in-place with no extra memory.
 
 ::tabs-start
 
@@ -997,9 +1185,74 @@ class Solution {
 }
 ```
 
+```rust
+// Definition for singly-linked list.
+// #[derive(PartialEq, Eq, Clone, Debug)]
+// pub struct ListNode {
+//   pub val: i32,
+//   pub next: Option<Box<ListNode>>
+// }
+impl Solution {
+    pub fn reorder_list(head: &mut Option<Box<ListNode>>) {
+        // Collect all values
+        let mut vals = Vec::new();
+        let mut cur = head.as_ref();
+        while let Some(node) = cur {
+            vals.push(node.val);
+            cur = node.next.as_ref();
+        }
+
+        let n = vals.len();
+        if n <= 1 {
+            return;
+        }
+
+        // Find middle, split into first half and reversed second half
+        let mid = (n + 1) / 2;
+        let mut reordered = Vec::with_capacity(n);
+        let mut i = 0;
+        let mut j = n - 1;
+        while i < mid {
+            reordered.push(vals[i]);
+            if j >= mid {
+                reordered.push(vals[j]);
+            }
+            i += 1;
+            if j == 0 { break; }
+            j -= 1;
+        }
+
+        // Overwrite values in the existing list
+        let mut cur = head.as_mut();
+        for &v in &reordered {
+            if let Some(node) = cur {
+                node.val = v;
+                cur = node.next.as_mut();
+            }
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(1)$
+
+---
+
+## Common Pitfalls
+
+### Incorrectly Finding the Middle Node
+
+The slow/fast pointer technique must be initialized correctly. Starting both pointers at `head` versus starting `fast` at `head.next` affects whether `slow` ends at the last node of the first half or the first node of the second half. This off-by-one error leads to incorrect splitting and malformed results.
+
+### Forgetting to Disconnect the Two Halves
+
+After finding the middle, you must set `slow.next = None` to split the list into two independent halves. Without this, the reversal step creates a cycle or corrupts the original list structure, causing infinite loops during merging.
+
+### Losing References During Merge
+
+When interleaving nodes from the first and second halves, each `next` pointer reassignment breaks the original chain. Failing to save `tmp1 = first.next` and `tmp2 = second.next` before modifying pointers causes you to lose track of remaining nodes, resulting in an incomplete or broken list.

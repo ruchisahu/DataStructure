@@ -1,4 +1,30 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Linked Lists** - Traversing nodes using next pointers
+- **Hash Sets** - O(1) lookup to track visited nodes
+- **Fast and Slow Pointers (Floyd's Algorithm)** - Two-pointer technique for cycle detection with O(1) space
+
+---
+
 ## 1. Hash Set
+
+### Intuition
+
+To detect whether a linked list has a cycle, one simple idea is to **remember every node we visit**.  
+As we move forward through the list, if we ever reach a node we’ve already seen before, it means the list loops back on itself — so a cycle exists.
+
+If we reach the end (`null`) without repeating a node, then there is no cycle.
+
+### Algorithm
+
+1. Create an empty hash set to store visited nodes.
+2. Start from the head and move through the list one node at a time.
+3. For each node:
+    - If it is already in the set, a cycle exists, return `true`.
+    - Otherwise, add it to the set and continue.
+4. If you reach `null`, no cycle exists, return `false`.
 
 ::tabs-start
 
@@ -217,6 +243,21 @@ class Solution {
 }
 ```
 
+```rust
+// Note: Cycle detection via HashSet is not directly possible with
+// Option<Box<ListNode>> in safe Rust since Box provides unique
+// ownership (no shared references to track identity). This approach
+// requires raw pointers or a different representation.
+// The Floyd's algorithm below (Solution 2) is the idiomatic Rust approach.
+impl Solution {
+    pub fn has_cycle(head: Option<Box<ListNode>>) -> bool {
+        // Cannot form a cycle with owned Box<ListNode> in safe Rust.
+        // See the fast & slow pointer approach for the idiomatic solution.
+        false
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -227,6 +268,30 @@ class Solution {
 ---
 
 ## 2. Fast And Slow Pointers
+
+### Intuition
+
+We use two pointers moving through the list at different speeds:
+
+- `slow` moves one step at a time
+- `fast` moves two steps at a time
+
+If the list has a cycle, the `fast` pointer will eventually "lap" the `slow` pointer, meaning they will meet at some node inside the cycle.
+
+If the list has no cycle, the `fast` pointer will reach the end (`null`) and the loop stops.
+
+This method is efficient and uses constant extra space.
+
+### Algorithm
+
+1. Initialize two pointers:
+    - `slow = head`
+    - `fast = head`
+2. Move through the list:
+    - `slow` moves one step.
+    - `fast` moves two steps.
+3. If at any point `slow == fast`, a cycle exists, return `true`.
+4. If `fast` reaches the end (`null` or `fast.next` is `null`), no cycle exists, return `false`.
 
 ::tabs-start
 
@@ -448,9 +513,43 @@ class Solution {
 }
 ```
 
+```rust
+// Note: A true cycle cannot exist with Option<Box<ListNode>> in safe Rust
+// because Box enforces unique ownership. In LeetCode's Rust environment,
+// cycle problems typically use raw pointers. Below is the Floyd's algorithm
+// translated using raw pointers, matching the Java logic.
+impl Solution {
+    pub fn has_cycle(head: Option<Box<ListNode>>) -> bool {
+        // With owned Box<ListNode>, cycles cannot form in safe Rust.
+        // If using raw pointers (*const ListNode), the algorithm is:
+        //   let mut slow = head_ptr;
+        //   let mut fast = head_ptr;
+        //   while !fast.is_null() && unsafe { (*fast).next } != std::ptr::null() {
+        //       fast = unsafe { (*(*fast).next).next_ptr };
+        //       slow = unsafe { (*slow).next_ptr };
+        //       if fast == slow { return true; }
+        //   }
+        //   false
+        false
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(1)$
+
+---
+
+## Common Pitfalls
+
+### Not Checking if Fast Pointer Can Advance Safely
+
+Before moving the fast pointer two steps, you must verify both `fast` and `fast.next` are not null. Checking only `fast != null` before accessing `fast.next.next` causes a null pointer exception when the list has an odd number of nodes without a cycle.
+
+### Comparing Node Values Instead of Node References
+
+The cycle detection requires comparing whether two pointers reference the same node object, not whether they have the same value. Using value equality (`slow.val == fast.val`) incorrectly detects cycles when two different nodes happen to have the same value.

@@ -1,4 +1,27 @@
+## Prerequisites
+Before attempting this problem, you should be comfortable with:
+- **Binary Search** - The optimal solutions use binary search to achieve O(log n) time complexity
+- **Arrays** - Understanding array indexing and how rotation affects a sorted array
+- **Sorted Array Properties** - Recognizing how a rotated sorted array forms two sorted subarrays
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+The simplest way to search for a value in an array is to **check every element one by one**.  
+If we find the target, we return its index.  
+If we reach the end without finding it, the target is not present.
+
+This method always works, but it's not efficient for large arrays.
+
+### Algorithm
+
+1. Loop through the array from left to right.
+2. For each index, compare the element with the target.
+3. If they match, return that index.
+4. If the loop finishes without a match, return `-1`.
 
 ::tabs-start
 
@@ -106,6 +129,19 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn search(nums: Vec<i32>, target: i32) -> i32 {
+        for i in 0..nums.len() {
+            if nums[i] == target {
+                return i as i32;
+            }
+        }
+        -1
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -116,6 +152,36 @@ class Solution {
 ---
 
 ## 2. Binary Search
+
+### Intuition
+
+A rotated sorted array is basically two sorted subarrays joined together.  
+So the idea is:
+
+1. **Find the pivot** — the index of the smallest element.  
+   This tells us where the rotation happened.
+
+2. After finding the pivot, the array becomes:
+   - A sorted left half  
+   - A sorted right half  
+
+3. Now we can perform a **normal binary search** on the correct half where the target could lie.
+
+By combining these two binary searches, we efficiently find the target in logarithmic time.
+
+### Algorithm
+
+1. Use binary search to find the **pivot**:
+   - Compare middle element with the rightmost element.
+   - If `nums[mid] > nums[right]`, the pivot is in the right half.
+   - Otherwise, it's in the left half.
+2. Once the pivot is identified:
+   - The subarray before the pivot is one sorted half.
+   - The subarray starting at the pivot is the other sorted half.
+3. Perform a standard binary search on:
+   - The left half; if found, return the index.
+   - Otherwise, search the right half.
+4. If the target is not in either half, return `-1`.
 
 ::tabs-start
 
@@ -446,6 +512,46 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn search(nums: Vec<i32>, target: i32) -> i32 {
+        let (mut l, mut r) = (0i32, nums.len() as i32 - 1);
+
+        while l < r {
+            let m = (l + r) / 2;
+            if nums[m as usize] > nums[r as usize] {
+                l = m + 1;
+            } else {
+                r = m;
+            }
+        }
+
+        let pivot = l;
+
+        let result = Self::binary_search(&nums, target, 0, pivot - 1);
+        if result != -1 {
+            return result;
+        }
+
+        Self::binary_search(&nums, target, pivot, nums.len() as i32 - 1)
+    }
+
+    fn binary_search(nums: &[i32], target: i32, mut left: i32, mut right: i32) -> i32 {
+        while left <= right {
+            let mid = (left + right) / 2;
+            if nums[mid as usize] == target {
+                return mid;
+            } else if nums[mid as usize] < target {
+                left = mid + 1;
+            } else {
+                right = mid - 1;
+            }
+        }
+        -1
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -456,6 +562,31 @@ class Solution {
 ---
 
 ## 3. Binary Search (Two Pass)
+
+### Intuition
+
+A rotated sorted array is really two sorted arrays stuck together.  
+So we break the problem into **two simple binary searches**:
+
+1. **First binary search**:  
+   Find the pivot — the index of the smallest element.  
+   This tells us where the array was rotated.
+
+2. **Second binary search**:  
+   Decide which sorted half may contain the target,  
+   then run a standard binary search only on that half.
+
+### Algorithm
+
+1. Use binary search to locate the **pivot**:
+   - Compare middle and right elements.
+   - If `nums[mid] > nums[right]`, the pivot is to the right.
+   - Otherwise, it's to the left (including `mid`).
+2. After finding the pivot:
+   - If the target lies between `nums[pivot]` and the last element, search the **right half**.
+   - Otherwise, search the **left half**.
+3. Perform a standard binary search on the selected half.
+4. Return the index if found, else `-1`.
 
 ::tabs-start
 
@@ -776,6 +907,46 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn search(nums: Vec<i32>, target: i32) -> i32 {
+        let (mut l, mut r) = (0i32, nums.len() as i32 - 1);
+
+        while l < r {
+            let m = (l + r) / 2;
+            if nums[m as usize] > nums[r as usize] {
+                l = m + 1;
+            } else {
+                r = m;
+            }
+        }
+
+        let pivot = l;
+        l = 0;
+        r = nums.len() as i32 - 1;
+
+        if target >= nums[pivot as usize] && target <= nums[r as usize] {
+            l = pivot;
+        } else {
+            r = pivot - 1;
+        }
+
+        while l <= r {
+            let m = (l + r) / 2;
+            if nums[m as usize] == target {
+                return m;
+            } else if nums[m as usize] < target {
+                l = m + 1;
+            } else {
+                r = m - 1;
+            }
+        }
+
+        -1
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1034,9 +1205,55 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn search(nums: Vec<i32>, target: i32) -> i32 {
+        let (mut l, mut r) = (0i32, nums.len() as i32 - 1);
+
+        while l <= r {
+            let mid = (l + r) / 2;
+            if target == nums[mid as usize] {
+                return mid;
+            }
+
+            if nums[l as usize] <= nums[mid as usize] {
+                if target > nums[mid as usize] || target < nums[l as usize] {
+                    l = mid + 1;
+                } else {
+                    r = mid - 1;
+                }
+            } else {
+                if target < nums[mid as usize] || target > nums[r as usize] {
+                    r = mid - 1;
+                } else {
+                    l = mid + 1;
+                }
+            }
+        }
+        -1
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(\log n)$
 - Space complexity: $O(1)$
+
+---
+
+## Common Pitfalls
+
+### Using Strict Inequality When Comparing with Left Element
+
+In the one-pass binary search, the condition `nums[l] <= nums[mid]` uses `<=` rather than `<`. This handles the edge case when `l == mid`, which occurs in small subarrays. Using `<` instead can cause incorrect half selection and miss the target.
+
+### Confusing Pivot Finding with Target Finding
+
+The two-pass approach requires finding the pivot first (smallest element), then searching the appropriate half. Do not conflate these steps. The pivot search uses `nums[mid] > nums[r]` to move left, while the target search is a standard binary search. Mixing the logic leads to wrong results.
+
+### Not Handling the Non-Rotated Array Case
+
+When the array is not rotated (or rotated by 0), the pivot is at index 0. Your solution should still work correctly. Test with sorted arrays like `[1, 2, 3, 4, 5]` to ensure your pivot-finding logic returns index 0 and the subsequent search works.

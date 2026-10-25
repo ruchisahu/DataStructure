@@ -1,4 +1,26 @@
+## Prerequisites
+Before attempting this problem, you should be comfortable with:
+- **Minimum Spanning Tree (MST)** - Understanding what an MST is and why it has exactly V-1 edges for V vertices
+- **Kruskal's Algorithm** - Building an MST by sorting edges by weight and greedily adding non-cycle-forming edges
+- **Union-Find (Disjoint Set Union)** - Efficiently tracking connected components with path compression and union by rank
+- **Graph Connectivity** - Determining if a graph remains connected after removing an edge
+
+---
+
 ## 1. Kruskal's Algorithm - I
+
+### Intuition
+
+An edge is critical if removing it increases the MST weight or disconnects the graph. An edge is pseudo-critical if it can appear in some MST but is not mandatory. We test each edge by building the MST without it (to check criticality) and by forcing it into the MST first (to check if it can be part of a valid MST without increasing weight).
+
+### Algorithm
+
+1. Append original indices to each edge, then sort edges by weight.
+2. Build the standard MST using Kruskal's algorithm to get `mstWeight`.
+3. For each edge:
+   - Build an MST excluding this edge. If the graph becomes disconnected or the weight increases, the edge is critical.
+   - Otherwise, build an MST that includes this edge first. If the total weight equals `mstWeight`, the edge is pseudo-critical.
+4. Return the lists of critical and pseudo-critical edge indices.
 
 ::tabs-start
 
@@ -427,6 +449,357 @@ public class Solution {
 }
 ```
 
+```go
+type UnionFind struct {
+    par  []int
+    rank []int
+}
+
+func NewUnionFind(n int) *UnionFind {
+    par := make([]int, n)
+    rank := make([]int, n)
+    for i := 0; i < n; i++ {
+        par[i] = i
+        rank[i] = 1
+    }
+    return &UnionFind{par: par, rank: rank}
+}
+
+func (uf *UnionFind) Find(v int) int {
+    if uf.par[v] != v {
+        uf.par[v] = uf.Find(uf.par[v])
+    }
+    return uf.par[v]
+}
+
+func (uf *UnionFind) Union(v1, v2 int) bool {
+    p1, p2 := uf.Find(v1), uf.Find(v2)
+    if p1 == p2 {
+        return false
+    }
+    if uf.rank[p1] > uf.rank[p2] {
+        uf.par[p2] = p1
+        uf.rank[p1] += uf.rank[p2]
+    } else {
+        uf.par[p1] = p2
+        uf.rank[p2] += uf.rank[p1]
+    }
+    return true
+}
+
+func (uf *UnionFind) MaxRank() int {
+    maxR := 0
+    for _, r := range uf.rank {
+        if r > maxR {
+            maxR = r
+        }
+    }
+    return maxR
+}
+
+func findCriticalAndPseudoCriticalEdges(n int, edges [][]int) [][]int {
+    edgeList := make([][4]int, len(edges))
+    for i, e := range edges {
+        edgeList[i] = [4]int{e[0], e[1], e[2], i}
+    }
+
+    sort.Slice(edgeList, func(i, j int) bool {
+        return edgeList[i][2] < edgeList[j][2]
+    })
+
+    mstWeight := 0
+    uf := NewUnionFind(n)
+    for _, edge := range edgeList {
+        if uf.Union(edge[0], edge[1]) {
+            mstWeight += edge[2]
+        }
+    }
+
+    var critical, pseudo []int
+    for _, edge := range edgeList {
+        // Try without current edge
+        ufWithout := NewUnionFind(n)
+        weight := 0
+        for _, other := range edgeList {
+            if other[3] != edge[3] && ufWithout.Union(other[0], other[1]) {
+                weight += other[2]
+            }
+        }
+        if ufWithout.MaxRank() != n || weight > mstWeight {
+            critical = append(critical, edge[3])
+            continue
+        }
+
+        // Try with current edge
+        ufWith := NewUnionFind(n)
+        ufWith.Union(edge[0], edge[1])
+        weight = edge[2]
+        for _, other := range edgeList {
+            if ufWith.Union(other[0], other[1]) {
+                weight += other[2]
+            }
+        }
+        if weight == mstWeight {
+            pseudo = append(pseudo, edge[3])
+        }
+    }
+
+    return [][]int{critical, pseudo}
+}
+```
+
+```kotlin
+class UnionFind(n: Int) {
+    val par = IntArray(n) { it }
+    val rank = IntArray(n) { 1 }
+
+    fun find(v: Int): Int {
+        if (par[v] != v) {
+            par[v] = find(par[v])
+        }
+        return par[v]
+    }
+
+    fun union(v1: Int, v2: Int): Boolean {
+        val p1 = find(v1)
+        val p2 = find(v2)
+        if (p1 == p2) return false
+        if (rank[p1] > rank[p2]) {
+            par[p2] = p1
+            rank[p1] += rank[p2]
+        } else {
+            par[p1] = p2
+            rank[p2] += rank[p1]
+        }
+        return true
+    }
+
+    fun maxRank(): Int = rank.maxOrNull() ?: 0
+}
+
+class Solution {
+    fun findCriticalAndPseudoCriticalEdges(n: Int, edges: Array<IntArray>): List<List<Int>> {
+        val edgeList = edges.mapIndexed { i, e ->
+            intArrayOf(e[0], e[1], e[2], i)
+        }.sortedBy { it[2] }
+
+        var mstWeight = 0
+        val uf = UnionFind(n)
+        for (edge in edgeList) {
+            if (uf.union(edge[0], edge[1])) {
+                mstWeight += edge[2]
+            }
+        }
+
+        val critical = mutableListOf<Int>()
+        val pseudo = mutableListOf<Int>()
+
+        for (edge in edgeList) {
+            // Try without current edge
+            val ufWithout = UnionFind(n)
+            var weight = 0
+            for (other in edgeList) {
+                if (other[3] != edge[3] && ufWithout.union(other[0], other[1])) {
+                    weight += other[2]
+                }
+            }
+            if (ufWithout.maxRank() != n || weight > mstWeight) {
+                critical.add(edge[3])
+                continue
+            }
+
+            // Try with current edge
+            val ufWith = UnionFind(n)
+            ufWith.union(edge[0], edge[1])
+            weight = edge[2]
+            for (other in edgeList) {
+                if (ufWith.union(other[0], other[1])) {
+                    weight += other[2]
+                }
+            }
+            if (weight == mstWeight) {
+                pseudo.add(edge[3])
+            }
+        }
+
+        return listOf(critical, pseudo)
+    }
+}
+```
+
+```swift
+class UnionFind {
+    var par: [Int]
+    var rank: [Int]
+
+    init(_ n: Int) {
+        par = Array(0..<n)
+        rank = Array(repeating: 1, count: n)
+    }
+
+    func find(_ v: Int) -> Int {
+        if par[v] != v {
+            par[v] = find(par[v])
+        }
+        return par[v]
+    }
+
+    func union(_ v1: Int, _ v2: Int) -> Bool {
+        let p1 = find(v1), p2 = find(v2)
+        if p1 == p2 { return false }
+        if rank[p1] > rank[p2] {
+            par[p2] = p1
+            rank[p1] += rank[p2]
+        } else {
+            par[p1] = p2
+            rank[p2] += rank[p1]
+        }
+        return true
+    }
+
+    func maxRank() -> Int {
+        return rank.max() ?? 0
+    }
+}
+
+class Solution {
+    func findCriticalAndPseudoCriticalEdges(_ n: Int, _ edges: [[Int]]) -> [[Int]] {
+        var edgeList = edges.enumerated().map { (i, e) in
+            [e[0], e[1], e[2], i]
+        }.sorted { $0[2] < $1[2] }
+
+        var mstWeight = 0
+        let uf = UnionFind(n)
+        for edge in edgeList {
+            if uf.union(edge[0], edge[1]) {
+                mstWeight += edge[2]
+            }
+        }
+
+        var critical = [Int]()
+        var pseudo = [Int]()
+
+        for edge in edgeList {
+            // Try without current edge
+            let ufWithout = UnionFind(n)
+            var weight = 0
+            for other in edgeList {
+                if other[3] != edge[3] && ufWithout.union(other[0], other[1]) {
+                    weight += other[2]
+                }
+            }
+            if ufWithout.maxRank() != n || weight > mstWeight {
+                critical.append(edge[3])
+                continue
+            }
+
+            // Try with current edge
+            let ufWith = UnionFind(n)
+            ufWith.union(edge[0], edge[1])
+            weight = edge[2]
+            for other in edgeList {
+                if ufWith.union(other[0], other[1]) {
+                    weight += other[2]
+                }
+            }
+            if weight == mstWeight {
+                pseudo.append(edge[3])
+            }
+        }
+
+        return [critical, pseudo]
+    }
+}
+```
+
+
+```rust
+struct UnionFind {
+    par: Vec<usize>,
+    rank: Vec<usize>,
+}
+
+impl UnionFind {
+    fn new(n: usize) -> Self {
+        UnionFind {
+            par: (0..n).collect(),
+            rank: vec![1; n],
+        }
+    }
+
+    fn find(&mut self, v: usize) -> usize {
+        if self.par[v] != v {
+            self.par[v] = self.find(self.par[v]);
+        }
+        self.par[v]
+    }
+
+    fn union(&mut self, v1: usize, v2: usize) -> bool {
+        let (mut p1, mut p2) = (self.find(v1), self.find(v2));
+        if p1 == p2 { return false; }
+        if self.rank[p1] < self.rank[p2] {
+            std::mem::swap(&mut p1, &mut p2);
+        }
+        self.rank[p1] += self.rank[p2];
+        self.par[p2] = p1;
+        true
+    }
+}
+
+impl Solution {
+    pub fn find_critical_and_pseudo_critical_edges(n: i32, edges: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+        let n = n as usize;
+        let mut edge_list: Vec<(usize, usize, i32, usize)> = edges
+            .iter()
+            .enumerate()
+            .map(|(i, e)| (e[0] as usize, e[1] as usize, e[2], i))
+            .collect();
+        edge_list.sort_by_key(|e| e.2);
+
+        let mut uf = UnionFind::new(n);
+        let mut mst_weight = 0;
+        for &(v1, v2, w, _) in &edge_list {
+            if uf.union(v1, v2) {
+                mst_weight += w;
+            }
+        }
+
+        let mut critical = vec![];
+        let mut pseudo = vec![];
+
+        for &(n1, n2, e_weight, idx) in &edge_list {
+            // Try without current edge
+            let mut uf_without = UnionFind::new(n);
+            let mut weight = 0;
+            for &(v1, v2, w, j) in &edge_list {
+                if idx != j && uf_without.union(v1, v2) {
+                    weight += w;
+                }
+            }
+            if *uf_without.rank.iter().max().unwrap() != n || weight > mst_weight {
+                critical.push(idx as i32);
+                continue;
+            }
+
+            // Try with current edge
+            let mut uf_with = UnionFind::new(n);
+            uf_with.union(n1, n2);
+            let mut weight = e_weight;
+            for &(v1, v2, w, _) in &edge_list {
+                if uf_with.union(v1, v2) {
+                    weight += w;
+                }
+            }
+            if weight == mst_weight {
+                pseudo.push(idx as i32);
+            }
+        }
+
+        vec![critical, pseudo]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -439,6 +812,19 @@ public class Solution {
 ---
 
 ## 2. Kruskal's Algorithm - II
+
+### Intuition
+
+This is a cleaner implementation of the same approach. We use a helper function `findMST` that optionally skips one edge or forces one edge to be included first. By comparing results against the baseline MST weight, we classify each edge as critical or pseudo-critical.
+
+### Algorithm
+
+1. Append indices to edges and sort by weight.
+2. Compute `mstWeight` by calling `findMST(-1, false)` (no exclusions or inclusions).
+3. For each edge at index `i`:
+   - If `findMST(i, false)` returns a weight greater than `mstWeight`, the edge is critical.
+   - Else if `findMST(i, true)` equals `mstWeight`, the edge is pseudo-critical.
+4. Return the two lists.
 
 ::tabs-start
 
@@ -848,6 +1234,320 @@ public class Solution {
 }
 ```
 
+```go
+type UnionFind struct {
+    n      int
+    parent []int
+    size   []int
+}
+
+func NewUnionFind(n int) *UnionFind {
+    parent := make([]int, n+1)
+    size := make([]int, n+1)
+    for i := 0; i <= n; i++ {
+        parent[i] = i
+        size[i] = 1
+    }
+    return &UnionFind{n: n, parent: parent, size: size}
+}
+
+func (uf *UnionFind) Find(node int) int {
+    if uf.parent[node] != node {
+        uf.parent[node] = uf.Find(uf.parent[node])
+    }
+    return uf.parent[node]
+}
+
+func (uf *UnionFind) Union(u, v int) bool {
+    pu, pv := uf.Find(u), uf.Find(v)
+    if pu == pv {
+        return false
+    }
+    uf.n--
+    if uf.size[pu] < uf.size[pv] {
+        pu, pv = pv, pu
+    }
+    uf.size[pu] += uf.size[pv]
+    uf.parent[pv] = pu
+    return true
+}
+
+func (uf *UnionFind) IsConnected() bool {
+    return uf.n == 1
+}
+
+func findCriticalAndPseudoCriticalEdges(n int, edges [][]int) [][]int {
+    edgeList := make([][4]int, len(edges))
+    for i, e := range edges {
+        edgeList[i] = [4]int{e[0], e[1], e[2], i}
+    }
+    sort.Slice(edgeList, func(i, j int) bool {
+        return edgeList[i][2] < edgeList[j][2]
+    })
+
+    findMST := func(index int, include bool) int {
+        uf := NewUnionFind(n)
+        wgt := 0
+        if include {
+            wgt += edgeList[index][2]
+            uf.Union(edgeList[index][0], edgeList[index][1])
+        }
+        for i, e := range edgeList {
+            if i == index {
+                continue
+            }
+            if uf.Union(e[0], e[1]) {
+                wgt += e[2]
+            }
+        }
+        if uf.IsConnected() {
+            return wgt
+        }
+        return math.MaxInt32
+    }
+
+    mstWgt := findMST(-1, false)
+    var critical, pseudo []int
+
+    for i, e := range edgeList {
+        if mstWgt < findMST(i, false) {
+            critical = append(critical, e[3])
+        } else if mstWgt == findMST(i, true) {
+            pseudo = append(pseudo, e[3])
+        }
+    }
+
+    return [][]int{critical, pseudo}
+}
+```
+
+```kotlin
+class UnionFind(n: Int) {
+    private var count = n
+    private val parent = IntArray(n) { it }
+    private val size = IntArray(n) { 1 }
+
+    fun find(node: Int): Int {
+        if (parent[node] != node) {
+            parent[node] = find(parent[node])
+        }
+        return parent[node]
+    }
+
+    fun union(u: Int, v: Int): Boolean {
+        var pu = find(u)
+        var pv = find(v)
+        if (pu == pv) return false
+        count--
+        if (size[pu] < size[pv]) {
+            pu = pv.also { pv = pu }
+        }
+        size[pu] += size[pv]
+        parent[pv] = pu
+        return true
+    }
+
+    fun isConnected(): Boolean = count == 1
+}
+
+class Solution {
+    fun findCriticalAndPseudoCriticalEdges(n: Int, edges: Array<IntArray>): List<List<Int>> {
+        val edgeList = edges.mapIndexed { i, e ->
+            intArrayOf(e[0], e[1], e[2], i)
+        }.sortedBy { it[2] }
+
+        fun findMST(index: Int, include: Boolean): Int {
+            val uf = UnionFind(n)
+            var wgt = 0
+            if (include) {
+                wgt += edgeList[index][2]
+                uf.union(edgeList[index][0], edgeList[index][1])
+            }
+            for (i in edgeList.indices) {
+                if (i == index) continue
+                if (uf.union(edgeList[i][0], edgeList[i][1])) {
+                    wgt += edgeList[i][2]
+                }
+            }
+            return if (uf.isConnected()) wgt else Int.MAX_VALUE
+        }
+
+        val mstWgt = findMST(-1, false)
+        val critical = mutableListOf<Int>()
+        val pseudo = mutableListOf<Int>()
+
+        for (i in edgeList.indices) {
+            if (mstWgt < findMST(i, false)) {
+                critical.add(edgeList[i][3])
+            } else if (mstWgt == findMST(i, true)) {
+                pseudo.add(edgeList[i][3])
+            }
+        }
+
+        return listOf(critical, pseudo)
+    }
+}
+```
+
+```swift
+class UnionFind {
+    private var count: Int
+    private var parent: [Int]
+    private var size: [Int]
+
+    init(_ n: Int) {
+        count = n
+        parent = Array(0..<n)
+        size = Array(repeating: 1, count: n)
+    }
+
+    func find(_ node: Int) -> Int {
+        if parent[node] != node {
+            parent[node] = find(parent[node])
+        }
+        return parent[node]
+    }
+
+    func union(_ u: Int, _ v: Int) -> Bool {
+        var pu = find(u)
+        var pv = find(v)
+        if pu == pv { return false }
+        count -= 1
+        if size[pu] < size[pv] {
+            swap(&pu, &pv)
+        }
+        size[pu] += size[pv]
+        parent[pv] = pu
+        return true
+    }
+
+    func isConnected() -> Bool {
+        return count == 1
+    }
+}
+
+class Solution {
+    func findCriticalAndPseudoCriticalEdges(_ n: Int, _ edges: [[Int]]) -> [[Int]] {
+        let edgeList = edges.enumerated().map { (i, e) in
+            [e[0], e[1], e[2], i]
+        }.sorted { $0[2] < $1[2] }
+
+        func findMST(_ index: Int, _ include: Bool) -> Int {
+            let uf = UnionFind(n)
+            var wgt = 0
+            if include {
+                wgt += edgeList[index][2]
+                uf.union(edgeList[index][0], edgeList[index][1])
+            }
+            for i in 0..<edgeList.count {
+                if i == index { continue }
+                if uf.union(edgeList[i][0], edgeList[i][1]) {
+                    wgt += edgeList[i][2]
+                }
+            }
+            return uf.isConnected() ? wgt : Int.max
+        }
+
+        let mstWgt = findMST(-1, false)
+        var critical = [Int]()
+        var pseudo = [Int]()
+
+        for i in 0..<edgeList.count {
+            if mstWgt < findMST(i, false) {
+                critical.append(edgeList[i][3])
+            } else if mstWgt == findMST(i, true) {
+                pseudo.append(edgeList[i][3])
+            }
+        }
+
+        return [critical, pseudo]
+    }
+}
+```
+
+
+```rust
+struct UnionFind {
+    n: usize,
+    parent: Vec<usize>,
+    size: Vec<usize>,
+}
+
+impl UnionFind {
+    fn new(n: usize) -> Self {
+        UnionFind {
+            n,
+            parent: (0..=n).collect(),
+            size: vec![1; n + 1],
+        }
+    }
+
+    fn find(&mut self, node: usize) -> usize {
+        if self.parent[node] != node {
+            self.parent[node] = self.find(self.parent[node]);
+        }
+        self.parent[node]
+    }
+
+    fn union(&mut self, u: usize, v: usize) -> bool {
+        let (mut pu, mut pv) = (self.find(u), self.find(v));
+        if pu == pv { return false; }
+        self.n -= 1;
+        if self.size[pu] < self.size[pv] {
+            std::mem::swap(&mut pu, &mut pv);
+        }
+        self.size[pu] += self.size[pv];
+        self.parent[pv] = pu;
+        true
+    }
+
+    fn is_connected(&self) -> bool {
+        self.n == 1
+    }
+}
+
+impl Solution {
+    pub fn find_critical_and_pseudo_critical_edges(n: i32, mut edges: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+        let n = n as usize;
+        for i in 0..edges.len() {
+            edges[i].push(i as i32);
+        }
+        edges.sort_by_key(|e| e[2]);
+
+        let find_mst = |index: i32, include: bool| -> i32 {
+            let mut uf = UnionFind::new(n);
+            let mut wgt = 0i32;
+            if include {
+                let idx = index as usize;
+                wgt += edges[idx][2];
+                uf.union(edges[idx][0] as usize, edges[idx][1] as usize);
+            }
+            for (i, e) in edges.iter().enumerate() {
+                if i as i32 == index { continue; }
+                if uf.union(e[0] as usize, e[1] as usize) {
+                    wgt += e[2];
+                }
+            }
+            if uf.is_connected() { wgt } else { i32::MAX }
+        };
+
+        let mst_wgt = find_mst(-1, false);
+        let mut critical = vec![];
+        let mut pseudo = vec![];
+
+        for i in 0..edges.len() {
+            if mst_wgt < find_mst(i as i32, false) {
+                critical.push(edges[i][3]);
+            } else if mst_wgt == find_mst(i as i32, true) {
+                pseudo.push(edges[i][3]);
+            }
+        }
+
+        vec![critical, pseudo]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -860,6 +1560,19 @@ public class Solution {
 ---
 
 ## 3. Dijkstra's Algorithm
+
+### Intuition
+
+For each edge connecting nodes `u` and `v` with weight `w`, we ask: is there an alternate path from `u` to `v` using only edges with weight at most `w`? We use a modified Dijkstra that finds the minimax path (minimizing the maximum edge weight along the path). If the edge's weight is strictly less than the minimax without it, the edge is critical. If equal to the minimax, it is pseudo-critical.
+
+### Algorithm
+
+1. Build an adjacency list with edge indices.
+2. For each edge `(u, v, w, idx)`:
+   - Compute `minimax(u, v, idx)`: the minimum possible maximum edge weight on any path from `u` to `v`, excluding edge `idx`.
+   - If `w < minimax(u, v, idx)`, the edge is critical.
+   - Else compute `minimax(u, v, -1)` (no exclusion). If `w == minimax(u, v, -1)`, the edge is pseudo-critical.
+3. Return both lists.
 
 ::tabs-start
 
@@ -880,7 +1593,7 @@ class Solution:
             pq = [(0, src)]
 
             while pq:
-                max_w, u = heappop(pq)
+                max_w, u = heapq.heappop(pq)
                 if u == dst:
                     return max_w
 
@@ -890,7 +1603,7 @@ class Solution:
                     new_w = max(max_w, weight)
                     if new_w < dist[v]:
                         dist[v] = new_w
-                        heappush(pq, (new_w, v))
+                        heapq.heappush(pq, (new_w, v))
 
             return float('inf')
 
@@ -1138,6 +1851,299 @@ public class Solution {
 }
 ```
 
+```go
+func findCriticalAndPseudoCriticalEdges(n int, edges [][]int) [][]int {
+    for i := range edges {
+        edges[i] = append(edges[i], i)
+    }
+
+    adj := make([][][3]int, n)
+    for i := 0; i < n; i++ {
+        adj[i] = make([][3]int, 0)
+    }
+    for _, edge := range edges {
+        adj[edge[0]] = append(adj[edge[0]], [3]int{edge[1], edge[2], edge[3]})
+        adj[edge[1]] = append(adj[edge[1]], [3]int{edge[0], edge[2], edge[3]})
+    }
+
+    minimax := func(src, dst, excludeIdx int) int {
+        dist := make([]int, n)
+        for i := range dist {
+            dist[i] = math.MaxInt32
+        }
+        dist[src] = 0
+
+        pq := &IntHeap{{0, src}}
+        heap.Init(pq)
+
+        for pq.Len() > 0 {
+            curr := heap.Pop(pq).([2]int)
+            maxW, u := curr[0], curr[1]
+            if u == dst {
+                return maxW
+            }
+
+            for _, neighbor := range adj[u] {
+                v, weight, edgeIdx := neighbor[0], neighbor[1], neighbor[2]
+                if edgeIdx == excludeIdx {
+                    continue
+                }
+                newW := max(maxW, weight)
+                if newW < dist[v] {
+                    dist[v] = newW
+                    heap.Push(pq, [2]int{newW, v})
+                }
+            }
+        }
+        return math.MaxInt32
+    }
+
+    var critical, pseudo []int
+    for _, edge := range edges {
+        u, v, w, idx := edge[0], edge[1], edge[2], edge[3]
+        if w < minimax(u, v, idx) {
+            critical = append(critical, idx)
+        } else if w == minimax(u, v, -1) {
+            pseudo = append(pseudo, idx)
+        }
+    }
+
+    return [][]int{critical, pseudo}
+}
+
+type IntHeap [][2]int
+
+func (h IntHeap) Len() int           { return len(h) }
+func (h IntHeap) Less(i, j int) bool { return h[i][0] < h[j][0] }
+func (h IntHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h *IntHeap) Push(x any)        { *h = append(*h, x.([2]int)) }
+func (h *IntHeap) Pop() any {
+    old := *h
+    n := len(old)
+    x := old[n-1]
+    *h = old[0 : n-1]
+    return x
+}
+```
+
+```kotlin
+class Solution {
+    private lateinit var adj: Array<MutableList<IntArray>>
+
+    fun findCriticalAndPseudoCriticalEdges(n: Int, edges: Array<IntArray>): List<List<Int>> {
+        val indexedEdges = edges.mapIndexed { i, e ->
+            intArrayOf(e[0], e[1], e[2], i)
+        }.toTypedArray()
+
+        adj = Array(n) { mutableListOf<IntArray>() }
+        for (edge in indexedEdges) {
+            adj[edge[0]].add(intArrayOf(edge[1], edge[2], edge[3]))
+            adj[edge[1]].add(intArrayOf(edge[0], edge[2], edge[3]))
+        }
+
+        val critical = mutableListOf<Int>()
+        val pseudo = mutableListOf<Int>()
+
+        for (edge in indexedEdges) {
+            val (u, v, w, idx) = edge.let { Triple(it[0], it[1], it[2]) to it[3] }.let {
+                listOf(it.first.first, it.first.second, it.first.third, it.second)
+            }
+            if (w < minimax(n, u, v, idx)) {
+                critical.add(idx)
+            } else if (w == minimax(n, u, v, -1)) {
+                pseudo.add(idx)
+            }
+        }
+
+        return listOf(critical, pseudo)
+    }
+
+    private fun minimax(n: Int, src: Int, dst: Int, excludeIdx: Int): Int {
+        val dist = IntArray(n) { Int.MAX_VALUE }
+        dist[src] = 0
+
+        val pq = PriorityQueue<IntArray>(compareBy { it[0] })
+        pq.add(intArrayOf(0, src))
+
+        while (pq.isNotEmpty()) {
+            val (maxW, u) = pq.poll()
+            if (u == dst) return maxW
+
+            for (neighbor in adj[u]) {
+                val (v, weight, edgeIdx) = Triple(neighbor[0], neighbor[1], neighbor[2])
+                if (edgeIdx == excludeIdx) continue
+                val newW = maxOf(maxW, weight)
+                if (newW < dist[v]) {
+                    dist[v] = newW
+                    pq.add(intArrayOf(newW, v))
+                }
+            }
+        }
+        return Int.MAX_VALUE
+    }
+}
+```
+
+```swift
+class Solution {
+    private var adj: [[[Int]]] = []
+
+    func findCriticalAndPseudoCriticalEdges(_ n: Int, _ edges: [[Int]]) -> [[Int]] {
+        var indexedEdges = edges.enumerated().map { (i, e) in
+            [e[0], e[1], e[2], i]
+        }
+
+        adj = Array(repeating: [[Int]](), count: n)
+        for edge in indexedEdges {
+            adj[edge[0]].append([edge[1], edge[2], edge[3]])
+            adj[edge[1]].append([edge[0], edge[2], edge[3]])
+        }
+
+        var critical = [Int]()
+        var pseudo = [Int]()
+
+        for edge in indexedEdges {
+            let u = edge[0], v = edge[1], w = edge[2], idx = edge[3]
+            if w < minimax(n, u, v, idx) {
+                critical.append(idx)
+            } else if w == minimax(n, u, v, -1) {
+                pseudo.append(idx)
+            }
+        }
+
+        return [critical, pseudo]
+    }
+
+    private func minimax(_ n: Int, _ src: Int, _ dst: Int, _ excludeIdx: Int) -> Int {
+        var dist = Array(repeating: Int.max, count: n)
+        dist[src] = 0
+
+        var pq = Heap<(Int, Int)>(comparator: { $0.0 < $1.0 })
+        pq.insert((0, src))
+
+        while !pq.isEmpty {
+            let (maxW, u) = pq.remove()!
+            if u == dst { return maxW }
+
+            for neighbor in adj[u] {
+                let v = neighbor[0], weight = neighbor[1], edgeIdx = neighbor[2]
+                if edgeIdx == excludeIdx { continue }
+                let newW = max(maxW, weight)
+                if newW < dist[v] {
+                    dist[v] = newW
+                    pq.insert((newW, v))
+                }
+            }
+        }
+        return Int.max
+    }
+}
+
+struct Heap<T> {
+    private var elements: [T] = []
+    private let comparator: (T, T) -> Bool
+
+    init(comparator: @escaping (T, T) -> Bool) {
+        self.comparator = comparator
+    }
+
+    var isEmpty: Bool { elements.isEmpty }
+
+    mutating func insert(_ element: T) {
+        elements.append(element)
+        siftUp(from: elements.count - 1)
+    }
+
+    mutating func remove() -> T? {
+        guard !elements.isEmpty else { return nil }
+        elements.swapAt(0, elements.count - 1)
+        let element = elements.removeLast()
+        if !elements.isEmpty { siftDown(from: 0) }
+        return element
+    }
+
+    private mutating func siftUp(from index: Int) {
+        var child = index
+        var parent = (child - 1) / 2
+        while child > 0 && comparator(elements[child], elements[parent]) {
+            elements.swapAt(child, parent)
+            child = parent
+            parent = (child - 1) / 2
+        }
+    }
+
+    private mutating func siftDown(from index: Int) {
+        var parent = index
+        while true {
+            let left = 2 * parent + 1
+            let right = 2 * parent + 2
+            var candidate = parent
+            if left < elements.count && comparator(elements[left], elements[candidate]) {
+                candidate = left
+            }
+            if right < elements.count && comparator(elements[right], elements[candidate]) {
+                candidate = right
+            }
+            if candidate == parent { return }
+            elements.swapAt(parent, candidate)
+            parent = candidate
+        }
+    }
+}
+```
+
+
+```rust
+impl Solution {
+    pub fn find_critical_and_pseudo_critical_edges(n: i32, mut edges: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+        let n = n as usize;
+        for i in 0..edges.len() {
+            edges[i].push(i as i32);
+        }
+
+        let mut adj: Vec<Vec<(usize, i32, usize)>> = vec![vec![]; n];
+        for e in &edges {
+            adj[e[0] as usize].push((e[1] as usize, e[2], e[3] as usize));
+            adj[e[1] as usize].push((e[0] as usize, e[2], e[3] as usize));
+        }
+
+        let minimax = |src: usize, dst: usize, exclude_idx: i32| -> i32 {
+            let mut dist = vec![i32::MAX; n];
+            dist[src] = 0;
+            let mut pq = BinaryHeap::new();
+            pq.push(Reverse((0i32, src)));
+
+            while let Some(Reverse((max_w, u))) = pq.pop() {
+                if u == dst { return max_w; }
+                for &(v, weight, edge_idx) in &adj[u] {
+                    if edge_idx as i32 == exclude_idx { continue; }
+                    let new_w = max_w.max(weight);
+                    if new_w < dist[v] {
+                        dist[v] = new_w;
+                        pq.push(Reverse((new_w, v)));
+                    }
+                }
+            }
+            i32::MAX
+        };
+
+        let mut critical = vec![];
+        let mut pseudo = vec![];
+
+        for e in &edges {
+            let (u, v, w, idx) = (e[0] as usize, e[1] as usize, e[2], e[3]);
+            if w < minimax(u, v, idx as i32) {
+                critical.push(idx);
+            } else if w == minimax(u, v, -1) {
+                pseudo.push(idx);
+            }
+        }
+
+        vec![critical, pseudo]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1150,6 +2156,19 @@ public class Solution {
 ---
 
 ## 4. Kruskal's Algorithm + DFS
+
+### Intuition
+
+After building one MST, edges not in the MST create cycles when added. We use `DFS` to find the path in the MST between the endpoints of each non-MST edge. If any edge on this path has the same weight as the non-MST edge, both edges are pseudo-critical (they can be swapped). MST edges not identified as pseudo-critical are critical.
+
+### Algorithm
+
+1. Build an MST using Kruskal's algorithm, recording which edges are included and building an adjacency list for the MST.
+2. For each edge not in the MST:
+   - Use `DFS` to find the unique path in the MST between its endpoints.
+   - For each edge on this path with equal weight, mark both edges as pseudo-critical.
+3. Critical edges are MST edges that are not pseudo-critical.
+4. Return both lists.
 
 ::tabs-start
 
@@ -1629,6 +2648,387 @@ public class Solution {
 }
 ```
 
+```go
+type UnionFind struct {
+    parent []int
+    size   []int
+}
+
+func NewUnionFind(n int) *UnionFind {
+    parent := make([]int, n)
+    size := make([]int, n)
+    for i := 0; i < n; i++ {
+        parent[i] = i
+        size[i] = 1
+    }
+    return &UnionFind{parent: parent, size: size}
+}
+
+func (uf *UnionFind) Find(node int) int {
+    if uf.parent[node] != node {
+        uf.parent[node] = uf.Find(uf.parent[node])
+    }
+    return uf.parent[node]
+}
+
+func (uf *UnionFind) Union(u, v int) bool {
+    pu, pv := uf.Find(u), uf.Find(v)
+    if pu == pv {
+        return false
+    }
+    if uf.size[pu] < uf.size[pv] {
+        pu, pv = pv, pu
+    }
+    uf.size[pu] += uf.size[pv]
+    uf.parent[pv] = pu
+    return true
+}
+
+func findCriticalAndPseudoCriticalEdges(n int, edges [][]int) [][]int {
+    mst := make([][][2]int, n)
+    mstEdges := make(map[int]bool)
+
+    edgeList := make([][4]int, len(edges))
+    for i, e := range edges {
+        edgeList[i] = [4]int{e[2], e[0], e[1], i}
+    }
+    sort.Slice(edgeList, func(i, j int) bool {
+        return edgeList[i][0] < edgeList[j][0]
+    })
+
+    uf := NewUnionFind(n)
+    for _, edge := range edgeList {
+        _, u, v, idx := edge[0], edge[1], edge[2], edge[3]
+        if uf.Union(u, v) {
+            mst[u] = append(mst[u], [2]int{v, idx})
+            mst[v] = append(mst[v], [2]int{u, idx})
+            mstEdges[idx] = true
+        }
+    }
+
+    pseudoCritical := make(map[int]bool)
+
+    var dfs func(node, parent, dest int, path *[]int) bool
+    dfs = func(node, parent, dest int, path *[]int) bool {
+        if node == dest {
+            return true
+        }
+        for _, neighbor := range mst[node] {
+            next, edgeIdx := neighbor[0], neighbor[1]
+            if edgeIdx == parent {
+                continue
+            }
+            *path = append(*path, edgeIdx)
+            if dfs(next, edgeIdx, dest, path) {
+                return true
+            }
+            *path = (*path)[:len(*path)-1]
+        }
+        return false
+    }
+
+    for i := 0; i < len(edges); i++ {
+        if mstEdges[i] {
+            continue
+        }
+        path := []int{}
+        dest := edges[i][1]
+        if dfs(edges[i][0], -1, dest, &path) {
+            for _, p := range path {
+                if edges[p][2] == edges[i][2] {
+                    pseudoCritical[i] = true
+                    pseudoCritical[p] = true
+                }
+            }
+        }
+    }
+
+    var critical, pseudo []int
+    for idx := range mstEdges {
+        if !pseudoCritical[idx] {
+            critical = append(critical, idx)
+        }
+    }
+    for idx := range pseudoCritical {
+        pseudo = append(pseudo, idx)
+    }
+
+    return [][]int{critical, pseudo}
+}
+```
+
+```kotlin
+class UnionFind(n: Int) {
+    private val parent = IntArray(n) { it }
+    private val size = IntArray(n) { 1 }
+
+    fun find(node: Int): Int {
+        if (parent[node] != node) {
+            parent[node] = find(parent[node])
+        }
+        return parent[node]
+    }
+
+    fun union(u: Int, v: Int): Boolean {
+        var pu = find(u)
+        var pv = find(v)
+        if (pu == pv) return false
+        if (size[pu] < size[pv]) {
+            pu = pv.also { pv = pu }
+        }
+        size[pu] += size[pv]
+        parent[pv] = pu
+        return true
+    }
+}
+
+class Solution {
+    private lateinit var mst: Array<MutableList<IntArray>>
+    private val mstEdges = mutableSetOf<Int>()
+    private val pseudoCriticalEdges = mutableSetOf<Int>()
+    private var destination = 0
+    private val path = mutableListOf<Int>()
+
+    fun findCriticalAndPseudoCriticalEdges(n: Int, edges: Array<IntArray>): List<List<Int>> {
+        mst = Array(n) { mutableListOf<IntArray>() }
+
+        val edgeList = edges.mapIndexed { i, e ->
+            intArrayOf(e[2], e[0], e[1], i)
+        }.sortedBy { it[0] }
+
+        val uf = UnionFind(n)
+        for (edge in edgeList) {
+            val (w, u, v, idx) = listOf(edge[0], edge[1], edge[2], edge[3])
+            if (uf.union(u, v)) {
+                mst[u].add(intArrayOf(v, idx))
+                mst[v].add(intArrayOf(u, idx))
+                mstEdges.add(idx)
+            }
+        }
+
+        for (i in edges.indices) {
+            if (i in mstEdges) continue
+            path.clear()
+            destination = edges[i][1]
+            if (dfs(edges[i][0], -1, edges)) {
+                for (p in path) {
+                    if (edges[p][2] == edges[i][2]) {
+                        pseudoCriticalEdges.add(i)
+                        pseudoCriticalEdges.add(p)
+                    }
+                }
+            }
+        }
+
+        val critical = mstEdges.filter { it !in pseudoCriticalEdges }
+        return listOf(critical, pseudoCriticalEdges.toList())
+    }
+
+    private fun dfs(node: Int, parent: Int, edges: Array<IntArray>): Boolean {
+        if (node == destination) return true
+        for (neighbor in mst[node]) {
+            val (next, edgeIdx) = neighbor[0] to neighbor[1]
+            if (edgeIdx == parent) continue
+            path.add(edgeIdx)
+            val nextNode = if (edges[edgeIdx][0] == node) edges[edgeIdx][1] else edges[edgeIdx][0]
+            if (dfs(nextNode, edgeIdx, edges)) return true
+            path.removeAt(path.size - 1)
+        }
+        return false
+    }
+}
+```
+
+```swift
+class UnionFind {
+    private var parent: [Int]
+    private var size: [Int]
+
+    init(_ n: Int) {
+        parent = Array(0..<n)
+        size = Array(repeating: 1, count: n)
+    }
+
+    func find(_ node: Int) -> Int {
+        if parent[node] != node {
+            parent[node] = find(parent[node])
+        }
+        return parent[node]
+    }
+
+    func union(_ u: Int, _ v: Int) -> Bool {
+        var pu = find(u)
+        var pv = find(v)
+        if pu == pv { return false }
+        if size[pu] < size[pv] {
+            swap(&pu, &pv)
+        }
+        size[pu] += size[pv]
+        parent[pv] = pu
+        return true
+    }
+}
+
+class Solution {
+    private var mst: [[(Int, Int)]] = []
+    private var mstEdges = Set<Int>()
+    private var pseudoCriticalEdges = Set<Int>()
+    private var destination = 0
+    private var path = [Int]()
+
+    func findCriticalAndPseudoCriticalEdges(_ n: Int, _ edges: [[Int]]) -> [[Int]] {
+        mst = Array(repeating: [(Int, Int)](), count: n)
+        mstEdges = Set<Int>()
+        pseudoCriticalEdges = Set<Int>()
+
+        let edgeList = edges.enumerated().map { (i, e) in
+            [e[2], e[0], e[1], i]
+        }.sorted { $0[0] < $1[0] }
+
+        let uf = UnionFind(n)
+        for edge in edgeList {
+            let w = edge[0], u = edge[1], v = edge[2], idx = edge[3]
+            if uf.union(u, v) {
+                mst[u].append((v, idx))
+                mst[v].append((u, idx))
+                mstEdges.insert(idx)
+            }
+        }
+
+        for i in 0..<edges.count {
+            if mstEdges.contains(i) { continue }
+            path = []
+            destination = edges[i][1]
+            if dfs(edges[i][0], -1, edges) {
+                for p in path {
+                    if edges[p][2] == edges[i][2] {
+                        pseudoCriticalEdges.insert(i)
+                        pseudoCriticalEdges.insert(p)
+                    }
+                }
+            }
+        }
+
+        let critical = mstEdges.filter { !pseudoCriticalEdges.contains($0) }
+        return [Array(critical), Array(pseudoCriticalEdges)]
+    }
+
+    private func dfs(_ node: Int, _ parent: Int, _ edges: [[Int]]) -> Bool {
+        if node == destination { return true }
+        for (next, edgeIdx) in mst[node] {
+            if edgeIdx == parent { continue }
+            path.append(edgeIdx)
+            let nextNode = edges[edgeIdx][0] == node ? edges[edgeIdx][1] : edges[edgeIdx][0]
+            if dfs(nextNode, edgeIdx, edges) { return true }
+            path.removeLast()
+        }
+        return false
+    }
+}
+```
+
+
+```rust
+struct UnionFind {
+    parent: Vec<usize>,
+    size: Vec<usize>,
+}
+
+impl UnionFind {
+    fn new(n: usize) -> Self {
+        UnionFind {
+            parent: (0..n).collect(),
+            size: vec![1; n],
+        }
+    }
+
+    fn find(&mut self, node: usize) -> usize {
+        if self.parent[node] != node {
+            self.parent[node] = self.find(self.parent[node]);
+        }
+        self.parent[node]
+    }
+
+    fn union(&mut self, u: usize, v: usize) -> bool {
+        let (mut pu, mut pv) = (self.find(u), self.find(v));
+        if pu == pv { return false; }
+        if self.size[pu] < self.size[pv] {
+            std::mem::swap(&mut pu, &mut pv);
+        }
+        self.size[pu] += self.size[pv];
+        self.parent[pv] = pu;
+        true
+    }
+}
+
+impl Solution {
+    pub fn find_critical_and_pseudo_critical_edges(n: i32, edges: Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+        let n = n as usize;
+        let mut mst_adj: Vec<Vec<(usize, usize)>> = vec![vec![]; n];
+        let mut mst_edges = HashSet::new();
+
+        let mut edge_list: Vec<(i32, usize, usize, usize)> = edges
+            .iter()
+            .enumerate()
+            .map(|(i, e)| (e[2], e[0] as usize, e[1] as usize, i))
+            .collect();
+        edge_list.sort();
+
+        let mut uf = UnionFind::new(n);
+        for &(_, u, v, idx) in &edge_list {
+            if uf.union(u, v) {
+                mst_adj[u].push((v, idx));
+                mst_adj[v].push((u, idx));
+                mst_edges.insert(idx);
+            }
+        }
+
+        fn dfs(
+            node: usize,
+            parent_edge: i32,
+            dst: usize,
+            mst_adj: &Vec<Vec<(usize, usize)>>,
+            path: &mut Vec<usize>,
+        ) -> bool {
+            if node == dst { return true; }
+            for &(next, edge_idx) in &mst_adj[node] {
+                if edge_idx as i32 == parent_edge { continue; }
+                path.push(edge_idx);
+                if dfs(next, edge_idx as i32, dst, mst_adj, path) {
+                    return true;
+                }
+                path.pop();
+            }
+            false
+        }
+
+        let mut pseudo_set = HashSet::new();
+        for ind in 0..edges.len() {
+            if mst_edges.contains(&ind) { continue; }
+            let mut path = vec![];
+            let dst = edges[ind][1] as usize;
+            if dfs(edges[ind][0] as usize, -1, dst, &mst_adj, &mut path) {
+                for &p in &path {
+                    if edges[p][2] == edges[ind][2] {
+                        pseudo_set.insert(p);
+                        pseudo_set.insert(ind);
+                    }
+                }
+            }
+        }
+
+        let critical: Vec<i32> = mst_edges
+            .iter()
+            .filter(|e| !pseudo_set.contains(e))
+            .map(|&e| e as i32)
+            .collect();
+        let pseudo: Vec<i32> = pseudo_set.iter().map(|&e| e as i32).collect();
+
+        vec![critical, pseudo]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1637,3 +3037,27 @@ public class Solution {
 - Space complexity: $O(V + E)$
 
 > Where $V$ is the number of vertices and $E$ is the number of edges.
+
+---
+
+## Common Pitfalls
+
+### Forgetting to Preserve Original Edge Indices
+
+When sorting edges by weight for Kruskal's algorithm, the original indices get lost. You must store the original index with each edge before sorting, as the problem requires returning indices from the original edge list, not the sorted order.
+
+### Incorrect Connectivity Check After Edge Removal
+
+When testing if an edge is critical by removing it, simply checking if the MST weight increases is insufficient. The graph may become disconnected entirely, making it impossible to form any spanning tree. Always verify that all nodes remain connected (e.g., by checking if the Union-Find structure has exactly one component).
+
+### Confusing Critical and Pseudo-Critical Edge Conditions
+
+A critical edge must be in every MST, while a pseudo-critical edge can be in some MST but not all. The testing order matters: first check if removing the edge breaks the MST (critical), then check if forcing the edge into the MST still yields minimum weight (pseudo-critical). An edge cannot be both.
+
+### Not Resetting Union-Find for Each Edge Test
+
+Each edge must be tested with a fresh Union-Find structure. Reusing the same Union-Find instance across multiple edge tests will carry over previous union operations, leading to incorrect connectivity states and wrong classifications.
+
+### Mishandling Edges with Equal Weights
+
+When multiple edges have the same weight, they may be interchangeable in forming an MST. This is precisely what creates pseudo-critical edges. Failing to account for weight ties can cause edges to be incorrectly classified as critical when they are actually pseudo-critical.

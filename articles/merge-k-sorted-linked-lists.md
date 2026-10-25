@@ -1,4 +1,33 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Linked Lists** - Understanding singly linked list structure, traversal, and node manipulation
+- **Merge Two Sorted Lists** - The fundamental operation used repeatedly in all approaches
+- **Min Heap / Priority Queue** - Used to efficiently find the smallest element among k lists
+- **Divide and Conquer** - Strategy to recursively split and merge lists in pairs
+- **Sorting** - Used in the brute force approach to sort all collected values
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+The simplest way to merge all linked lists is to **ignore the list structure**, collect every value, sort them, and then rebuild a single sorted linked list.
+This doesn't use any clever merging logic — it is purely based on gathering and sorting.
+It's easy to implement but not efficient because sorting dominates the runtime.
+
+### Algorithm
+
+1. Create an empty list `nodes`.
+2. For each linked list:
+    - Traverse it and append every node's value to `nodes`.
+3. Sort the `nodes` list.
+4. Create a new linked list:
+    - Use a dummy head.
+    - For each value in the sorted list, create a new node and attach it.
+5. Return the head of the new merged linked list.
 
 ::tabs-start
 
@@ -275,6 +304,36 @@ class Solution {
 }
 ```
 
+```rust
+// Definition for singly-linked list.
+// #[derive(PartialEq, Eq, Clone, Debug)]
+// pub struct ListNode {
+//     pub val: i32,
+//     pub next: Option<Box<ListNode>>,
+// }
+impl Solution {
+    pub fn merge_k_lists(lists: Vec<Option<Box<ListNode>>>) -> Option<Box<ListNode>> {
+        let mut nodes = Vec::new();
+        for list in &lists {
+            let mut cur = list;
+            while let Some(node) = cur {
+                nodes.push(node.val);
+                cur = &node.next;
+            }
+        }
+        nodes.sort();
+
+        let mut head = None;
+        for &val in nodes.iter().rev() {
+            let mut node = ListNode::new(val);
+            node.next = head;
+            head = Some(Box::new(node));
+        }
+        head
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -285,6 +344,30 @@ class Solution {
 ---
 
 ## 2. Iteration
+
+### Intuition
+
+We repeatedly pick the **smallest head node** among all the lists and attach it to our result list.
+At every step:
+
+- Look at the first node of each non-empty list.
+- Choose the one with the smallest value.
+- Move that list's pointer forward.
+- Append the chosen node to our merged list.
+
+This is similar to merging `k` sorted arrays by always picking the smallest available element.
+
+### Algorithm
+
+1. Create a dummy node to build the merged list.
+2. Set a pointer `cur` to the dummy.
+3. Repeat:
+    - Search through all lists to find the list whose current node has the smallest value.
+    - If no list has remaining nodes (all are empty), stop.
+    - Attach the smallest node to `cur.next`.
+    - Move `cur` forward.
+    - Move the chosen list's pointer to its next node.
+4. Return the merged list starting from `dummy.next`.
 
 ::tabs-start
 
@@ -588,6 +671,41 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn merge_k_lists(lists: Vec<Option<Box<ListNode>>>) -> Option<Box<ListNode>> {
+        let mut lists: Vec<Option<Box<ListNode>>> = lists;
+        let mut dummy = Box::new(ListNode::new(0));
+        let mut cur = &mut dummy;
+
+        loop {
+            let mut min_idx: i32 = -1;
+            for i in 0..lists.len() {
+                if let Some(ref node) = lists[i] {
+                    if min_idx == -1
+                        || node.val < lists[min_idx as usize].as_ref().unwrap().val
+                    {
+                        min_idx = i as i32;
+                    }
+                }
+            }
+
+            if min_idx == -1 {
+                break;
+            }
+
+            let idx = min_idx as usize;
+            let mut node = lists[idx].take().unwrap();
+            lists[idx] = node.next.take();
+            cur.next = Some(node);
+            cur = cur.next.as_mut().unwrap();
+        }
+
+        dummy.next
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -600,6 +718,42 @@ class Solution {
 ---
 
 ## 3. Merge Lists One By One
+
+### Intuition
+
+Instead of merging all `k` lists at once, we can **merge them one by one**.
+
+- First merge list `0` and list `1` → get a sorted list.
+- Then merge that result with list `2`.
+- Then merge that result with list `3`.
+- Repeat until all lists are merged.
+
+Each merge operation is just like the standard **"merge two sorted linked lists"** problem:
+
+- Compare the heads.
+- Attach the smaller one.
+- Move that list's pointer forward.
+- Continue until one list is empty, then attach the rest of the other list.
+
+### Algorithm
+
+1. If the list of lists is empty, return `null` (or equivalent).
+2. For each list from index `1` to `k - 1`:
+    - Merge `lists[i - 1]` and `lists[i]` into a single sorted list.
+    - Store the merged result back into `lists[i]`.
+3. After the loop, `lists[k - 1]` will contain the fully merged list.
+4. Return `lists[k - 1]`.
+
+**Merging two lists (`mergeList(l1, l2)`):**
+
+1. Create a dummy node and a `tail` pointer starting at the dummy.
+2. While both `l1` and `l2` are non-empty:
+    - Compare `l1.val` and `l2.val`.
+    - Attach the smaller node to `tail.next`.
+    - Move that list's pointer forward.
+    - Move `tail` forward.
+3. If one list still has remaining nodes, attach it to `tail.next`.
+4. Return `dummy.next` as the merged head.
 
 ::tabs-start
 
@@ -993,6 +1147,48 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn merge_k_lists(lists: Vec<Option<Box<ListNode>>>) -> Option<Box<ListNode>> {
+        if lists.is_empty() {
+            return None;
+        }
+
+        let mut lists = lists;
+        for i in 1..lists.len() {
+            let l1 = lists[i - 1].take();
+            let l2 = lists[i].take();
+            lists[i] = Self::merge_two(l1, l2);
+        }
+        lists.last_mut().unwrap().take()
+    }
+
+    fn merge_two(
+        mut l1: Option<Box<ListNode>>,
+        mut l2: Option<Box<ListNode>>,
+    ) -> Option<Box<ListNode>> {
+        let mut dummy = Box::new(ListNode::new(0));
+        let mut tail = &mut dummy;
+
+        while l1.is_some() && l2.is_some() {
+            if l1.as_ref().unwrap().val <= l2.as_ref().unwrap().val {
+                let next = l1.as_mut().unwrap().next.take();
+                tail.next = l1;
+                l1 = next;
+            } else {
+                let next = l2.as_mut().unwrap().next.take();
+                tail.next = l2;
+                l2 = next;
+            }
+            tail = tail.next.as_mut().unwrap();
+        }
+
+        tail.next = if l1.is_some() { l1 } else { l2 };
+        dummy.next
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1005,6 +1201,32 @@ class Solution {
 ---
 
 ## 4. Heap
+
+### Intuition
+
+We want to always pick the **smallest current node** among all `k` lists as efficiently as possible.
+
+Instead of scanning all heads every time (which is slow), we can use a **min-heap (priority queue)**:
+
+- Push the head of each non-empty list into the heap.
+- The heap always gives us the node with the **smallest value** on top.
+- We pop that node, attach it to our result list, and then push its `next` node (if it exists) into the heap.
+- Repeat until the heap is empty.
+
+This way, at every step we choose the globally smallest node in **O(log k)** time, where `k` is the number of lists.
+
+### Algorithm
+
+1. Create a min-heap (priority queue).
+2. For each non-empty linked list:
+    - Push its head node into the heap (keyed by node value).
+3. Create a dummy node to start the result list, and a pointer `cur` pointing to it.
+4. While the heap is not empty:
+    - Pop the node with the smallest value from the heap.
+    - Attach this node to `cur.next`, and move `cur` forward.
+    - If this node has a `next` node, push that `next` node into the heap.
+5. When the heap is empty, all nodes have been merged in sorted order.
+6. Return `dummy.next` as the head of the merged list.
 
 ::tabs-start
 
@@ -1219,31 +1441,44 @@ public class Solution {
  *     Next *ListNode
  * }
  */
+type NodeHeap []*ListNode
+
+func (h NodeHeap) Len() int            { return len(h) }
+func (h NodeHeap) Less(i, j int) bool  { return h[i].Val < h[j].Val }
+func (h NodeHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
+func (h *NodeHeap) Push(x interface{}) { *h = append(*h, x.(*ListNode)) }
+func (h *NodeHeap) Pop() interface{} {
+    old := *h
+    n := len(old)
+    x := old[n-1]
+    *h = old[:n-1]
+    return x
+}
+
 func mergeKLists(lists []*ListNode) *ListNode {
     if len(lists) == 0 {
         return nil
     }
 
-    minHeap := priorityqueue.NewWith(func(a, b interface{}) int {
-        return a.(*ListNode).Val - b.(*ListNode).Val
-    })
+    minHeap := &NodeHeap{}
+    heap.Init(minHeap)
 
     for _, list := range lists {
         if list != nil {
-            minHeap.Enqueue(list)
+            heap.Push(minHeap, list)
         }
     }
 
     res := &ListNode{Val: 0}
     cur := res
 
-    for !minHeap.Empty() {
-        node, _ := minHeap.Dequeue()
-        cur.Next = node.(*ListNode)
+    for minHeap.Len() > 0 {
+        node := heap.Pop(minHeap).(*ListNode)
+        cur.Next = node
         cur = cur.Next
 
         if cur.Next != nil {
-            minHeap.Enqueue(cur.Next)
+            heap.Push(minHeap, cur.Next)
         }
     }
 
@@ -1341,6 +1576,33 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn merge_k_lists(lists: Vec<Option<Box<ListNode>>>) -> Option<Box<ListNode>> {
+        if lists.is_empty() {
+            return None;
+        }
+
+        let mut heap = BinaryHeap::new();
+        for list in lists {
+            let mut cur = list;
+            while let Some(node) = cur {
+                heap.push(Reverse(node.val));
+                cur = node.next;
+            }
+        }
+
+        let mut dummy = Box::new(ListNode::new(0));
+        let mut cur = &mut dummy;
+        while let Some(Reverse(val)) = heap.pop() {
+            cur.next = Some(Box::new(ListNode::new(val)));
+            cur = cur.next.as_mut().unwrap();
+        }
+        dummy.next
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1353,6 +1615,51 @@ class Solution {
 ---
 
 ## 5. Divide And Conquer (Recursion)
+
+### Intuition
+
+Instead of merging all k lists at once or one by one in order, we can use a **divide and conquer** strategy, similar to how **merge sort** works.
+
+Idea:
+
+- Split the list of linked lists into two halves.
+- Recursively merge the left half into one sorted list.
+- Recursively merge the right half into one sorted list.
+- Finally, merge these two sorted lists into a single sorted list.
+
+By always merging **pairs** of lists, we reduce the total work compared to merging k lists sequentially.  
+Each merge of two lists is linear in their total length, and we do about `log k` levels of merging.
+
+This makes the approach both clean and efficient.
+
+### Algorithm
+
+1. **Base Cases**
+    - If the input list `lists` is empty, return `null`.
+    - Use a recursive function `divide(lists, l, r)`:
+        - If `l > r`, return `null`.
+        - If `l == r`, return `lists[l]` (only one list to return).
+
+2. **Divide Step**
+    - Compute `mid = (l + r) // 2`.
+    - Recursively compute:
+        - `left = divide(lists, l, mid)`
+        - `right = divide(lists, mid + 1, r)`
+
+3. **Conquer Step (merge two lists)**
+    - Merge `left` and `right` using the standard **merge two sorted linked lists** routine:
+        - Create a dummy node and use a `curr` pointer.
+        - While both lists are non-empty:
+            - Attach the smaller node to `curr.next`.
+            - Move that list's pointer forward.
+            - Move `curr` forward.
+        - Attach any remaining nodes from either list.
+    - Return the merged list.
+
+4. **Final Answer**
+    - Call `divide(lists, 0, len(lists) - 1)` and return the resulting list.
+
+This approach efficiently merges `k` sorted linked lists in a structured, recursive way.
 
 ::tabs-start
 
@@ -1819,6 +2126,54 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn merge_k_lists(lists: Vec<Option<Box<ListNode>>>) -> Option<Box<ListNode>> {
+        if lists.is_empty() {
+            return None;
+        }
+        Self::divide(&lists, 0, lists.len() as i32 - 1)
+    }
+
+    fn divide(lists: &[Option<Box<ListNode>>], l: i32, r: i32) -> Option<Box<ListNode>> {
+        if l > r {
+            return None;
+        }
+        if l == r {
+            return lists[l as usize].clone();
+        }
+        let mid = l + (r - l) / 2;
+        let left = Self::divide(lists, l, mid);
+        let right = Self::divide(lists, mid + 1, r);
+        Self::conquer(left, right)
+    }
+
+    fn conquer(
+        mut l1: Option<Box<ListNode>>,
+        mut l2: Option<Box<ListNode>>,
+    ) -> Option<Box<ListNode>> {
+        let mut dummy = Box::new(ListNode::new(0));
+        let mut curr = &mut dummy;
+
+        while l1.is_some() && l2.is_some() {
+            if l1.as_ref().unwrap().val <= l2.as_ref().unwrap().val {
+                let next = l1.as_mut().unwrap().next.take();
+                curr.next = l1;
+                l1 = next;
+            } else {
+                let next = l2.as_mut().unwrap().next.take();
+                curr.next = l2;
+                l2 = next;
+            }
+            curr = curr.next.as_mut().unwrap();
+        }
+
+        curr.next = if l1.is_some() { l1 } else { l2 };
+        dummy.next
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1831,6 +2186,45 @@ class Solution {
 ---
 
 ## 6. Divide And Conquer (Iteration)
+
+### Intuition
+
+This is the **same idea as divide and conquer**, but done **iteratively** instead of using recursion.
+
+We repeatedly merge the lists in **pairs**:
+
+- In one pass:
+    - Merge list 0 and list 1 -> get M0
+    - Merge list 2 and list 3 -> get M1
+    - Merge list 4 and list 5 -> get M2
+    - ... and so on.
+- After this pass, we have fewer lists (about half as many).
+- Repeat this process on the new list of merged lists until only **one** list remains.
+
+Each pairwise merge is just the usual **merge of two sorted linked lists**.
+By always merging lists two at a time, the total work is efficient and structured, similar to the merge step in merge sort.
+
+### Algorithm
+
+1. If `lists` is empty, return `null`.
+2. While the number of lists is greater than `1`:
+    - Create an empty list `mergedLists`.
+    - Loop over `lists` in steps of `2`:
+        - Let `l1 = lists[i]`.
+        - Let `l2 = lists[i + 1]` if it exists, otherwise `None`.
+        - Merge `l1` and `l2` using `mergeList` and append the result to `mergedLists`.
+    - Set `lists = mergedLists`.
+3. When the loop ends, `lists[0]` is the fully merged sorted list. Return it.
+
+**Merging two lists (`mergeList(l1, l2)`):**
+
+1. Create a dummy node and a `tail` pointer pointing to it.
+2. While both `l1` and `l2` are non-empty:
+    - Attach the smaller of `l1` and `l2` to `tail.next`.
+    - Move the chosen list's pointer forward.
+    - Move `tail` forward.
+3. Attach any remaining nodes from `l1` or `l2` to `tail.next`.
+4. Return `dummy.next` as the merged head.
 
 ::tabs-start
 
@@ -2269,6 +2663,56 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn merge_k_lists(lists: Vec<Option<Box<ListNode>>>) -> Option<Box<ListNode>> {
+        if lists.is_empty() {
+            return None;
+        }
+
+        let mut lists = lists;
+        while lists.len() > 1 {
+            let mut merged = Vec::new();
+            for i in (0..lists.len()).step_by(2) {
+                let l1 = lists[i].take();
+                let l2 = if i + 1 < lists.len() {
+                    lists[i + 1].take()
+                } else {
+                    None
+                };
+                merged.push(Self::merge_list(l1, l2));
+            }
+            lists = merged;
+        }
+        lists.into_iter().next().unwrap()
+    }
+
+    fn merge_list(
+        mut l1: Option<Box<ListNode>>,
+        mut l2: Option<Box<ListNode>>,
+    ) -> Option<Box<ListNode>> {
+        let mut dummy = Box::new(ListNode::new(0));
+        let mut tail = &mut dummy;
+
+        while l1.is_some() && l2.is_some() {
+            if l1.as_ref().unwrap().val < l2.as_ref().unwrap().val {
+                let next = l1.as_mut().unwrap().next.take();
+                tail.next = l1;
+                l1 = next;
+            } else {
+                let next = l2.as_mut().unwrap().next.take();
+                tail.next = l2;
+                l2 = next;
+            }
+            tail = tail.next.as_mut().unwrap();
+        }
+
+        tail.next = if l1.is_some() { l1 } else { l2 };
+        dummy.next
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -2277,3 +2721,27 @@ class Solution {
 - Space complexity: $O(k)$
 
 > Where $k$ is the total number of lists and $n$ is the total number of nodes across $k$ lists.
+
+---
+
+## Common Pitfalls
+
+### Not Handling Empty Lists in the Input Array
+
+The input array `lists` may contain `null` or empty linked lists. Failing to check for these before accessing node values will cause null pointer exceptions. Always verify that a list is non-empty before processing it.
+
+### Forgetting to Advance the Chosen List's Pointer
+
+After selecting the smallest node from among the `k` lists, you must move that list's head pointer to the next node. Forgetting this step causes an infinite loop where the same node is repeatedly selected.
+
+### Incorrect Comparator for Min-Heap
+
+When using a priority queue or min-heap, the comparator must compare node values correctly. In some languages, the default heap is a max-heap (like Python's `heapq` with negative values or C++'s `priority_queue`). Using the wrong comparison direction results in a max-heap instead of a min-heap, producing an incorrectly sorted output.
+
+### Not Using a Dummy Node for the Result List
+
+Building the result list without a dummy head node requires special handling for the first node and complicates the logic. Using a dummy node simplifies the code by allowing uniform treatment of all nodes, then returning `dummy.next` as the result.
+
+### Modifying the Input Lists Array During Iteration
+
+When merging lists one by one or in the divide-and-conquer approach, be careful about how you update the `lists` array. Overwriting elements while still iterating can lead to incorrect merges or skipped lists. Either use a separate array for merged results or iterate carefully with proper indexing.

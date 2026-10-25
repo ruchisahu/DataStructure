@@ -1,4 +1,24 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Linked Lists** - Understanding node structure with value and next pointer, and how to traverse a linked list
+- **Two Pointers (Fast & Slow)** - The technique of using two pointers moving at different speeds to find middle elements or detect cycles
+- **Arrays** - Using dynamic arrays to store elements for indexed access
+
+---
+
 ## 1. Convert To Array
+
+### Intuition
+
+Linked lists do not support random access, so finding the middle node directly is not straightforward. By storing all nodes in an array, we gain index-based access. Once we have the array, the middle node is simply at index `length / 2`.
+
+### Algorithm
+
+1. Traverse the linked list and store each node in an array.
+2. Calculate the middle index as `length / 2`.
+3. Return the node at the middle index.
 
 ::tabs-start
 
@@ -94,6 +114,118 @@ class Solution {
 }
 ```
 
+```csharp
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     public int val;
+ *     public ListNode next;
+ *     public ListNode(int val=0, ListNode next=null) {
+ *         this.val = val;
+ *         this.next = next;
+ *     }
+ * }
+ */
+public class Solution {
+    public ListNode MiddleNode(ListNode head) {
+        List<ListNode> arr = new List<ListNode>();
+        ListNode cur = head;
+        while (cur != null) {
+            arr.Add(cur);
+            cur = cur.next;
+        }
+        return arr[arr.Count / 2];
+    }
+}
+```
+
+```go
+/**
+ * Definition for singly-linked list.
+ * type ListNode struct {
+ *     Val int
+ *     Next *ListNode
+ * }
+ */
+func middleNode(head *ListNode) *ListNode {
+    arr := []*ListNode{}
+    cur := head
+    for cur != nil {
+        arr = append(arr, cur)
+        cur = cur.Next
+    }
+    return arr[len(arr)/2]
+}
+```
+
+```kotlin
+/**
+ * Example:
+ * var li = ListNode(5)
+ * var v = li.`val`
+ * Definition for singly-linked list.
+ * class ListNode(var `val`: Int) {
+ *     var next: ListNode? = null
+ * }
+ */
+class Solution {
+    fun middleNode(head: ListNode?): ListNode? {
+        val arr = mutableListOf<ListNode>()
+        var cur = head
+        while (cur != null) {
+            arr.add(cur)
+            cur = cur.next
+        }
+        return arr[arr.size / 2]
+    }
+}
+```
+
+```swift
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     public var val: Int
+ *     public var next: ListNode?
+ *     public init() { self.val = 0; self.next = nil; }
+ *     public init(_ val: Int) { self.val = val; self.next = nil; }
+ *     public init(_ val: Int, _ next: ListNode?) { self.val = val; self.next = next; }
+ * }
+ */
+class Solution {
+    func middleNode(_ head: ListNode?) -> ListNode? {
+        var arr = [ListNode]()
+        var cur = head
+        while cur != nil {
+            arr.append(cur!)
+            cur = cur?.next
+        }
+        return arr[arr.count / 2]
+    }
+}
+```
+
+```rust
+// Definition for singly-linked list.
+// #[derive(PartialEq, Eq, Clone, Debug)]
+// pub struct ListNode {
+//   pub val: i32,
+//   pub next: Option<Box<ListNode>>
+// }
+impl Solution {
+    pub fn middle_node(head: Option<Box<ListNode>>) -> Option<Box<ListNode>> {
+        let mut arr = Vec::new();
+        let mut cur = &head;
+        while let Some(node) = cur {
+            arr.push(node.clone());
+            cur = &node.next;
+        }
+        let mid = arr.len() / 2;
+        Some(arr.remove(mid))
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -104,6 +236,17 @@ class Solution {
 ---
 
 ## 2. Find Length of the List
+
+### Intuition
+
+We can avoid storing all nodes by first counting the total number of nodes, then making a second pass to reach the middle. This uses constant extra space since we only store the count and a pointer.
+
+### Algorithm
+
+1. Traverse the list once to count the total number of nodes `n`.
+2. Calculate the middle position as `n / 2`.
+3. Traverse the list again, moving forward `n / 2` steps from the head.
+4. Return the node at that position.
 
 ::tabs-start
 
@@ -225,6 +368,146 @@ class Solution {
 }
 ```
 
+```csharp
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     public int val;
+ *     public ListNode next;
+ *     public ListNode(int val=0, ListNode next=null) {
+ *         this.val = val;
+ *         this.next = next;
+ *     }
+ * }
+ */
+public class Solution {
+    public ListNode MiddleNode(ListNode head) {
+        int n = 0;
+        ListNode cur = head;
+        while (cur != null) {
+            cur = cur.next;
+            n++;
+        }
+
+        n /= 2;
+        cur = head;
+        while (n > 0) {
+            cur = cur.next;
+            n--;
+        }
+
+        return cur;
+    }
+}
+```
+
+```go
+/**
+ * Definition for singly-linked list.
+ * type ListNode struct {
+ *     Val int
+ *     Next *ListNode
+ * }
+ */
+func middleNode(head *ListNode) *ListNode {
+    n := 0
+    cur := head
+    for cur != nil {
+        cur = cur.Next
+        n++
+    }
+
+    n /= 2
+    cur = head
+    for n > 0 {
+        n--
+        cur = cur.Next
+    }
+    return cur
+}
+```
+
+```kotlin
+/**
+ * Example:
+ * var li = ListNode(5)
+ * var v = li.`val`
+ * Definition for singly-linked list.
+ * class ListNode(var `val`: Int) {
+ *     var next: ListNode? = null
+ * }
+ */
+class Solution {
+    fun middleNode(head: ListNode?): ListNode? {
+        var n = 0
+        var cur = head
+        while (cur != null) {
+            cur = cur.next
+            n++
+        }
+
+        n /= 2
+        cur = head
+        while (n > 0) {
+            n--
+            cur = cur?.next
+        }
+        return cur
+    }
+}
+```
+
+```swift
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     public var val: Int
+ *     public var next: ListNode?
+ *     public init() { self.val = 0; self.next = nil; }
+ *     public init(_ val: Int) { self.val = val; self.next = nil; }
+ *     public init(_ val: Int, _ next: ListNode?) { self.val = val; self.next = next; }
+ * }
+ */
+class Solution {
+    func middleNode(_ head: ListNode?) -> ListNode? {
+        var n = 0
+        var cur = head
+        while cur != nil {
+            cur = cur?.next
+            n += 1
+        }
+
+        n /= 2
+        cur = head
+        while n > 0 {
+            n -= 1
+            cur = cur?.next
+        }
+        return cur
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn middle_node(head: Option<Box<ListNode>>) -> Option<Box<ListNode>> {
+        let mut n = 0;
+        let mut cur = &head;
+        while let Some(node) = cur {
+            cur = &node.next;
+            n += 1;
+        }
+
+        n /= 2;
+        let mut cur = head;
+        for _ in 0..n {
+            cur = cur.unwrap().next;
+        }
+        cur
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -235,6 +518,18 @@ class Solution {
 ---
 
 ## 3. Fast & Slow Pointers
+
+### Intuition
+
+The fast and slow pointer technique finds the middle in a single pass. The `slow` pointer moves one step at a time, while the `fast` pointer moves two steps. When the `fast` pointer reaches the end, the `slow` pointer will be at the middle. This works because the `fast` pointer covers twice the distance in the same number of iterations.
+
+### Algorithm
+
+1. Initialize both `slow` and `fast` pointers at the head.
+2. While `fast` is not `null` and `fast.next` is not `null`:
+    - Move `slow` one step forward.
+    - Move `fast` two steps forward.
+3. Return `slow`, which now points to the middle node.
 
 ::tabs-start
 
@@ -332,9 +627,129 @@ class Solution {
 }
 ```
 
+```csharp
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     public int val;
+ *     public ListNode next;
+ *     public ListNode(int val=0, ListNode next=null) {
+ *         this.val = val;
+ *         this.next = next;
+ *     }
+ * }
+ */
+public class Solution {
+    public ListNode MiddleNode(ListNode head) {
+        ListNode slow = head, fast = head;
+        while (fast != null && fast.next != null) {
+            slow = slow.next;
+            fast = fast.next.next;
+        }
+        return slow;
+    }
+}
+```
+
+```go
+/**
+ * Definition for singly-linked list.
+ * type ListNode struct {
+ *     Val int
+ *     Next *ListNode
+ * }
+ */
+func middleNode(head *ListNode) *ListNode {
+    slow, fast := head, head
+    for fast != nil && fast.Next != nil {
+        slow = slow.Next
+        fast = fast.Next.Next
+    }
+    return slow
+}
+```
+
+```kotlin
+/**
+ * Example:
+ * var li = ListNode(5)
+ * var v = li.`val`
+ * Definition for singly-linked list.
+ * class ListNode(var `val`: Int) {
+ *     var next: ListNode? = null
+ * }
+ */
+class Solution {
+    fun middleNode(head: ListNode?): ListNode? {
+        var slow = head
+        var fast = head
+        while (fast != null && fast.next != null) {
+            slow = slow?.next
+            fast = fast.next?.next
+        }
+        return slow
+    }
+}
+```
+
+```swift
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     public var val: Int
+ *     public var next: ListNode?
+ *     public init() { self.val = 0; self.next = nil; }
+ *     public init(_ val: Int) { self.val = val; self.next = nil; }
+ *     public init(_ val: Int, _ next: ListNode?) { self.val = val; self.next = next; }
+ * }
+ */
+class Solution {
+    func middleNode(_ head: ListNode?) -> ListNode? {
+        var slow = head
+        var fast = head
+        while fast != nil && fast?.next != nil {
+            slow = slow?.next
+            fast = fast?.next?.next
+        }
+        return slow
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn middle_node(head: Option<Box<ListNode>>) -> Option<Box<ListNode>> {
+        let mut n = 0;
+        let mut cur = &head;
+        while let Some(node) = cur {
+            n += 1;
+            cur = &node.next;
+        }
+        let mid = n / 2;
+        let mut cur = head;
+        for _ in 0..mid {
+            cur = cur.unwrap().next;
+        }
+        cur
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(1)$ extra space.
+
+---
+
+## Common Pitfalls
+
+### Incorrect Loop Condition for Fast Pointer
+
+When using the fast and slow pointer technique, the loop condition must check both `fast` and `fast.next` before advancing. Checking only `fast` can cause a null pointer exception when trying to access `fast.next.next`. The correct condition is `while (fast != null && fast.next != null)`.
+
+### Off-by-One Error with Even-Length Lists
+
+For lists with an even number of nodes, there are two middle nodes. The problem typically asks for the second middle node, but some implementations accidentally return the first. Ensure your pointer movement logic returns the correct middle based on the problem requirements.

@@ -1,4 +1,27 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **String Manipulation** - Converting integers to strings and comparing characters
+- **Math Operations (Modulo/Division)** - Extracting and removing digits from integers
+- **Two Pointers** - Comparing elements from both ends of a sequence
+
+---
+
 ## 1. Convert to String
+
+### Intuition
+
+The most straightforward approach is to convert the integer to a string and check if the string is a palindrome by reversing it.
+
+If the original string equals its reversed version, the number is a palindrome.
+
+### Algorithm
+
+1. Convert the integer to its string representation.
+2. Reverse the string.
+3. Compare the original string with the reversed string.
+4. Return `true` if they are equal, `false` otherwise.
 
 ::tabs-start
 
@@ -55,6 +78,46 @@ public class Solution {
 }
 ```
 
+```go
+func isPalindrome(x int) bool {
+    s := strconv.Itoa(x)
+    n := len(s)
+    for i := 0; i < n/2; i++ {
+        if s[i] != s[n-i-1] {
+            return false
+        }
+    }
+    return true
+}
+```
+
+```kotlin
+class Solution {
+    fun isPalindrome(x: Int): Boolean {
+        val s = x.toString()
+        return s == s.reversed()
+    }
+}
+```
+
+```swift
+class Solution {
+    func isPalindrome(_ x: Int) -> Bool {
+        let s = String(x)
+        return s == String(s.reversed())
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn is_palindrome(x: i32) -> bool {
+        let s = x.to_string();
+        s == s.chars().rev().collect::<String>()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -67,6 +130,19 @@ public class Solution {
 ---
 
 ## 2. Convert to String (Optimal)
+
+### Intuition
+
+Instead of creating a reversed copy of the entire string, we can compare characters from both ends moving toward the center. This avoids the extra space needed for the reversed string.
+
+We only need to check half the string since we compare characters in pairs.
+
+### Algorithm
+
+1. Convert the integer to its string representation.
+2. Initialize two pointers: `i` at the start and `j` at the end.
+3. While `i < n/2`, compare `s[i]` with `s[n - i - 1]`. If they differ, return `false`.
+4. Return `true` if all comparisons pass.
 
 ::tabs-start
 
@@ -146,6 +222,64 @@ public class Solution {
 }
 ```
 
+```go
+func isPalindrome(x int) bool {
+    s := strconv.Itoa(x)
+    n := len(s)
+    for i := 0; i < n/2; i++ {
+        if s[i] != s[n-i-1] {
+            return false
+        }
+    }
+    return true
+}
+```
+
+```kotlin
+class Solution {
+    fun isPalindrome(x: Int): Boolean {
+        val s = x.toString()
+        val n = s.length
+        for (i in 0 until n / 2) {
+            if (s[i] != s[n - i - 1]) {
+                return false
+            }
+        }
+        return true
+    }
+}
+```
+
+```swift
+class Solution {
+    func isPalindrome(_ x: Int) -> Bool {
+        let s = Array(String(x))
+        let n = s.count
+        for i in 0..<(n / 2) {
+            if s[i] != s[n - i - 1] {
+                return false
+            }
+        }
+        return true
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn is_palindrome(x: i32) -> bool {
+        let s = x.to_string().into_bytes();
+        let n = s.len();
+        for i in 0..n / 2 {
+            if s[i] != s[n - i - 1] {
+                return false;
+            }
+        }
+        true
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -158,6 +292,22 @@ public class Solution {
 ---
 
 ## 3. Reverse the Integer
+
+### Intuition
+
+Without using string conversion, we can reverse the entire integer mathematically and compare it to the original. If they are equal, the number is a palindrome.
+
+Negative numbers cannot be palindromes because of the negative sign. We build the reversed number digit by digit using modulo and division operations.
+
+### Algorithm
+
+1. If the number is negative, return `false` immediately.
+2. Initialize `rev = 0` and `num = x`.
+3. While `num > 0`:
+    - Extract the last digit using `num % 10`.
+    - Append it to `rev` by computing `rev = rev * 10 + digit`.
+    - Remove the last digit from `num` using integer division.
+4. Compare `rev` with the original `x` and return `true` if equal.
 
 ::tabs-start
 
@@ -250,6 +400,75 @@ public class Solution {
 }
 ```
 
+```go
+func isPalindrome(x int) bool {
+    if x < 0 {
+        return false
+    }
+
+    rev, num := 0, x
+    for num != 0 {
+        rev = rev*10 + num%10
+        num /= 10
+    }
+
+    return rev == x
+}
+```
+
+```kotlin
+class Solution {
+    fun isPalindrome(x: Int): Boolean {
+        if (x < 0) return false
+
+        var rev = 0L
+        var num = x
+        while (num != 0) {
+            rev = rev * 10 + num % 10
+            num /= 10
+        }
+
+        return rev == x.toLong()
+    }
+}
+```
+
+```swift
+class Solution {
+    func isPalindrome(_ x: Int) -> Bool {
+        if x < 0 {
+            return false
+        }
+
+        var rev = 0
+        var num = x
+        while num != 0 {
+            rev = rev * 10 + num % 10
+            num /= 10
+        }
+
+        return rev == x
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn is_palindrome(x: i32) -> bool {
+        if x < 0 {
+            return false;
+        }
+        let mut rev: i64 = 0;
+        let mut num = x as i64;
+        while num != 0 {
+            rev = rev * 10 + num % 10;
+            num /= 10;
+        }
+        rev == x as i64
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -262,6 +481,22 @@ public class Solution {
 ---
 
 ## 4. Two Pointers
+
+### Intuition
+
+We can compare digits from both ends without converting to a string or reversing the entire number. The idea is to extract the leftmost and rightmost digits and compare them.
+
+We use a divisor to extract the leftmost digit and modulo to extract the rightmost digit, then shrink the number from both ends.
+
+### Algorithm
+
+1. If the number is negative, return `false`.
+2. Find the divisor `div` such that `x / div` gives the first digit. This is the largest power of 10 less than or equal to `x`.
+3. While `x > 0`:
+    - Compare the first digit (`x / div`) with the last digit (`x % 10`). If they differ, return `false`.
+    - Remove both the first and last digits: `x = (x % div) / 10`.
+    - Update the divisor: `div /= 100` (since we removed two digits).
+4. Return `true` if all comparisons pass.
 
 ::tabs-start
 
@@ -387,6 +622,102 @@ public class Solution {
 }
 ```
 
+```go
+func isPalindrome(x int) bool {
+    if x < 0 {
+        return false
+    }
+
+    div := 1
+    for x >= 10*div {
+        div *= 10
+    }
+
+    for x != 0 {
+        if x/div != x%10 {
+            return false
+        }
+        x = (x % div) / 10
+        div /= 100
+    }
+
+    return true
+}
+```
+
+```kotlin
+class Solution {
+    fun isPalindrome(x: Int): Boolean {
+        if (x < 0) return false
+
+        var num = x
+        var div = 1L
+        while (num >= 10 * div) {
+            div *= 10
+        }
+
+        while (num != 0) {
+            if (num / div != (num % 10).toLong()) {
+                return false
+            }
+            num = ((num % div) / 10).toInt()
+            div /= 100
+        }
+
+        return true
+    }
+}
+```
+
+```swift
+class Solution {
+    func isPalindrome(_ x: Int) -> Bool {
+        if x < 0 {
+            return false
+        }
+
+        var num = x
+        var div = 1
+        while num >= 10 * div {
+            div *= 10
+        }
+
+        while num != 0 {
+            if num / div != num % 10 {
+                return false
+            }
+            num = (num % div) / 10
+            div /= 100
+        }
+
+        return true
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn is_palindrome(x: i32) -> bool {
+        if x < 0 {
+            return false;
+        }
+        let mut num = x as i64;
+        let mut div: i64 = 1;
+        while num >= 10 * div {
+            div *= 10;
+        }
+        while num != 0 {
+            if num / div != num % 10 {
+                return false;
+            }
+            num = (num % div) / 10;
+            div /= 100;
+        }
+        true
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -399,6 +730,22 @@ public class Solution {
 ---
 
 ## 5. Reverse Half of the Number
+
+### Intuition
+
+Reversing the entire number risks integer overflow. A clever optimization is to reverse only the second half of the number and compare it to the first half.
+
+We keep extracting digits from the end and building the reversed half until the reversed half is greater than or equal to the remaining number. At that point, we have processed half (or just past half) of the digits.
+
+### Algorithm
+
+1. Handle edge cases: negative numbers and numbers ending in `0` (except `0` itself) are not palindromes.
+2. Initialize `rev = 0`.
+3. While `x > rev`:
+    - Extract the last digit of `x` and append it to `rev`.
+    - Remove the last digit from `x`.
+4. After the loop, compare `x == rev` (even length) or `x == rev / 10` (odd length, where the middle digit is in `rev`).
+5. Return `true` if either condition holds.
 
 ::tabs-start
 
@@ -493,6 +840,77 @@ public class Solution {
 }
 ```
 
+```go
+func isPalindrome(x int) bool {
+    if x < 0 || (x != 0 && x%10 == 0) {
+        return false
+    }
+
+    rev := 0
+    for x > rev {
+        rev = rev*10 + x%10
+        x /= 10
+    }
+
+    return x == rev || x == rev/10
+}
+```
+
+```kotlin
+class Solution {
+    fun isPalindrome(x: Int): Boolean {
+        if (x < 0 || (x != 0 && x % 10 == 0)) {
+            return false
+        }
+
+        var num = x
+        var rev = 0
+        while (num > rev) {
+            rev = rev * 10 + num % 10
+            num /= 10
+        }
+
+        return num == rev || num == rev / 10
+    }
+}
+```
+
+```swift
+class Solution {
+    func isPalindrome(_ x: Int) -> Bool {
+        if x < 0 || (x != 0 && x % 10 == 0) {
+            return false
+        }
+
+        var num = x
+        var rev = 0
+        while num > rev {
+            rev = rev * 10 + num % 10
+            num /= 10
+        }
+
+        return num == rev || num == rev / 10
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn is_palindrome(x: i32) -> bool {
+        if x < 0 || (x != 0 && x % 10 == 0) {
+            return false;
+        }
+        let mut num = x;
+        let mut rev = 0;
+        while num > rev {
+            rev = rev * 10 + num % 10;
+            num /= 10;
+        }
+        num == rev || num == rev / 10
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -501,3 +919,15 @@ public class Solution {
 - Space complexity: $O(1)$
 
 > Where $n$ is the number of digits in the given integer.
+
+---
+
+## Common Pitfalls
+
+### Forgetting Negative Numbers Are Not Palindromes
+
+Negative numbers have a minus sign at the front, so they can never be palindromes (e.g., `-121` reads as `121-` backwards). Failing to handle negative numbers as an early return case leads to incorrect results or issues with modulo operations on negative values.
+
+### Not Handling Numbers Ending in Zero
+
+Numbers ending in zero (except zero itself) cannot be palindromes because leading zeros are not allowed in integers. For example, `10` would need to be `01` reversed, which is not a valid representation. The half-reversal approach fails on these cases without explicit handling, as the loop condition `x > rev` may never be satisfied correctly.

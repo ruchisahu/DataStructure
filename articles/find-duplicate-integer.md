@@ -1,4 +1,27 @@
+## Prerequisites
+Before attempting this problem, you should be comfortable with:
+- **Array Manipulation** - Working with array indices and understanding value-to-index mappings
+- **Hash Sets** - Using sets for O(1) lookup to detect duplicates
+- **Floyd's Cycle Detection** - The fast and slow pointer technique for detecting cycles in linked list-like structures
+- **Binary Search on Value Range** - Applying binary search to count-based problems rather than sorted arrays
+
+---
+
 ## 1. Sorting
+
+### Intuition
+
+If we sort the array, any duplicate numbers will appear **next to each other**.  
+So after sorting, we just scan once and check if any two consecutive elements are equal.  
+The first equal pair we find is the duplicate.
+
+### Algorithm
+
+1. Sort the array.
+2. Loop through the array from index `0` to `n - 2`.
+3. For each index `i`, check if `nums[i] == nums[i + 1]`.
+   - If yes, return that value (this is the duplicate).
+4. If no duplicate is found (theoretically impossible for this problem), return `-1`.
 
 ::tabs-start
 
@@ -113,6 +136,21 @@ class Solution {
 }
 ```
 
+
+```rust
+impl Solution {
+    pub fn find_duplicate(mut nums: Vec<i32>) -> i32 {
+        nums.sort();
+        for i in 0..nums.len() - 1 {
+            if nums[i] == nums[i + 1] {
+                return nums[i];
+            }
+        }
+        -1
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -123,6 +161,24 @@ class Solution {
 ---
 
 ## 2. Hash Set
+
+### Intuition
+
+We can detect duplicates by remembering which numbers we have already seen.  
+As we scan the array, each new number is checked:
+
+- If it's **not in the set**, we add it.
+- If it **is already in the set**, that number must be the duplicate.
+
+A set gives constant-time lookup, so this approach is simple and efficient.
+
+### Algorithm
+
+1. Create an empty hash set `seen`.
+2. Loop through each number in the array:
+   - If the number is already in `seen`, return it (this is the duplicate).
+   - Otherwise, insert the number into `seen`.
+3. If no duplicate is found (should not happen in this problem), return `-1`.
 
 ::tabs-start
 
@@ -245,6 +301,22 @@ class Solution {
 }
 ```
 
+
+```rust
+impl Solution {
+    pub fn find_duplicate(nums: Vec<i32>) -> i32 {
+        let mut seen = HashSet::new();
+        for num in nums {
+            if seen.contains(&num) {
+                return num;
+            }
+            seen.insert(num);
+        }
+        -1
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -255,6 +327,24 @@ class Solution {
 ---
 
 ## 3. Array
+
+### Intuition
+
+Since the values in the array are from **1 to n**, we can use an array to track whether we've seen a number before.
+Each number directly maps to an index (`num - 1`).
+- If that index is already marked, we've seen the number before → it's the duplicate.
+- Otherwise, we mark it as seen.
+
+This avoids using a hash set while still providing fast lookups.
+
+### Algorithm
+
+1. Create an array `seen` of size `n` filled with zeros.
+2. For each number `num` in the input array:
+   - Check if `seen[num - 1]` is already set to `1`.
+     - If yes, return `num` (duplicate found).
+   - Otherwise, set `seen[num - 1] = 1`.
+3. Return `-1` if no duplicate is found (though the problem guarantees one).
 
 ::tabs-start
 
@@ -377,6 +467,22 @@ class Solution {
 }
 ```
 
+
+```rust
+impl Solution {
+    pub fn find_duplicate(nums: Vec<i32>) -> i32 {
+        let mut seen = vec![0; nums.len()];
+        for num in nums {
+            if seen[(num - 1) as usize] == 1 {
+                return num;
+            }
+            seen[(num - 1) as usize] = 1;
+        }
+        -1
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -387,6 +493,26 @@ class Solution {
 ---
 
 ## 4. Negative Marking
+
+### Intuition
+
+Since every value is between **1 and n**, each number corresponds to an index in the array (`num - 1`).  
+We can use the array itself as a marking tool:
+
+- When we see a number, we go to its corresponding index and **flip the sign** of the value there.
+- If we ever visit an index that is **already negative**, it means we've visited this number before → it's the duplicate.
+
+This method avoids extra memory and uses the input array as a tracking structure.
+
+### Algorithm
+
+1. Loop through every number `num` in the array.
+2. Compute its corresponding index: `idx = abs(num) - 1`.
+3. If `nums[idx]` is already negative:
+   - A duplicate has been found, return `abs(num)`.
+4. Otherwise:
+   - Mark the index by multiplying `nums[idx]` by `-1`.
+5. If no duplicate is found (though guaranteed), return `-1`.
 
 ::tabs-start
 
@@ -517,6 +643,22 @@ class Solution {
 }
 ```
 
+
+```rust
+impl Solution {
+    pub fn find_duplicate(mut nums: Vec<i32>) -> i32 {
+        for i in 0..nums.len() {
+            let idx = (nums[i].abs() - 1) as usize;
+            if nums[idx] < 0 {
+                return nums[i].abs();
+            }
+            nums[idx] *= -1;
+        }
+        -1
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -527,6 +669,30 @@ class Solution {
 ---
 
 ## 5. Binary Search
+
+### Intuition
+
+This method uses **binary search on the value range**, not on the array itself.
+
+If all numbers from `1` to `mid` appeared **at most once**, then the count of numbers `<= mid` should be **<= mid**.
+But if the count is **greater than `mid`**, it means the duplicate must be in the range `[1, mid]`, because too many numbers fall into that range.
+
+So we repeatedly:
+- Count how many values are `<= mid`.
+- Shrink the search space based on whether this count is "too large."
+
+Eventually, `low == high`, and that value is the duplicate.
+
+### Algorithm
+
+1. Let `low = 1` and `high = n - 1` (value range).
+2. While `low < high`:
+   - Compute `mid = (low + high) // 2`.
+   - Count how many numbers in the array are `<= mid`.
+   - If the count is **greater than `mid`**, the duplicate lies in `[low, mid]`, so set `high = mid`.
+   - Otherwise, it lies in `[mid + 1, high]`, so set `low = mid + 1`.
+3. When the loop ends, `low` is the duplicate.
+4. Return `low`.
 
 ::tabs-start
 
@@ -738,6 +904,26 @@ class Solution {
 }
 ```
 
+
+```rust
+impl Solution {
+    pub fn find_duplicate(nums: Vec<i32>) -> i32 {
+        let n = nums.len();
+        let (mut low, mut high) = (1i32, (n - 1) as i32);
+        while low < high {
+            let mid = low + (high - low) / 2;
+            let less_or_equal = nums.iter().filter(|&&x| x <= mid).count();
+            if less_or_equal as i32 <= mid {
+                low = mid + 1;
+            } else {
+                high = mid;
+            }
+        }
+        low
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -748,6 +934,29 @@ class Solution {
 ---
 
 ## 6. Bit Manipulation
+
+### Intuition
+
+Every number from **1 to n−1** should appear exactly **once**, but in the array, one number appears **twice**.  
+So for each **bit position**, we compare:
+
+- How many times this bit is set among all numbers in the array.
+- How many times this bit *should* be set among the numbers `1` to `n-1`.
+
+If a bit appears **more times in the array** than expected, that bit must belong to the **duplicate number**.
+
+By combining all such bits, we reconstruct the duplicate.
+
+### Algorithm
+
+1. Let `res = 0` to build the duplicate number bit by bit.
+2. For each bit position `b` from `0` to `31`:
+   - Compute `mask = 1 << b`.
+   - Count how many numbers in `nums` have this bit set, call it `x`.
+   - Count how many numbers from `1` to `n - 1` should have this bit set, call it `y`.
+3. If `x > y`, it means the duplicate has this bit set, so add it to the answer:
+   - `res |= mask`.
+4. After processing all bits, return `res`.
 
 ::tabs-start
 
@@ -980,6 +1189,35 @@ class Solution {
 }
 ```
 
+
+```rust
+impl Solution {
+    pub fn find_duplicate(nums: Vec<i32>) -> i32 {
+        let n = nums.len() as i32;
+        let mut res = 0;
+        for b in 0..32 {
+            let mask = 1 << b;
+            let mut x = 0;
+            let mut y = 0;
+            for &num in &nums {
+                if num & mask != 0 {
+                    x += 1;
+                }
+            }
+            for num in 1..n {
+                if num & mask != 0 {
+                    y += 1;
+                }
+            }
+            if x > y {
+                res |= mask;
+            }
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -990,6 +1228,36 @@ class Solution {
 ---
 
 ## 7. Fast And Slow Pointers
+
+### Intuition
+
+Treat the array like a **linked list**, where each index points to the next index given by its value.  
+Because one number is duplicated, two indices will point into the **same chain**, creating a **cycle** — exactly like a linked list with a loop.
+
+Using Floyd’s **Fast & Slow Pointer** technique:
+
+1. The **slow** pointer moves one step at a time.
+2. The **fast** pointer moves two steps at a time.
+3. If there’s a cycle, they will eventually meet.
+
+Once they meet, we start a new pointer from the beginning:
+- Move both pointers one step at a time.
+- The point where they meet again is the **duplicate number** (the entry point of the cycle).
+
+### Algorithm
+
+1. Initialize two pointers `slow = 0` and `fast = 0`.
+2. Move:
+   - `slow = nums[slow]`
+   - `fast = nums[nums[fast]]`
+   until `slow == fast`.
+3. Start a new pointer `slow2 = 0`.
+4. Move both:
+   - `slow = nums[slow]`
+   - `slow2 = nums[slow2]`
+   until they meet.
+5. The meeting point is the duplicate number.
+6. Return that number.
 
 ::tabs-start
 
@@ -1191,9 +1459,51 @@ class Solution {
 }
 ```
 
+
+```rust
+impl Solution {
+    pub fn find_duplicate(nums: Vec<i32>) -> i32 {
+        let mut slow = 0usize;
+        let mut fast = 0usize;
+        loop {
+            slow = nums[slow] as usize;
+            fast = nums[nums[fast] as usize] as usize;
+            if slow == fast {
+                break;
+            }
+        }
+
+        let mut slow2 = 0usize;
+        loop {
+            slow = nums[slow] as usize;
+            slow2 = nums[slow2] as usize;
+            if slow == slow2 {
+                return slow as i32;
+            }
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(1)$
+
+---
+
+## Common Pitfalls
+
+### Modifying the Array When Not Allowed
+
+Some problem variants require not modifying the input array. Solutions like negative marking or in-place sorting alter the original data. Always check the constraints before choosing an approach that mutates the input.
+
+### Off-by-One Errors in Index Mapping
+
+Since values range from 1 to n but array indices start at 0, forgetting to subtract 1 when mapping values to indices causes out-of-bounds errors or incorrect results. For example, value `n` maps to index `n-1`, not index `n`.
+
+### Misunderstanding Floyd's Cycle Detection Entry Point
+
+In the fast and slow pointer approach, the meeting point of the two pointers is not the duplicate number. After they meet, you must start a new pointer from index 0 and move both pointers one step at a time until they meet again. This second meeting point is the cycle entry, which corresponds to the duplicate value.

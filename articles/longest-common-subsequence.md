@@ -1,4 +1,27 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Recursion** - Breaking problems into subproblems and understanding recursive call stacks
+- **Dynamic Programming (Memoization)** - Caching results to avoid redundant computation in overlapping subproblems
+- **Dynamic Programming (Tabulation)** - Building solutions bottom-up using 2D arrays
+- **Space Optimization** - Reducing 2D DP to 1D by recognizing which previous states are needed
+
+---
+
 ## 1. Recursion
+
+### Intuition
+
+A subsequence is a sequence derived by deleting some or no characters without changing the order of the remaining elements. To find the longest common subsequence (LCS) of two strings, we compare characters one by one. If the current characters match, they contribute to the LCS, and we move both pointers forward. If they don't match, we try skipping a character from either string and take the best result. This naturally leads to a recursive approach that explores all possibilities.
+
+### Algorithm
+
+1. Define a recursive function `dfs(i, j)` where `i` and `j` are the current indices in `text1` and `text2`.
+2. Base case: If either index reaches the end of its string, return `0`.
+3. If `text1[i] == text2[j]`, include this character in the LCS and recurse with `i + 1` and `j + 1`.
+4. Otherwise, try both options: skip `text1[i]` or skip `text2[j]`, and return the maximum.
+5. Start the recursion from `dfs(0, 0)`.
 
 ::tabs-start
 
@@ -156,6 +179,27 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn longest_common_subsequence(text1: String, text2: String) -> i32 {
+        let t1 = text1.as_bytes();
+        let t2 = text2.as_bytes();
+
+        fn dfs(t1: &[u8], t2: &[u8], i: usize, j: usize) -> i32 {
+            if i == t1.len() || j == t2.len() {
+                return 0;
+            }
+            if t1[i] == t2[j] {
+                return 1 + dfs(t1, t2, i + 1, j + 1);
+            }
+            dfs(t1, t2, i + 1, j).max(dfs(t1, t2, i, j + 1))
+        }
+
+        dfs(t1, t2, 0, 0)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -168,6 +212,18 @@ class Solution {
 ---
 
 ## 2. Dynamic Programming (Top-Down)
+
+### Intuition
+
+The recursive solution recalculates the same subproblems many times. For example, `dfs(2, 3)` might be called from multiple branches. By storing results in a memo table, we avoid redundant work. This transforms the exponential solution into a polynomial one.
+
+### Algorithm
+
+1. Create a memoization table indexed by `(i, j)`.
+2. Before computing `dfs(i, j)`, check if the result is already cached.
+3. If cached, return it immediately.
+4. Otherwise, compute the result using the same logic as the recursive approach, store it in the memo, and return.
+5. The rest of the logic remains identical to the plain recursion.
 
 ::tabs-start
 
@@ -411,6 +467,34 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn longest_common_subsequence(text1: String, text2: String) -> i32 {
+        let t1 = text1.as_bytes();
+        let t2 = text2.as_bytes();
+        let mut memo = vec![vec![-1i32; t2.len()]; t1.len()];
+
+        fn dfs(t1: &[u8], t2: &[u8], i: usize, j: usize, memo: &mut Vec<Vec<i32>>) -> i32 {
+            if i == t1.len() || j == t2.len() {
+                return 0;
+            }
+            if memo[i][j] != -1 {
+                return memo[i][j];
+            }
+            if t1[i] == t2[j] {
+                memo[i][j] = 1 + dfs(t1, t2, i + 1, j + 1, memo);
+            } else {
+                memo[i][j] = dfs(t1, t2, i + 1, j, memo)
+                    .max(dfs(t1, t2, i, j + 1, memo));
+            }
+            memo[i][j]
+        }
+
+        dfs(t1, t2, 0, 0, &mut memo)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -423,6 +507,18 @@ class Solution {
 ---
 
 ## 3. Dynamic Programming (Bottom-Up)
+
+### Intuition
+
+Instead of starting from the beginning and recursing forward, we can fill a 2D table iteratively from the end. The value `dp[i][j]` represents the LCS length for substrings `text1[i:]` and `text2[j:]`. By processing indices in reverse order, we ensure that when we compute `dp[i][j]`, the values we depend on (`dp[i+1][j+1]`, `dp[i+1][j]`, `dp[i][j+1]`) are already computed.
+
+### Algorithm
+
+1. Create a 2D array `dp` of size `(m+1) x (n+1)` initialized to `0`.
+2. Iterate `i` from `m-1` down to `0`, and `j` from `n-1` down to `0`.
+3. If `text1[i] == text2[j]`, set `dp[i][j] = 1 + dp[i+1][j+1]`.
+4. Otherwise, set `dp[i][j] = max(dp[i+1][j], dp[i][j+1])`.
+5. Return `dp[0][0]`.
 
 ::tabs-start
 
@@ -607,6 +703,30 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn longest_common_subsequence(text1: String, text2: String) -> i32 {
+        let t1 = text1.as_bytes();
+        let t2 = text2.as_bytes();
+        let m = t1.len();
+        let n = t2.len();
+        let mut dp = vec![vec![0i32; n + 1]; m + 1];
+
+        for i in (0..m).rev() {
+            for j in (0..n).rev() {
+                if t1[i] == t2[j] {
+                    dp[i][j] = 1 + dp[i + 1][j + 1];
+                } else {
+                    dp[i][j] = dp[i][j + 1].max(dp[i + 1][j]);
+                }
+            }
+        }
+
+        dp[0][0]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -619,6 +739,19 @@ class Solution {
 ---
 
 ## 4. Dynamic Programming (Space Optimized)
+
+### Intuition
+
+Looking at the bottom-up recurrence, each cell `dp[i][j]` only depends on the current row and the next row. We don't need the entire 2D table; two 1D arrays suffice. We keep a `prev` array for the next row and a `curr` array for the current row, swapping them after each row is processed.
+
+### Algorithm
+
+1. If `text1` is shorter, swap the strings to minimize space usage.
+2. Initialize two arrays `prev` and `curr` of size `n+1`.
+3. Iterate `i` from `m-1` down to `0`:
+    - For each `j` from `n-1` down to `0`, compute `curr[j]` using `prev[j+1]`, `prev[j]`, and `curr[j+1]`.
+    - Swap `prev` and `curr`.
+4. Return `prev[0]`.
 
 ::tabs-start
 
@@ -851,6 +984,35 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn longest_common_subsequence(text1: String, text2: String) -> i32 {
+        let (t1, t2) = if text1.len() >= text2.len() {
+            (text1.as_bytes(), text2.as_bytes())
+        } else {
+            (text2.as_bytes(), text1.as_bytes())
+        };
+
+        let mut prev = vec![0i32; t2.len() + 1];
+        let mut curr = vec![0i32; t2.len() + 1];
+
+        for i in (0..t1.len()).rev() {
+            for j in (0..t2.len()).rev() {
+                if t1[i] == t2[j] {
+                    curr[j] = 1 + prev[j + 1];
+                } else {
+                    curr[j] = curr[j + 1].max(prev[j]);
+                }
+            }
+            std::mem::swap(&mut prev, &mut curr);
+            curr.fill(0);
+        }
+
+        prev[0]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -863,6 +1025,23 @@ class Solution {
 ---
 
 ## 5. Dynamic Programming (Optimal)
+
+### Intuition
+
+We can reduce space further by using a single array and a temporary variable. When iterating right to left within a row, we need the old value at position `j` (which becomes `dp[i+1][j]` in 2D terms) before overwriting it. We store this in a variable `prev` before the update, then use it for the diagonal reference in the next iteration.
+
+### Algorithm
+
+1. If `text1` is shorter, swap strings for minimal space.
+2. Initialize a single array `dp` of size `n+1`.
+3. Iterate `i` from `m-1` down to `0`:
+    - Set `prev = 0` (represents `dp[i+1][n]`).
+    - For each `j` from `n-1` down to `0`:
+        - Save `temp = dp[j]` (the old value before update).
+        - If characters match, set `dp[j] = 1 + prev`.
+        - Otherwise, set `dp[j] = max(dp[j], dp[j+1])`.
+        - Update `prev = temp`.
+4. Return `dp[0]`.
 
 ::tabs-start
 
@@ -1098,6 +1277,35 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn longest_common_subsequence(text1: String, text2: String) -> i32 {
+        let (t1, t2) = if text1.len() >= text2.len() {
+            (text1.as_bytes(), text2.as_bytes())
+        } else {
+            (text2.as_bytes(), text1.as_bytes())
+        };
+
+        let mut dp = vec![0i32; t2.len() + 1];
+
+        for i in (0..t1.len()).rev() {
+            let mut prev = 0;
+            for j in (0..t2.len()).rev() {
+                let temp = dp[j];
+                if t1[i] == t2[j] {
+                    dp[j] = 1 + prev;
+                } else {
+                    dp[j] = dp[j].max(dp[j + 1]);
+                }
+                prev = temp;
+            }
+        }
+
+        dp[0]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1106,3 +1314,17 @@ class Solution {
 - Space complexity: $O(min(m, n))$
 
 > Where $m$ is the length of the string $text1$ and $n$ is the length of the string $text2$.
+
+## Common Pitfalls
+
+### Confusing Subsequence with Substring
+
+A subsequence does not require consecutive characters, whereas a substring does. A common mistake is to reset the count when characters do not match, which would find the longest common substring instead of subsequence. In LCS, when characters do not match, you take the maximum of skipping either character.
+
+### Off-by-One Errors in DP Table Indexing
+
+When using a 2D DP table, the dimensions should be `(m+1) x (n+1)` to account for the base case of empty strings. Accessing `dp[i+1][j+1]` when characters match requires careful attention to avoid index out of bounds errors.
+
+### Incorrect Iteration Direction in Bottom-Up DP
+
+In the bottom-up approach, iterating in the wrong direction can cause the algorithm to use uncomputed values. When processing from the end of the strings backward, ensure that `dp[i][j]` is computed after `dp[i+1][j+1]`, `dp[i+1][j]`, and `dp[i][j+1]` are already available.

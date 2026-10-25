@@ -1,4 +1,34 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Graph Representation** - Building and working with adjacency lists for undirected graphs
+- **Depth-First Search (DFS)** - Traversing graphs recursively while tracking visited nodes
+- **Breadth-First Search (BFS)** - Level-by-level graph traversal using a queue
+- **Union-Find (Disjoint Set Union)** - Efficiently tracking connected components and detecting cycles
+
+---
+
 ## 1. Cycle Detection (DFS)
+
+### Intuition
+
+A graph is a **valid tree** if:
+
+1. It has **no cycles**
+2. It is **fully connected**
+
+Using **DFS**, we can detect cycles by checking if we visit a node again **from a path other than its parent**.  
+Also, a tree with `n` nodes must have **exactly `n - 1` edges** — otherwise it’s invalid.
+
+### Algorithm
+
+1. If number of edges > `n - 1`, return `false`.
+2. Build an adjacency list for the undirected graph.
+3. Run `dfs` from node `0`, passing the parent to avoid false cycle detection.
+4. If `dfs` finds a visited node (not the parent), a cycle exists → return `false`.
+5. After `dfs`, check if all nodes were visited (graph is connected).
+6. Return `true` only if **no cycle** and **all nodes are visited**.
 
 ::tabs-start
 
@@ -304,6 +334,47 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn valid_tree(n: i32, edges: Vec<Vec<i32>>) -> bool {
+        let n = n as usize;
+        if edges.len() > n - 1 {
+            return false;
+        }
+
+        let mut adj = vec![vec![]; n];
+        for edge in &edges {
+            let (u, v) = (edge[0] as usize, edge[1] as usize);
+            adj[u].push(v);
+            adj[v].push(u);
+        }
+
+        let mut visit = HashSet::new();
+
+        fn dfs(
+            node: usize, parent: i32,
+            visit: &mut HashSet<usize>,
+            adj: &Vec<Vec<usize>>,
+        ) -> bool {
+            if !visit.insert(node) {
+                return false;
+            }
+            for &nei in &adj[node] {
+                if nei as i32 == parent {
+                    continue;
+                }
+                if !dfs(nei, node as i32, visit, adj) {
+                    return false;
+                }
+            }
+            true
+        }
+
+        dfs(0, -1, &mut visit, &adj) && visit.len() == n
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -316,6 +387,32 @@ class Solution {
 ---
 
 ## 2. Breadth First Search
+
+### Intuition
+
+A graph is a **valid tree** if:
+
+1. It has **no cycles**
+2. It is **fully connected**
+
+Using **BFS**, we traverse the graph level by level.
+
+- If we ever reach a node that was **already visited (and is not the parent)** → a **cycle** exists.
+- After BFS, if **all nodes are visited**, the graph is connected.
+
+Also, a tree with `n` nodes can have **at most `n - 1` edges**.
+
+### Algorithm
+
+1. If number of edges > `n - 1`, return `false`.
+2. Build an adjacency list for the undirected graph.
+3. Start `bfs` from node `0`, store `(node, parent)` in the queue.
+4. For each neighbor:
+    - Ignore the parent.
+    - If already visited → cycle found → return `false`.
+    - Otherwise, mark visited and add to queue.
+5. After `bfs`, check if visited node count equals `n`.
+6. Return `true` only if **no cycle** and **all nodes are visited**.
 
 ::tabs-start
 
@@ -614,6 +711,43 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn valid_tree(n: i32, edges: Vec<Vec<i32>>) -> bool {
+        let n = n as usize;
+        if edges.len() > n - 1 {
+            return false;
+        }
+
+        let mut adj = vec![vec![]; n];
+        for edge in &edges {
+            let (u, v) = (edge[0] as usize, edge[1] as usize);
+            adj[u].push(v);
+            adj[v].push(u);
+        }
+
+        let mut visit = HashSet::new();
+        let mut q = VecDeque::new();
+        q.push_back((0usize, -1i32));
+        visit.insert(0usize);
+
+        while let Some((node, parent)) = q.pop_front() {
+            for &nei in &adj[node] {
+                if nei as i32 == parent {
+                    continue;
+                }
+                if !visit.insert(nei) {
+                    return false;
+                }
+                q.push_back((nei, node as i32));
+            }
+        }
+
+        visit.len() == n
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -626,6 +760,33 @@ class Solution {
 ---
 
 ## 3. Disjoint Set Union
+
+### Intuition
+
+A graph is a **valid tree** if:
+
+1. It has **no cycles**
+2. It is **fully connected**
+
+Using **Disjoint Set Union (Union-Find)**:
+
+- Each node starts in its **own component**
+- When we connect two nodes:
+    - If they are already in the **same component**, adding this edge creates a **cycle**
+    - Otherwise, we **merge** their components
+- In the end, a valid tree must have **exactly one connected component**
+
+Also, a tree with `n` nodes can have **at most `n - 1` edges**.
+
+### Algorithm
+
+1. If number of edges > `n - 1`, return `false`.
+2. Initialize DSU with `n` components.
+3. For each edge `(u, v)`:
+    - If `union(u, v)` fails → cycle detected → return `false`.
+4. After processing all edges:
+    - Check if number of components is `1`.
+5. Return `true` if only one component exists, else `false`.
 
 ::tabs-start
 
@@ -1068,6 +1229,62 @@ class Solution {
 }
 ```
 
+```rust
+struct DSU {
+    parent: Vec<usize>,
+    size: Vec<usize>,
+    comps: usize,
+}
+
+impl DSU {
+    fn new(n: usize) -> Self {
+        Self {
+            parent: (0..n).collect(),
+            size: vec![1; n],
+            comps: n,
+        }
+    }
+
+    fn find(&mut self, node: usize) -> usize {
+        if self.parent[node] != node {
+            self.parent[node] = self.find(self.parent[node]);
+        }
+        self.parent[node]
+    }
+
+    fn union(&mut self, u: usize, v: usize) -> bool {
+        let (mut pu, mut pv) = (self.find(u), self.find(v));
+        if pu == pv {
+            return false;
+        }
+        if self.size[pu] < self.size[pv] {
+            std::mem::swap(&mut pu, &mut pv);
+        }
+        self.comps -= 1;
+        self.size[pu] += self.size[pv];
+        self.parent[pv] = pu;
+        true
+    }
+}
+
+impl Solution {
+    pub fn valid_tree(n: i32, edges: Vec<Vec<i32>>) -> bool {
+        let n = n as usize;
+        if edges.len() > n - 1 {
+            return false;
+        }
+
+        let mut dsu = DSU::new(n);
+        for edge in &edges {
+            if !dsu.union(edge[0] as usize, edge[1] as usize) {
+                return false;
+            }
+        }
+        dsu.comps == 1
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1076,3 +1293,19 @@ class Solution {
 - Space complexity: $O(V)$
 
 > Where $V$ is the number of vertices and $E$ is the number of edges in the graph. $α()$ is used for amortized complexity.
+
+---
+
+## Common Pitfalls
+
+### Detecting False Cycles Due to Parent Edges
+
+In an undirected graph represented with an adjacency list, each edge `(u, v)` appears twice: once in `adj[u]` and once in `adj[v]`. When traversing from node `u` to `v`, you will see `u` in `v`'s neighbor list. Without tracking the parent, this would incorrectly be detected as a cycle. Always pass and check the parent node to avoid this false positive.
+
+### Forgetting to Check Connectivity
+
+A graph can be cycle-free but still not be a valid tree if it is disconnected. After running DFS or BFS from any starting node, you must verify that all `n` nodes were visited. If `visited.size() < n`, the graph has multiple connected components and is not a valid tree.
+
+### Not Using the Edge Count Shortcut
+
+A valid tree with `n` nodes must have exactly `n - 1` edges. If there are more than `n - 1` edges, the graph definitely has a cycle. If there are fewer than `n - 1` edges, the graph cannot be connected. Checking this condition first can save unnecessary traversal and provides an early exit for invalid inputs.

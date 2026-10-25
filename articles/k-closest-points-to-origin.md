@@ -1,4 +1,34 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Sorting with Custom Comparators** - Sorting elements based on a computed value (distance) rather than the elements themselves
+- **Euclidean Distance** - Understanding that distance from origin is sqrt(x^2 + y^2), and that squared distance preserves ordering
+- **Heap Data Structure** - Using min-heaps and max-heaps to efficiently track smallest/largest elements
+- **QuickSelect Algorithm** - Partitioning arrays to find the k-th element in average O(n) time without full sorting
+
+---
+
 ## 1. Sorting
+
+### Intuition
+
+To find the **k closest points to the origin `(0, 0)`**, we compare points by their distance from the origin.
+Since the actual distance uses a square root, and **square root preserves ordering**, we can instead compare using **squared distance**:
+
+\[
+d^2 = x^2 + y^2
+\]
+
+This avoids unnecessary computation and is sufficient for sorting.
+
+If we sort all points by this squared distance, then the **first `k` points** in sorted order must be the `k` closest ones.
+
+### Algorithm
+
+1. For every point `(x, y)`, compute its squared distance: `dist = x^2 + y^2`
+2. Sort all points based on this `dist` value.
+3. Return the first `k` points from the sorted list.
 
 ::tabs-start
 
@@ -84,6 +114,16 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn k_closest(mut points: Vec<Vec<i32>>, k: i32) -> Vec<Vec<i32>> {
+        points.sort_by_key(|p| p[0] * p[0] + p[1] * p[1]);
+        points.truncate(k as usize);
+        points
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -94,6 +134,30 @@ class Solution {
 ---
 
 ## 2. Min-Heap
+
+### Intuition
+
+A min-heap always gives you the **smallest element first**.
+If we insert every point into a min-heap, using its squared distance from the origin as the priority, then:
+
+- The closest point will be at the top.
+- The next closest will be removed next, and so on.
+
+So if we remove from the heap **`k` times**, we get exactly the **`k` closest points**.
+
+This works because the heap always keeps the smallest distances at the front.
+
+### Algorithm
+
+1. For each point `(x, y)`:
+    - Compute squared distance `x^2 + y^2`.
+    - Store `(distance, x, y)` as a heap entry.
+2. Build a min-heap from all entries.
+    - This can be done with one `heapify` operation, or by pushing entries one at a time.
+3. Repeat `k` times:
+    - Remove the smallest element from the heap.
+    - Add its `(x, y)` coordinates to the result.
+4. Return the result list of `k` closest points.
 
 ::tabs-start
 
@@ -208,23 +272,33 @@ public class Solution {
 ```
 
 ```go
+type MinHeap [][]int
+
+func (h MinHeap) Len() int            { return len(h) }
+func (h MinHeap) Less(i, j int) bool  { return h[i][0] < h[j][0] }
+func (h MinHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
+func (h *MinHeap) Push(x interface{}) { *h = append(*h, x.([]int)) }
+func (h *MinHeap) Pop() interface{} {
+    old := *h
+    n := len(old)
+    x := old[n-1]
+    *h = old[:n-1]
+    return x
+}
+
 func kClosest(points [][]int, k int) [][]int {
-    minHeap := priorityqueue.NewWith(func(a, b interface{}) int {
-        distA := a.([]int)[0]
-        distB := b.([]int)[0]
-        return distA - distB
-    })
+    minHeap := &MinHeap{}
+    heap.Init(minHeap)
 
     for _, point := range points {
         x, y := point[0], point[1]
         dist := x*x + y*y
-        minHeap.Enqueue([]int{dist, x, y})
+        heap.Push(minHeap, []int{dist, x, y})
     }
 
     res := [][]int{}
     for i := 0; i < k; i++ {
-        item, _ := minHeap.Dequeue()
-        point := item.([]int)
+        point := heap.Pop(minHeap).([]int)
         res = append(res, []int{point[1], point[2]})
     }
 
@@ -284,11 +358,30 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn k_closest(points: Vec<Vec<i32>>, k: i32) -> Vec<Vec<i32>> {
+        let mut heap = BinaryHeap::new();
+        for p in &points {
+            let dist = p[0] * p[0] + p[1] * p[1];
+            heap.push(Reverse((dist, p[0], p[1])));
+        }
+        let mut res = Vec::new();
+        for _ in 0..k {
+            if let Some(Reverse((_, x, y))) = heap.pop() {
+                res.push(vec![x, y]);
+            }
+        }
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
-- Time complexity: $O(k * \log n)$
+- Time complexity: $O(n + k * \log n)$ when building the heap with `heapify`, or $O(n * \log n + k * \log n)$ when inserting each point with a heap push.
 - Space complexity: $O(n)$
 
 > Where $n$ is the length of the array $points$.
@@ -296,6 +389,30 @@ class Solution {
 ---
 
 ## 3. Max Heap
+
+### Intuition
+
+We want the **`k` closest points**, not all points sorted.
+
+Use a **max-heap of size `k`**:
+
+- The heap always keeps the **`k` closest points found so far**.
+- The point with the **largest distance** among these `k` sits at the top.
+- When a new point is **closer than the farthest in the heap**, we remove the farthest and insert the new one.
+
+This way, the heap never grows beyond size `k`, and it always contains the `k` best candidates.
+
+### Algorithm
+
+1. Create an empty max-heap.
+2. For each point:
+    - Compute its squared distance from origin: `d = x^2 + y^2`.
+    - Insert `(d, point)` into the heap.
+    - If heap size exceeds `k`:
+        - Remove the element with the **maximum** distance.
+3. After processing all points:
+    - The heap contains exactly the **`k` closest points**.
+4. Return all points stored in the heap.
 
 ::tabs-start
 
@@ -421,31 +538,36 @@ public class Solution {
 ```
 
 ```go
+type MaxHeap [][]int
+
+func (h MaxHeap) Len() int            { return len(h) }
+func (h MaxHeap) Less(i, j int) bool  { return h[i][2] > h[j][2] }
+func (h MaxHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
+func (h *MaxHeap) Push(x interface{}) { *h = append(*h, x.([]int)) }
+func (h *MaxHeap) Pop() interface{} {
+    old := *h
+    n := len(old)
+    x := old[n-1]
+    *h = old[:n-1]
+    return x
+}
+
 func kClosest(points [][]int, k int) [][]int {
-    maxHeap := priorityqueue.NewWith(func(a, b interface{}) int {
-        distA := a.([]int)[2]
-        distB := b.([]int)[2]
-        if distA > distB {
-            return -1
-        } else if distA < distB {
-            return 1
-        }
-        return 0
-    })
+    maxHeap := &MaxHeap{}
+    heap.Init(maxHeap)
 
     for _, point := range points {
         x, y := point[0], point[1]
         dist := x*x + y*y
-        maxHeap.Enqueue([]int{x, y, dist})
-        if maxHeap.Size() > k {
-            maxHeap.Dequeue()
+        heap.Push(maxHeap, []int{x, y, dist})
+        if maxHeap.Len() > k {
+            heap.Pop(maxHeap)
         }
     }
 
     result := make([][]int, k)
     for i := k - 1; i >= 0; i-- {
-        val, _ := maxHeap.Dequeue()
-        point := val.([]int)
+        point := heap.Pop(maxHeap).([]int)
         result[i] = []int{point[0], point[1]}
     }
 
@@ -508,6 +630,23 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn k_closest(points: Vec<Vec<i32>>, k: i32) -> Vec<Vec<i32>> {
+        let k = k as usize;
+        let mut heap = BinaryHeap::new();
+        for p in &points {
+            let dist = p[0] * p[0] + p[1] * p[1];
+            heap.push((dist, p[0], p[1]));
+            if heap.len() > k {
+                heap.pop();
+            }
+        }
+        heap.into_iter().map(|(_, x, y)| vec![x, y]).collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -520,6 +659,39 @@ class Solution {
 ---
 
 ## 4. Quick Select
+
+### Intuition
+
+We want the **`k` closest points**, but we do NOT need them sorted.
+
+This is a perfect use-case for **QuickSelect**, the same idea used in QuickSort's partition step:
+
+- Pick a **pivot point**.
+- Partition all points into:
+    - points **closer** than the pivot
+    - points **farther** than the pivot
+- After partitioning, the pivot ends at its **correct position** in the final sorted order.
+- If the pivot ends up at index `p`:
+    - If `p == k`, then the left side already contains the `k` closest points.
+    - If `p < k`, search the **right half**.
+    - If `p > k`, search the **left half**.
+
+This avoids fully sorting the array and runs in **average O(N)** time.
+
+### Algorithm
+
+1. Define a function to compute squared distance: `dist = x^2 + y^2`.
+2. Use a partition function:
+    - Choose a pivot distance.
+    - Rearrange points so all smaller distances go left, larger go right.
+    - Return the pivot's final index.
+3. Maintain two pointers: `L = 0`, `R = n - 1`.
+4. Repeatedly partition:
+    - If pivot index `p == k`, stop.
+    - If `p < k`, move `L = p + 1`.
+    - If `p > k`, move `R = p - 1`.
+5. After partitioning ends, the first `k` points in the array are the `k` closest.
+6. Return those `k` points.
 
 ::tabs-start
 
@@ -841,9 +1013,61 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn k_closest(mut points: Vec<Vec<i32>>, k: i32) -> Vec<Vec<i32>> {
+        let k = k as usize;
+        let mut l = 0usize;
+        let mut r = points.len() - 1;
+        let mut pivot = points.len();
+
+        while pivot != k {
+            pivot = Self::partition(&mut points, l, r);
+            if pivot < k {
+                l = pivot + 1;
+            } else {
+                r = pivot - 1;
+            }
+        }
+        points.truncate(k);
+        points
+    }
+
+    fn partition(points: &mut Vec<Vec<i32>>, l: usize, r: usize) -> usize {
+        let pivot_dist = points[r][0] * points[r][0] + points[r][1] * points[r][1];
+        let mut i = l;
+        for j in l..r {
+            let d = points[j][0] * points[j][0] + points[j][1] * points[j][1];
+            if d <= pivot_dist {
+                points.swap(i, j);
+                i += 1;
+            }
+        }
+        points.swap(i, r);
+        i
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$ in average case, $O(n ^ 2)$ in worst case.
 - Space complexity: $O(1)$
+
+---
+
+## Common Pitfalls
+
+### Computing Actual Distance with Square Root
+
+Using `sqrt(x^2 + y^2)` is unnecessary and introduces floating-point precision issues. Since we only compare relative distances, squared distance `x^2 + y^2` preserves ordering and avoids costly square root operations.
+
+### Using the Wrong Heap Type
+
+For the heap approach, using a min-heap requires extracting `k` elements at the end, while a max-heap of size `k` naturally keeps the `k` closest. Mixing these up leads to incorrect results or inefficient solutions that maintain more elements than needed.
+
+### Integer Overflow in Distance Calculation
+
+When coordinates can be large (up to 10^4), squaring them produces values up to 10^8. While this fits in a 32-bit integer, summing two such values approaches the limit. In languages with overflow concerns, ensure your distance calculation uses appropriate integer types.

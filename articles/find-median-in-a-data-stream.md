@@ -1,4 +1,43 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Heap / Priority Queue** - The optimal solution uses two heaps (max-heap and min-heap) to efficiently track the median as elements stream in
+- **Sorting** - Understanding how sorting enables finding the median helps grasp the brute force approach and why heaps improve upon it
+- **Data Stream Design** - This problem requires designing a class that handles continuous data input while maintaining efficient query operations
+
+---
+
 ## 1. Sorting
+
+### Intuition
+
+The simplest way to find the median is to keep all numbers in a list and
+sort them whenever we need the median. After sorting, the numbers are in
+increasing order, making it easy to pick the "middle" value(s).
+
+- If we have an **odd** number of elements, the median is the **middle** element.
+- If we have an **even** number of elements, the median is the **average**
+  of the two middle elements.
+
+This approach is slow because sorting happens every time we query the median,
+but it is the easiest to understand and implement.
+
+### Algorithm
+
+1. **Initialize**
+    - Create an empty list `data`.
+
+2. **addNum(x)**
+    - Append `x` to the list.
+
+3. **findMedian()**
+    - Sort the list.
+    - Let `n = length of data`.
+    - If `n` is odd:
+        - Return `data[n // 2]`.
+    - Else:
+        - Return `(data[n // 2] + data[n // 2 - 1]) / 2`.
 
 ::tabs-start
 
@@ -186,6 +225,32 @@ class MedianFinder {
 }
 ```
 
+```rust
+struct MedianFinder {
+    data: Vec<i32>,
+}
+
+impl MedianFinder {
+    fn new() -> Self {
+        MedianFinder { data: Vec::new() }
+    }
+
+    fn add_num(&mut self, num: i32) {
+        self.data.push(num);
+    }
+
+    fn find_median(&mut self) -> f64 {
+        self.data.sort();
+        let n = self.data.len();
+        if n & 1 == 1 {
+            self.data[n / 2] as f64
+        } else {
+            (self.data[n / 2] + self.data[n / 2 - 1]) as f64 / 2.0
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -198,6 +263,49 @@ class MedianFinder {
 ---
 
 ## 2. Heap
+
+### Intuition
+
+To efficiently find the median while numbers keep coming, we split the
+stream into two halves:
+
+- A **max-heap** (`small`) that stores the _smaller half_ of the numbers.
+    - The largest number of this half is on top.
+- A **min-heap** (`large`) that stores the _larger half_ of the numbers.
+    - The smallest number of this half is on top.
+
+The goal:
+
+- Ensure both heaps are balanced in size (difference at most 1).
+- Ensure all numbers in `small` are ≤ all numbers in `large`.
+
+This setup allows:
+
+- Median = top of the bigger heap (if odd count)
+- Median = average of both tops (if even count)
+
+This gives **O(log n)** insert and **O(1)** median lookup.
+
+### Algorithm
+
+1. **Initialize**
+    - Create two heaps:
+        - `small` -> max-heap for lower half
+        - `large` -> min-heap for upper half
+
+2. **addNum(x)**
+    - If `large` is not empty and `x` is greater than the smallest element in `large`,
+      insert into `large`.
+    - Otherwise insert into `small`.
+    - Rebalance:
+        - If one heap becomes larger than the other by more than `1`,
+          move the top element to the other heap.
+
+3. **findMedian()**
+    - If one heap has more elements:
+        - Median = top of that heap.
+    - If both heaps have equal elements:
+        - Median = average of both heap tops.
 
 ::tabs-start
 
@@ -386,56 +494,75 @@ public class MedianFinder {
 ```
 
 ```go
+type MaxHeap []int
+
+func (h MaxHeap) Len() int            { return len(h) }
+func (h MaxHeap) Less(i, j int) bool  { return h[i] > h[j] }
+func (h MaxHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
+func (h *MaxHeap) Push(x interface{}) { *h = append(*h, x.(int)) }
+func (h *MaxHeap) Pop() interface{} {
+    old := *h
+    n := len(old)
+    x := old[n-1]
+    *h = old[:n-1]
+    return x
+}
+
+type MinHeap []int
+
+func (h MinHeap) Len() int            { return len(h) }
+func (h MinHeap) Less(i, j int) bool  { return h[i] < h[j] }
+func (h MinHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
+func (h *MinHeap) Push(x interface{}) { *h = append(*h, x.(int)) }
+func (h *MinHeap) Pop() interface{} {
+    old := *h
+    n := len(old)
+    x := old[n-1]
+    *h = old[:n-1]
+    return x
+}
+
 type MedianFinder struct {
-    small *priorityqueue.Queue // maxHeap
-    large *priorityqueue.Queue // minHeap
+    small *MaxHeap // maxHeap
+    large *MinHeap // minHeap
 }
 
 func Constructor() MedianFinder {
-    small := priorityqueue.NewWith(func(a, b interface{}) int {
-        return b.(int) - a.(int)  // maxHeap
-    })
-    large := priorityqueue.NewWith(func(a, b interface{}) int {
-        return a.(int) - b.(int)  // minHeap
-    })
+    small := &MaxHeap{}
+    large := &MinHeap{}
+    heap.Init(small)
+    heap.Init(large)
     return MedianFinder{small: small, large: large}
 }
 
 func (this *MedianFinder) AddNum(num int) {
-    if this.large.Size() > 0 {
-        largeTop, _ := this.large.Peek()
-        if num > largeTop.(int) {
-            this.large.Enqueue(num)
+    if this.large.Len() > 0 {
+        if num > (*this.large)[0] {
+            heap.Push(this.large, num)
         } else {
-            this.small.Enqueue(num)
+            heap.Push(this.small, num)
         }
     } else {
-        this.small.Enqueue(num)
+        heap.Push(this.small, num)
     }
 
     // Rebalance
-    if this.small.Size() > this.large.Size()+1 {
-        val, _ := this.small.Dequeue()
-        this.large.Enqueue(val)
+    if this.small.Len() > this.large.Len()+1 {
+        heap.Push(this.large, heap.Pop(this.small))
     }
-    if this.large.Size() > this.small.Size()+1 {
-        val, _ := this.large.Dequeue()
-        this.small.Enqueue(val)
+    if this.large.Len() > this.small.Len()+1 {
+        heap.Push(this.small, heap.Pop(this.large))
     }
 }
 
 func (this *MedianFinder) FindMedian() float64 {
-    if this.small.Size() > this.large.Size() {
-        val, _ := this.small.Peek()
-        return float64(val.(int))
+    if this.small.Len() > this.large.Len() {
+        return float64((*this.small)[0])
     }
-    if this.large.Size() > this.small.Size() {
-        val, _ := this.large.Peek()
-        return float64(val.(int))
+    if this.large.Len() > this.small.Len() {
+        return float64((*this.large)[0])
     }
-    smallVal, _ := this.small.Peek()
-    largeVal, _ := this.large.Peek()
-    return float64(smallVal.(int)+largeVal.(int)) / 2.0
+    return float64((*this.small)[0]+(*this.large)[0]) / 2.0
 }
 ```
 
@@ -512,6 +639,47 @@ class MedianFinder {
 }
 ```
 
+```rust
+struct MedianFinder {
+    small_heap: BinaryHeap<i32>,           // max-heap for smaller half
+    large_heap: BinaryHeap<Reverse<i32>>,  // min-heap for larger half
+}
+
+impl MedianFinder {
+    fn new() -> Self {
+        MedianFinder {
+            small_heap: BinaryHeap::new(),
+            large_heap: BinaryHeap::new(),
+        }
+    }
+
+    fn add_num(&mut self, num: i32) {
+        self.small_heap.push(num);
+        if self.small_heap.len() > self.large_heap.len() + 1
+            || (!self.large_heap.is_empty()
+                && *self.small_heap.peek().unwrap() > self.large_heap.peek().unwrap().0)
+        {
+            let val = self.small_heap.pop().unwrap();
+            self.large_heap.push(Reverse(val));
+        }
+        if self.large_heap.len() > self.small_heap.len() + 1 {
+            let Reverse(val) = self.large_heap.pop().unwrap();
+            self.small_heap.push(val);
+        }
+    }
+
+    fn find_median(&self) -> f64 {
+        if self.small_heap.len() == self.large_heap.len() {
+            (*self.small_heap.peek().unwrap() + self.large_heap.peek().unwrap().0) as f64 / 2.0
+        } else if self.small_heap.len() > self.large_heap.len() {
+            *self.small_heap.peek().unwrap() as f64
+        } else {
+            self.large_heap.peek().unwrap().0 as f64
+        }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -520,3 +688,27 @@ class MedianFinder {
 - Space complexity: $O(n)$
 
 > Where $m$ is the number of function calls and $n$ is the length of the array.
+
+---
+
+## Common Pitfalls
+
+### Using Wrong Heap Types
+
+The two-heap solution requires a max-heap for the smaller half and a min-heap for the larger half. Swapping these or using two min-heaps produces incorrect medians. In languages like Python where `heapq` only provides min-heaps, you must negate values to simulate a max-heap for the smaller half.
+
+### Failing to Maintain Heap Balance
+
+The heaps must differ in size by at most one element. Forgetting to rebalance after insertions leads to incorrect median calculations. After every `addNum` call, check if one heap has more than one extra element and transfer the top element to the other heap.
+
+### Incorrect Median Calculation for Even Count
+
+When both heaps have equal size, the median is the average of both tops, not just one of them. Returning only the top of one heap or using integer division instead of floating-point division produces wrong results. Always check heap sizes and compute `(smallTop + largeTop) / 2.0` for the even case.
+
+### Integer Overflow in Sum Calculation
+
+When computing the average of two heap tops, adding two large integers can cause overflow in languages like Java or C++. Cast to a larger type before adding, or compute as `a + (b - a) / 2.0` to avoid overflow while still getting the correct floating-point result.
+
+### Inserting Into Wrong Heap Initially
+
+The first element must go into one of the heaps, but subsequent elements must be compared against the appropriate heap top to determine placement. Inserting all elements into one heap first and then rebalancing works, but directly inserting into the wrong heap without proper comparison breaks the invariant that all elements in the small heap are less than or equal to all elements in the large heap.

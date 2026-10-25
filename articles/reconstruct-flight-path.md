@@ -1,4 +1,45 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Graph Representation (Adjacency List)** - Building and traversing a directed graph from edge pairs
+- **Depth First Search (DFS)** - Recursive and iterative graph traversal with backtracking
+- **Eulerian Path** - Understanding when a path exists that uses every edge exactly once (Hierholzer's Algorithm)
+- **Sorting** - Needed to ensure lexicographically smallest result when multiple paths exist
+
+---
+
 ## 1. Depth First Search
+
+### Intuition
+
+We must build an itinerary that:
+
+- starts from `"JFK"`
+- uses **every ticket exactly once**
+- is **lexicographically smallest** among all valid itineraries.
+
+This DFS solution tries destinations in sorted order.
+At each airport `src`, we **choose one outgoing ticket**, remove it (so it can't be reused), and continue DFS.
+If we reach a dead end before using all tickets, we **backtrack**: undo the choice and try the next destination.
+
+Sorting tickets ensures the first complete valid path we find is the smallest lexicographically.
+
+### Algorithm
+
+1. Sort `tickets` lexicographically.
+2. Build an adjacency list `adj[src] = list of destinations` in sorted order.
+3. Start `res = ["JFK"]`.
+4. Run DFS from `"JFK"`:
+    - If `len(res) == len(tickets) + 1`, all tickets are used → return `true`.
+    - For each possible destination `v` from `src` (in order):
+        - Remove that edge (`src -> v`) from `adj[src]` (use the ticket).
+        - Append `v` to `res`.
+        - If DFS from `v` succeeds, return `true`.
+        - Otherwise backtrack:
+            - Remove `v` from `res`
+            - Insert the destination back into `adj[src]` at the same position.
+5. Return `res`.
 
 ::tabs-start
 
@@ -323,6 +364,51 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn find_itinerary(tickets: Vec<Vec<String>>) -> Vec<String> {
+        let mut adj: HashMap<String, Vec<String>> = HashMap::new();
+        let mut tickets = tickets;
+        tickets.sort();
+        for ticket in &tickets {
+            adj.entry(ticket[0].clone()).or_default().push(ticket[1].clone());
+        }
+
+        let mut res = vec!["JFK".to_string()];
+        let target_len = tickets.len() + 1;
+
+        fn dfs(
+            src: &str,
+            res: &mut Vec<String>,
+            adj: &mut HashMap<String, Vec<String>>,
+            target_len: usize,
+        ) -> bool {
+            if res.len() == target_len {
+                return true;
+            }
+            let dests = match adj.get(src) {
+                Some(d) => d.clone(),
+                None => return false,
+            };
+            for i in 0..dests.len() {
+                let v = dests[i].clone();
+                adj.get_mut(src).unwrap().remove(i);
+                res.push(v.clone());
+                if dfs(&v, res, adj, target_len) {
+                    return true;
+                }
+                adj.get_mut(src).unwrap().insert(i, v);
+                res.pop();
+            }
+            false
+        }
+
+        dfs("JFK", &mut res, &mut adj, target_len);
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -335,6 +421,36 @@ class Solution {
 ---
 
 ## 2. Hierholzer's Algorithm (Recursion)
+
+### Intuition
+
+This problem is an **Eulerian Path** problem:  
+we must use **every ticket exactly once** and form a valid path starting from `"JFK"`.
+
+**Hierholzer's Algorithm** builds such a path by:
+
+- always taking an available edge,
+- going as deep as possible,
+- and adding airports to the answer **only when no outgoing edges remain**.
+
+To ensure the **lexicographically smallest** itinerary:
+
+- we sort tickets,
+- and always pick the smallest destination first.
+
+The key idea:
+
+> **Build the path in reverse while backtracking.**
+
+### Algorithm
+
+1. Build an adjacency list where each airport maps to its destinations.
+2. Sort tickets in reverse lexicographical order and push destinations so we can pop the smallest later.
+3. Start DFS from `"JFK"`:
+    - While there are outgoing edges:
+        - Remove one destination and DFS into it.
+    - When no edges remain, add the current airport to the result.
+4. Reverse the result list to get the correct itinerary.
 
 ::tabs-start
 
@@ -569,6 +685,37 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn find_itinerary(tickets: Vec<Vec<String>>) -> Vec<String> {
+        let mut adj: HashMap<String, Vec<String>> = HashMap::new();
+        let mut tickets = tickets;
+        tickets.sort();
+        tickets.reverse();
+        for ticket in &tickets {
+            adj.entry(ticket[0].clone()).or_default().push(ticket[1].clone());
+        }
+
+        let mut res = Vec::new();
+
+        fn dfs(src: &str, adj: &mut HashMap<String, Vec<String>>, res: &mut Vec<String>) {
+            while let Some(dests) = adj.get(src) {
+                if dests.is_empty() {
+                    break;
+                }
+                let dst = adj.get_mut(src).unwrap().pop().unwrap();
+                dfs(&dst, adj, res);
+            }
+            res.push(src.to_string());
+        }
+
+        dfs("JFK", &mut adj, &mut res);
+        res.reverse();
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -581,6 +728,36 @@ class Solution {
 ---
 
 ## 3. Hierholzer's Algorithm (Iteration)
+
+### Intuition
+
+This is the **iterative version of Hierholzer’s Algorithm** for finding an **Eulerian Path**.
+
+We must:
+
+- use **every ticket exactly once**,
+- start from `"JFK"`,
+- and return the **lexicographically smallest** valid itinerary.
+
+Instead of recursion, we simulate the DFS using a **stack**:
+
+- Keep moving forward while tickets exist.
+- When stuck (no outgoing flights), **backtrack** and record the airport.
+
+Key idea:
+
+> **Airports are added to the answer only when they have no remaining outgoing edges.**
+
+### Algorithm
+
+1. Build an adjacency list from tickets.
+2. Sort tickets in **reverse lexicographical order** so popping gives the smallest destination.
+3. Initialize a stack with `"JFK"`.
+4. While the stack is not empty:
+    - Look at the top airport:
+        - If it has outgoing flights, pop one and push the destination.
+        - Otherwise, pop the airport and add it to the result.
+5. Reverse the result to get the final itinerary.
 
 ::tabs-start
 
@@ -813,6 +990,35 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn find_itinerary(tickets: Vec<Vec<String>>) -> Vec<String> {
+        let mut adj: HashMap<String, Vec<String>> = HashMap::new();
+        let mut tickets = tickets;
+        tickets.sort();
+        tickets.reverse();
+        for ticket in &tickets {
+            adj.entry(ticket[0].clone()).or_default().push(ticket[1].clone());
+        }
+
+        let mut stack = vec!["JFK".to_string()];
+        let mut res = Vec::new();
+
+        while let Some(curr) = stack.last().cloned() {
+            if adj.get(&curr).map_or(true, |d| d.is_empty()) {
+                res.push(stack.pop().unwrap());
+            } else {
+                let next = adj.get_mut(&curr).unwrap().pop().unwrap();
+                stack.push(next);
+            }
+        }
+
+        res.reverse();
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -821,3 +1027,27 @@ class Solution {
 - Space complexity: $O(E)$
 
 > Where $E$ is the number of tickets (edges) and $V$ is the number of airports (vertices).
+
+---
+
+## Common Pitfalls
+
+### Not Starting from JFK
+
+The problem explicitly states the journey must begin from "JFK". Forgetting to initialize the traversal from "JFK" or accidentally starting from a different airport will produce an invalid itinerary.
+
+### Forgetting to Use Each Ticket Exactly Once
+
+Each ticket represents a one-time-use flight. Failing to remove or mark tickets as used after consuming them leads to infinite loops or itineraries that reuse the same flight multiple times.
+
+### Sorting in Wrong Order for Hierholzer's Algorithm
+
+Hierholzer's algorithm requires processing destinations in reverse lexicographical order (when using a stack/pop approach) so that popping gives the smallest destination. Sorting in ascending order without reversing, or using the wrong data structure, produces lexicographically incorrect results.
+
+### Not Reversing the Result in Post-Order Traversal
+
+In Hierholzer's algorithm, airports are added to the result when backtracking (post-order), which builds the path in reverse. Forgetting to reverse the final result returns the itinerary in wrong order.
+
+### Confusing Dead Ends with Valid Endpoints
+
+In the DFS backtracking approach, reaching an airport with no outgoing flights does not necessarily mean failure. It could be the valid end of the Eulerian path. Only return failure if you cannot use all tickets, not simply because you reached a node with no remaining edges.

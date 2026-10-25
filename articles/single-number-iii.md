@@ -1,4 +1,26 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Bit Manipulation (XOR)** - Understanding XOR properties (a ^ a = 0, a ^ 0 = a) and how to isolate the rightmost set bit using x & (-x)
+- **Hash Map / Hash Set** - Used for counting occurrences or tracking seen elements in O(n) space solutions
+- **Sorting** - Alternative approach where duplicates become adjacent, allowing linear scan to find unique elements
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+The most straightforward approach is to check each element against every other element. If we find no duplicate for an element, it must be one of the two unique numbers. We collect these unique elements until we find both.
+
+### Algorithm
+
+1. Initialize an empty result list.
+2. For each element at index `i`, check all other elements at index `j`.
+3. If no match is found (the element is unique), add it to the result.
+4. Stop once we have found two unique elements.
+5. Return the result.
 
 ::tabs-start
 
@@ -138,6 +160,108 @@ public class Solution {
 }
 ```
 
+```go
+func singleNumber(nums []int) []int {
+    n := len(nums)
+    res := []int{}
+
+    for i := 0; i < n; i++ {
+        flag := true
+        for j := 0; j < n; j++ {
+            if i != j && nums[i] == nums[j] {
+                flag = false
+                break
+            }
+        }
+        if flag {
+            res = append(res, nums[i])
+            if len(res) == 2 {
+                break
+            }
+        }
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun singleNumber(nums: IntArray): IntArray {
+        val n = nums.size
+        val res = mutableListOf<Int>()
+
+        for (i in 0 until n) {
+            var flag = true
+            for (j in 0 until n) {
+                if (i != j && nums[i] == nums[j]) {
+                    flag = false
+                    break
+                }
+            }
+            if (flag) {
+                res.add(nums[i])
+                if (res.size == 2) break
+            }
+        }
+
+        return intArrayOf(res[0], res[1])
+    }
+}
+```
+
+```swift
+class Solution {
+    func singleNumber(_ nums: [Int]) -> [Int] {
+        let n = nums.count
+        var res = [Int]()
+
+        for i in 0..<n {
+            var flag = true
+            for j in 0..<n {
+                if i != j && nums[i] == nums[j] {
+                    flag = false
+                    break
+                }
+            }
+            if flag {
+                res.append(nums[i])
+                if res.count == 2 { break }
+            }
+        }
+
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn single_number(nums: Vec<i32>) -> Vec<i32> {
+        let n = nums.len();
+        let mut res = Vec::new();
+
+        for i in 0..n {
+            let mut flag = true;
+            for j in 0..n {
+                if i != j && nums[i] == nums[j] {
+                    flag = false;
+                    break;
+                }
+            }
+            if flag {
+                res.push(nums[i]);
+                if res.len() == 2 {
+                    break;
+                }
+            }
+        }
+
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -148,6 +272,17 @@ public class Solution {
 ---
 
 ## 2. Hash Map
+
+### Intuition
+
+We can count occurrences of each number using a hash map. Numbers that appear exactly once are our two unique elements. This trades space for time, reducing the time complexity from quadratic to linear.
+
+### Algorithm
+
+1. Create a hash map to count occurrences of each number.
+2. Iterate through the array and update counts.
+3. Collect all keys with a count of `1` into the result.
+4. Return the result containing the two unique numbers.
 
 ::tabs-start
 
@@ -250,6 +385,80 @@ public class Solution {
 }
 ```
 
+```go
+func singleNumber(nums []int) []int {
+    count := make(map[int]int)
+    for _, num := range nums {
+        count[num]++
+    }
+
+    res := []int{}
+    for k, v := range count {
+        if v == 1 {
+            res = append(res, k)
+        }
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun singleNumber(nums: IntArray): IntArray {
+        val count = HashMap<Int, Int>()
+        for (num in nums) {
+            count[num] = count.getOrDefault(num, 0) + 1
+        }
+
+        val res = mutableListOf<Int>()
+        for ((key, value) in count) {
+            if (value == 1) {
+                res.add(key)
+            }
+        }
+
+        return intArrayOf(res[0], res[1])
+    }
+}
+```
+
+```swift
+class Solution {
+    func singleNumber(_ nums: [Int]) -> [Int] {
+        var count = [Int: Int]()
+        for num in nums {
+            count[num, default: 0] += 1
+        }
+
+        var res = [Int]()
+        for (key, value) in count {
+            if value == 1 {
+                res.append(key)
+            }
+        }
+
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn single_number(nums: Vec<i32>) -> Vec<i32> {
+        let mut count = HashMap::new();
+        for &num in &nums {
+            *count.entry(num).or_insert(0) += 1;
+        }
+
+        count.into_iter()
+            .filter(|&(_, v)| v == 1)
+            .map(|(k, _)| k)
+            .collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -260,6 +469,18 @@ public class Solution {
 ---
 
 ## 3. Hash Set
+
+### Intuition
+
+A hash set can track numbers we have seen. When we encounter a number for the first time, we add it. When we see it again, we remove it. After processing all numbers, only the two unique elements remain in the set.
+
+### Algorithm
+
+1. Initialize an empty hash set.
+2. For each number in the array:
+    - If the number is already in the set, remove it.
+    - Otherwise, add it to the set.
+3. Convert the set to a list and return it.
 
 ::tabs-start
 
@@ -360,6 +581,74 @@ public class Solution {
 }
 ```
 
+```go
+func singleNumber(nums []int) []int {
+    seen := make(map[int]bool)
+    for _, num := range nums {
+        if seen[num] {
+            delete(seen, num)
+        } else {
+            seen[num] = true
+        }
+    }
+
+    res := []int{}
+    for num := range seen {
+        res = append(res, num)
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun singleNumber(nums: IntArray): IntArray {
+        val seen = HashSet<Int>()
+        for (num in nums) {
+            if (num in seen) {
+                seen.remove(num)
+            } else {
+                seen.add(num)
+            }
+        }
+
+        return seen.toIntArray()
+    }
+}
+```
+
+```swift
+class Solution {
+    func singleNumber(_ nums: [Int]) -> [Int] {
+        var seen = Set<Int>()
+        for num in nums {
+            if seen.contains(num) {
+                seen.remove(num)
+            } else {
+                seen.insert(num)
+            }
+        }
+
+        return Array(seen)
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn single_number(nums: Vec<i32>) -> Vec<i32> {
+        let mut seen = HashSet::new();
+        for &num in &nums {
+            if !seen.remove(&num) {
+                seen.insert(num);
+            }
+        }
+        seen.into_iter().collect()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -370,6 +659,17 @@ public class Solution {
 ---
 
 ## 4. Sorting
+
+### Intuition
+
+Sorting the array groups duplicate numbers together. After sorting, each element should equal either its left or right neighbor if it has a duplicate. Elements that differ from both neighbors are the unique numbers we seek.
+
+### Algorithm
+
+1. Sort the array.
+2. Iterate through each index `i`.
+3. If `nums[i]` differs from both `nums[i-1]` (if exists) and `nums[i+1]` (if exists), it is unique.
+4. Collect all unique elements and return them.
 
 ::tabs-start
 
@@ -475,6 +775,86 @@ public class Solution {
 }
 ```
 
+```go
+func singleNumber(nums []int) []int {
+    sort.Ints(nums)
+    res := []int{}
+    n := len(nums)
+
+    for i := 0; i < n; i++ {
+        if (i > 0 && nums[i] == nums[i-1]) ||
+            (i+1 < n && nums[i] == nums[i+1]) {
+            continue
+        }
+        res = append(res, nums[i])
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun singleNumber(nums: IntArray): IntArray {
+        nums.sort()
+        val res = mutableListOf<Int>()
+        val n = nums.size
+
+        for (i in 0 until n) {
+            if ((i > 0 && nums[i] == nums[i - 1]) ||
+                (i + 1 < n && nums[i] == nums[i + 1])) {
+                continue
+            }
+            res.add(nums[i])
+        }
+
+        return res.toIntArray()
+    }
+}
+```
+
+```swift
+class Solution {
+    func singleNumber(_ nums: [Int]) -> [Int] {
+        let nums = nums.sorted()
+        var res = [Int]()
+        let n = nums.count
+
+        for i in 0..<n {
+            if (i > 0 && nums[i] == nums[i - 1]) ||
+                (i + 1 < n && nums[i] == nums[i + 1]) {
+                continue
+            }
+            res.append(nums[i])
+        }
+
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn single_number(nums: Vec<i32>) -> Vec<i32> {
+        let mut nums = nums;
+        nums.sort_unstable();
+        let n = nums.len();
+        let mut res = Vec::new();
+
+        for i in 0..n {
+            if (i > 0 && nums[i] == nums[i - 1])
+                || (i + 1 < n && nums[i] == nums[i + 1])
+            {
+                continue;
+            }
+            res.push(nums[i]);
+        }
+
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -485,6 +865,18 @@ public class Solution {
 ---
 
 ## 5. Bitwise XOR (Least Significant Bit)
+
+### Intuition
+
+XORing all numbers gives us `a ^ b` where `a` and `b` are the two unique numbers. Since `a != b`, at least one bit in the XOR result is set. This bit position represents where `a` and `b` differ. We can use this differing bit to partition all numbers into two groups: one containing `a` and one containing `b`. XORing within each group isolates the unique numbers.
+
+### Algorithm
+
+1. XOR all numbers to get `a ^ b`.
+2. Find any set bit in the result by iterating until we find a bit position where the XOR is `1`.
+3. Partition numbers: those with this bit set go to one group, others to another.
+4. XOR within each group to isolate `a` and `b`.
+5. Return both unique numbers.
 
 ::tabs-start
 
@@ -619,6 +1011,112 @@ public class Solution {
 }
 ```
 
+```go
+func singleNumber(nums []int) []int {
+    xorVal := 0
+    for _, num := range nums {
+        xorVal ^= num
+    }
+
+    diffBit := 1
+    for xorVal&diffBit == 0 {
+        diffBit <<= 1
+    }
+
+    a, b := 0, 0
+    for _, num := range nums {
+        if num&diffBit != 0 {
+            a ^= num
+        } else {
+            b ^= num
+        }
+    }
+
+    return []int{a, b}
+}
+```
+
+```kotlin
+class Solution {
+    fun singleNumber(nums: IntArray): IntArray {
+        var xorVal = 0
+        for (num in nums) {
+            xorVal = xorVal xor num
+        }
+
+        var diffBit = 1
+        while (xorVal and diffBit == 0) {
+            diffBit = diffBit shl 1
+        }
+
+        var a = 0
+        var b = 0
+        for (num in nums) {
+            if (num and diffBit != 0) {
+                a = a xor num
+            } else {
+                b = b xor num
+            }
+        }
+
+        return intArrayOf(a, b)
+    }
+}
+```
+
+```swift
+class Solution {
+    func singleNumber(_ nums: [Int]) -> [Int] {
+        var xorVal = 0
+        for num in nums {
+            xorVal ^= num
+        }
+
+        var diffBit = 1
+        while xorVal & diffBit == 0 {
+            diffBit <<= 1
+        }
+
+        var a = 0, b = 0
+        for num in nums {
+            if num & diffBit != 0 {
+                a ^= num
+            } else {
+                b ^= num
+            }
+        }
+
+        return [a, b]
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn single_number(nums: Vec<i32>) -> Vec<i32> {
+        let mut xor = 0;
+        for &num in &nums {
+            xor ^= num;
+        }
+
+        let mut diff_bit = 1;
+        while xor & diff_bit == 0 {
+            diff_bit <<= 1;
+        }
+
+        let (mut a, mut b) = (0, 0);
+        for &num in &nums {
+            if num & diff_bit != 0 {
+                a ^= num;
+            } else {
+                b ^= num;
+            }
+        }
+        vec![a, b]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -629,6 +1127,18 @@ public class Solution {
 ---
 
 ## 6. Bitwise XOR (Most Significant Bit)
+
+### Intuition
+
+This approach is similar to the previous one but uses a neat trick to find the rightmost set bit. The expression `x & (-x)` isolates the lowest set bit in `x`. Using this on the XOR of all numbers immediately gives us a differing bit between the two unique numbers without looping.
+
+### Algorithm
+
+1. XOR all numbers to get `a ^ b`.
+2. Compute `diff_bit = xor & (-xor)` to get the rightmost set bit.
+3. Partition numbers based on whether they have this bit set.
+4. XOR within each partition to find `a` and `b`.
+5. Return both unique numbers.
 
 ::tabs-start
 
@@ -749,9 +1259,119 @@ public class Solution {
 }
 ```
 
+```go
+func singleNumber(nums []int) []int {
+    xorVal := 0
+    for _, num := range nums {
+        xorVal ^= num
+    }
+
+    diffBit := xorVal & -xorVal
+
+    a, b := 0, 0
+    for _, num := range nums {
+        if num&diffBit != 0 {
+            a ^= num
+        } else {
+            b ^= num
+        }
+    }
+
+    return []int{a, b}
+}
+```
+
+```kotlin
+class Solution {
+    fun singleNumber(nums: IntArray): IntArray {
+        var xorVal = 0
+        for (num in nums) {
+            xorVal = xorVal xor num
+        }
+
+        val diffBit = xorVal and -xorVal
+
+        var a = 0
+        var b = 0
+        for (num in nums) {
+            if (num and diffBit != 0) {
+                a = a xor num
+            } else {
+                b = b xor num
+            }
+        }
+
+        return intArrayOf(a, b)
+    }
+}
+```
+
+```swift
+class Solution {
+    func singleNumber(_ nums: [Int]) -> [Int] {
+        var xorVal = 0
+        for num in nums {
+            xorVal ^= num
+        }
+
+        let diffBit = xorVal & -xorVal
+
+        var a = 0, b = 0
+        for num in nums {
+            if num & diffBit != 0 {
+                a ^= num
+            } else {
+                b ^= num
+            }
+        }
+
+        return [a, b]
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn single_number(nums: Vec<i32>) -> Vec<i32> {
+        let mut xor = 0i32;
+        for &num in &nums {
+            xor ^= num;
+        }
+
+        let diff_bit = xor & xor.wrapping_neg();
+
+        let (mut a, mut b) = (0, 0);
+        for &num in &nums {
+            if num & diff_bit != 0 {
+                a ^= num;
+            } else {
+                b ^= num;
+            }
+        }
+        vec![a, b]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(1)$ extra space.
+
+---
+
+## Common Pitfalls
+
+### Confusing This Problem with Single Number I
+
+Unlike the classic Single Number problem where XORing all elements directly yields the answer, this problem has two unique numbers. XORing all elements gives `a ^ b`, not the individual values. Candidates often fail to recognize that an additional step is needed to separate the two numbers.
+
+### Misunderstanding the Differing Bit Logic
+
+The key insight is that `a ^ b` has at least one set bit where `a` and `b` differ. Using this bit to partition the array into two groups is crucial. A common mistake is not understanding why this partitioning works or incorrectly identifying which bit to use for separation.
+
+### Integer Overflow When Finding the Rightmost Set Bit
+
+The expression `x & (-x)` to find the rightmost set bit can cause overflow issues in some languages when dealing with the minimum integer value. In languages like C++ or Java, negating `INT_MIN` causes undefined behavior or overflow, requiring careful handling with unsigned types or alternative approaches.

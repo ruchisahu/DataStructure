@@ -1,4 +1,29 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Stack Data Structure** - Used to defer lower-precedence operations while computing higher-precedence ones
+- **String Parsing** - Building multi-digit numbers from character sequences and handling whitespace
+- **Operator Precedence** - Understanding that multiplication/division must be evaluated before addition/subtraction
+
+---
+
 ## 1. Stack
+
+### Intuition
+
+The challenge with evaluating expressions is handling operator precedence. Multiplication and division must be done before addition and subtraction. We can use a `stack` to defer the addition and subtraction while immediately computing multiplication and division. For `+` and `-`, we push numbers onto the `stack` (negative for subtraction). For `*` and `/`, we pop the previous number, compute the result, and push it back. At the end, summing the `stack` gives us the answer.
+
+### Algorithm
+
+1. Remove all spaces from the string and initialize an empty `stack`.
+2. Track the current `num` and the previous `op` (start with `+`).
+3. For each character:
+    - If it's a digit, build up the current `num`.
+    - If it's an operator or the last character:
+        - Apply the previous `op`: push for `+`, push negative for `-`, multiply top for `*`, divide top for `/`.
+        - Reset the current `num` and update the previous `op`.
+4. Return the sum of all elements in the `stack`.
 
 ::tabs-start
 
@@ -178,6 +203,150 @@ public class Solution {
 }
 ```
 
+```go
+func calculate(s string) int {
+    s = strings.ReplaceAll(s, " ", "")
+    stack := []int{}
+    num := 0
+    op := byte('+')
+
+    for i := 0; i < len(s); i++ {
+        ch := s[i]
+        if ch >= '0' && ch <= '9' {
+            num = num*10 + int(ch-'0')
+        }
+        if (ch < '0' || ch > '9') || i == len(s)-1 {
+            switch op {
+            case '+':
+                stack = append(stack, num)
+            case '-':
+                stack = append(stack, -num)
+            case '*':
+                prev := stack[len(stack)-1]
+                stack = stack[:len(stack)-1]
+                stack = append(stack, prev*num)
+            case '/':
+                prev := stack[len(stack)-1]
+                stack = stack[:len(stack)-1]
+                stack = append(stack, prev/num)
+            }
+            op = ch
+            num = 0
+        }
+    }
+
+    res := 0
+    for _, v := range stack {
+        res += v
+    }
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun calculate(s: String): Int {
+        val str = s.replace(" ", "")
+        val stack = mutableListOf<Int>()
+        var num = 0
+        var op = '+'
+
+        for (i in str.indices) {
+            val ch = str[i]
+            if (ch.isDigit()) {
+                num = num * 10 + (ch - '0')
+            }
+            if (!ch.isDigit() || i == str.length - 1) {
+                when (op) {
+                    '+' -> stack.add(num)
+                    '-' -> stack.add(-num)
+                    '*' -> stack.add(stack.removeLast() * num)
+                    '/' -> stack.add(stack.removeLast() / num)
+                }
+                op = ch
+                num = 0
+            }
+        }
+
+        return stack.sum()
+    }
+}
+```
+
+```swift
+class Solution {
+    func calculate(_ s: String) -> Int {
+        let str = s.filter { $0 != " " }
+        let chars = Array(str)
+        var stack = [Int]()
+        var num = 0
+        var op: Character = "+"
+
+        for i in 0..<chars.count {
+            let ch = chars[i]
+            if ch.isNumber {
+                num = num * 10 + Int(String(ch))!
+            }
+            if !ch.isNumber || i == chars.count - 1 {
+                switch op {
+                case "+":
+                    stack.append(num)
+                case "-":
+                    stack.append(-num)
+                case "*":
+                    stack.append(stack.removeLast() * num)
+                case "/":
+                    stack.append(stack.removeLast() / num)
+                default:
+                    break
+                }
+                op = ch
+                num = 0
+            }
+        }
+
+        return stack.reduce(0, +)
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn calculate(s: String) -> i32 {
+        let s: Vec<u8> = s.bytes().filter(|&b| b != b' ').collect();
+        let mut stack: Vec<i32> = Vec::new();
+        let mut num: i32 = 0;
+        let mut op = b'+';
+
+        for i in 0..s.len() {
+            let ch = s[i];
+            if ch.is_ascii_digit() {
+                num = num * 10 + (ch - b'0') as i32;
+            }
+            if !ch.is_ascii_digit() || i == s.len() - 1 {
+                match op {
+                    b'+' => stack.push(num),
+                    b'-' => stack.push(-num),
+                    b'*' => {
+                        let prev = stack.pop().unwrap();
+                        stack.push(prev * num);
+                    }
+                    b'/' => {
+                        let prev = stack.pop().unwrap();
+                        stack.push(prev / num);
+                    }
+                    _ => {}
+                }
+                op = ch;
+                num = 0;
+            }
+        }
+
+        stack.iter().sum()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -188,6 +357,23 @@ public class Solution {
 ---
 
 ## 2. Without Stack
+
+### Intuition
+
+We can avoid using a `stack` by realizing that we only need to track two values: the running `total` of all fully computed terms, and the `prev` term that might still be involved in a multiplication or division. When we see `+` or `-`, we can add the `prev` term to our `total` and start a new term. When we see `*` or `/`, we update the `prev` term directly. This reduces space complexity to `O(1)`.
+
+### Algorithm
+
+1. Initialize `total`, `prev`, and `num` to `0`, and set the initial operator to `+`.
+2. Iterate through the string (plus one extra iteration to process the last number).
+3. Skip spaces. Build up multi-digit numbers.
+4. When we hit an operator or the end:
+    - For `+`: add `prev` to `total`, set `prev` to `num`.
+    - For `-`: add `prev` to `total`, set `prev` to `-num`.
+    - For `*`: multiply `prev` by `num`.
+    - For `/`: divide `prev` by `num` (truncate toward zero).
+    - Update the operator and reset `num`.
+5. Add the final `prev` to `total` and return it.
 
 ::tabs-start
 
@@ -396,9 +582,193 @@ public class Solution {
 }
 ```
 
+```go
+func calculate(s string) int {
+    total, prev, num := 0, 0, 0
+    op := byte('+')
+    n := len(s)
+    i := 0
+
+    for i <= n {
+        var ch byte
+        if i < n {
+            ch = s[i]
+        } else {
+            ch = '+'
+        }
+        if ch == ' ' {
+            i++
+            continue
+        }
+        if ch >= '0' && ch <= '9' {
+            num = num*10 + int(ch-'0')
+        } else {
+            switch op {
+            case '+':
+                total += prev
+                prev = num
+            case '-':
+                total += prev
+                prev = -num
+            case '*':
+                prev = prev * num
+            default:
+                prev = prev / num
+            }
+            op = ch
+            num = 0
+        }
+        i++
+    }
+    total += prev
+    return total
+}
+```
+
+```kotlin
+class Solution {
+    fun calculate(s: String): Int {
+        var total = 0
+        var prev = 0
+        var num = 0
+        var op = '+'
+        val n = s.length
+        var i = 0
+
+        while (i <= n) {
+            val ch = if (i < n) s[i] else '+'
+            if (ch == ' ') {
+                i++
+                continue
+            }
+            if (ch.isDigit()) {
+                num = num * 10 + (ch - '0')
+            } else {
+                when (op) {
+                    '+' -> {
+                        total += prev
+                        prev = num
+                    }
+                    '-' -> {
+                        total += prev
+                        prev = -num
+                    }
+                    '*' -> prev *= num
+                    else -> prev /= num
+                }
+                op = ch
+                num = 0
+            }
+            i++
+        }
+        total += prev
+        return total
+    }
+}
+```
+
+```swift
+class Solution {
+    func calculate(_ s: String) -> Int {
+        var total = 0, prev = 0, num = 0
+        var op: Character = "+"
+        let chars = Array(s)
+        let n = chars.count
+        var i = 0
+
+        while i <= n {
+            let ch: Character = i < n ? chars[i] : "+"
+            if ch == " " {
+                i += 1
+                continue
+            }
+            if ch.isNumber {
+                num = num * 10 + Int(String(ch))!
+            } else {
+                switch op {
+                case "+":
+                    total += prev
+                    prev = num
+                case "-":
+                    total += prev
+                    prev = -num
+                case "*":
+                    prev = prev * num
+                default:
+                    prev = prev / num
+                }
+                op = ch
+                num = 0
+            }
+            i += 1
+        }
+        total += prev
+        return total
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn calculate(s: String) -> i32 {
+        let s = s.as_bytes();
+        let n = s.len();
+        let mut total: i32 = 0;
+        let mut prev: i32 = 0;
+        let mut num: i32 = 0;
+        let mut op = b'+';
+        let mut i = 0;
+
+        while i <= n {
+            let ch = if i < n { s[i] } else { b'+' };
+            if ch == b' ' {
+                i += 1;
+                continue;
+            }
+            if ch.is_ascii_digit() {
+                num = num * 10 + (ch - b'0') as i32;
+            } else {
+                match op {
+                    b'+' => { total += prev; prev = num; }
+                    b'-' => { total += prev; prev = -num; }
+                    b'*' => { prev *= num; }
+                    _    => { prev /= num; }
+                }
+                op = ch;
+                num = 0;
+            }
+            i += 1;
+        }
+        total += prev;
+        total
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(1)$
+
+---
+
+## Common Pitfalls
+
+### Incorrect Integer Division with Negative Numbers
+
+Division in this problem truncates toward zero, but some languages (like Python) use floor division by default, which truncates toward negative infinity. This gives wrong results for negative numbers.
+
+```python
+# Wrong: -3 // 2 = -2 in Python (floor division)
+# Correct: int(-3 / 2) = -1 (truncation toward zero)
+```
+
+### Forgetting to Process the Last Number
+
+The algorithm typically processes a number when it encounters an operator. However, the last number in the expression has no operator after it, so it might never get processed unless you handle this edge case explicitly.
+
+### Not Handling Spaces Correctly
+
+The expression can contain spaces between numbers and operators. Failing to skip or remove spaces causes parsing errors or treats spaces as invalid characters.

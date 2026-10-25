@@ -1,4 +1,26 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **2D Grid Traversal** - Understanding how to navigate through a matrix using row/column indices and direction vectors
+- **Depth First Search (DFS)** - Recursive exploration of connected components in a graph or grid
+- **Breadth First Search (BFS)** - Iterative level-by-level exploration using a queue
+- **Union-Find (Disjoint Set Union)** - Data structure for efficiently tracking and merging connected components with path compression and union by rank
+
+---
+
 ## 1. Depth First Search
+
+### Intuition
+
+An enclave is a land cell that cannot reach the grid boundary by walking only on land. Any land cell connected to the boundary can eventually "walk off" the grid, so it is not an enclave. Our strategy is to count total land cells, then subtract those connected to the boundary. We find boundary-connected land by starting `dfs` from every land cell on the boundary and counting all reachable land cells.
+
+### Algorithm
+
+1. Iterate through the grid, counting total land cells.
+2. For each land cell on the boundary (first/last row or first/last column), run `dfs` to count all connected land cells.
+3. The `dfs` marks cells as visited and returns the count of land cells in that component.
+4. Subtract the boundary-connected land count from total land to get enclaves.
 
 ::tabs-start
 
@@ -203,6 +225,163 @@ public class Solution {
 }
 ```
 
+```go
+func numEnclaves(grid [][]int) int {
+    ROWS, COLS := len(grid), len(grid[0])
+    visit := make([][]bool, ROWS)
+    for i := range visit {
+        visit[i] = make([]bool, COLS)
+    }
+    direct := [][]int{{0, 1}, {0, -1}, {1, 0}, {-1, 0}}
+
+    var dfs func(r, c int) int
+    dfs = func(r, c int) int {
+        if r < 0 || c < 0 || r == ROWS || c == COLS ||
+            grid[r][c] == 0 || visit[r][c] {
+            return 0
+        }
+        visit[r][c] = true
+        res := 1
+        for _, d := range direct {
+            res += dfs(r+d[0], c+d[1])
+        }
+        return res
+    }
+
+    land, borderLand := 0, 0
+    for r := 0; r < ROWS; r++ {
+        for c := 0; c < COLS; c++ {
+            land += grid[r][c]
+            if grid[r][c] == 1 && !visit[r][c] &&
+                (r == 0 || r == ROWS-1 || c == 0 || c == COLS-1) {
+                borderLand += dfs(r, c)
+            }
+        }
+    }
+    return land - borderLand
+}
+```
+
+```kotlin
+class Solution {
+    fun numEnclaves(grid: Array<IntArray>): Int {
+        val ROWS = grid.size
+        val COLS = grid[0].size
+        val visit = Array(ROWS) { BooleanArray(COLS) }
+        val direct = arrayOf(intArrayOf(0, 1), intArrayOf(0, -1),
+                            intArrayOf(1, 0), intArrayOf(-1, 0))
+
+        fun dfs(r: Int, c: Int): Int {
+            if (r < 0 || c < 0 || r == ROWS || c == COLS ||
+                grid[r][c] == 0 || visit[r][c]) {
+                return 0
+            }
+            visit[r][c] = true
+            var res = 1
+            for (d in direct) {
+                res += dfs(r + d[0], c + d[1])
+            }
+            return res
+        }
+
+        var land = 0
+        var borderLand = 0
+        for (r in 0 until ROWS) {
+            for (c in 0 until COLS) {
+                land += grid[r][c]
+                if (grid[r][c] == 1 && !visit[r][c] &&
+                    (r == 0 || r == ROWS - 1 || c == 0 || c == COLS - 1)) {
+                    borderLand += dfs(r, c)
+                }
+            }
+        }
+        return land - borderLand
+    }
+}
+```
+
+```swift
+class Solution {
+    func numEnclaves(_ grid: [[Int]]) -> Int {
+        let ROWS = grid.count, COLS = grid[0].count
+        var visit = Array(repeating: Array(repeating: false, count: COLS), count: ROWS)
+        let direct = [[0, 1], [0, -1], [1, 0], [-1, 0]]
+
+        func dfs(_ r: Int, _ c: Int) -> Int {
+            if r < 0 || c < 0 || r == ROWS || c == COLS ||
+               grid[r][c] == 0 || visit[r][c] {
+                return 0
+            }
+            visit[r][c] = true
+            var res = 1
+            for d in direct {
+                res += dfs(r + d[0], c + d[1])
+            }
+            return res
+        }
+
+        var land = 0, borderLand = 0
+        for r in 0..<ROWS {
+            for c in 0..<COLS {
+                land += grid[r][c]
+                if grid[r][c] == 1 && !visit[r][c] &&
+                   (r == 0 || r == ROWS - 1 || c == 0 || c == COLS - 1) {
+                    borderLand += dfs(r, c)
+                }
+            }
+        }
+        return land - borderLand
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn num_enclaves(grid: Vec<Vec<i32>>) -> i32 {
+        let rows = grid.len();
+        let cols = grid[0].len();
+        let mut visit = vec![vec![false; cols]; rows];
+        let direct: [(i32, i32); 4] = [(0, 1), (0, -1), (1, 0), (-1, 0)];
+
+        fn dfs(
+            r: i32, c: i32, rows: usize, cols: usize,
+            grid: &[Vec<i32>], visit: &mut Vec<Vec<bool>>,
+            direct: &[(i32, i32); 4],
+        ) -> i32 {
+            if r < 0 || c < 0 || r == rows as i32 || c == cols as i32
+                || grid[r as usize][c as usize] == 0
+                || visit[r as usize][c as usize]
+            {
+                return 0;
+            }
+            visit[r as usize][c as usize] = true;
+            let mut res = 1;
+            for &(dr, dc) in direct {
+                res += dfs(r + dr, c + dc, rows, cols, grid, visit, direct);
+            }
+            res
+        }
+
+        let mut land = 0;
+        let mut border_land = 0;
+        for r in 0..rows {
+            for c in 0..cols {
+                land += grid[r][c];
+                if grid[r][c] == 1
+                    && !visit[r][c]
+                    && (r == 0 || r == rows - 1 || c == 0 || c == cols - 1)
+                {
+                    border_land += dfs(
+                        r as i32, c as i32, rows, cols, &grid, &mut visit, &direct,
+                    );
+                }
+            }
+        }
+        land - border_land
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -215,6 +394,17 @@ public class Solution {
 ---
 
 ## 2. Breadth First Search
+
+### Intuition
+
+`bfs` offers an iterative approach to the same problem. Instead of recursive `dfs`, we use a queue to explore boundary-connected land cells. We first add all boundary land cells to the queue, then process them level by level, marking visited cells. After `bfs` completes, we have counted all land that can reach the boundary. The remaining land cells are enclaves.
+
+### Algorithm
+
+1. Count total land cells while iterating through the grid.
+2. Add all boundary land cells to a queue and mark them visited.
+3. Process the queue: for each cell, increment boundary land count and add unvisited land neighbors to the queue.
+4. Return total land minus boundary-connected land.
 
 ::tabs-start
 
@@ -293,40 +483,40 @@ public class Solution {
 ```cpp
 class Solution {
 public:
-    int ROWS, COLS;
-    vector<vector<bool>> visit;
-    vector<vector<int>> direct = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
-
     int numEnclaves(vector<vector<int>>& grid) {
-        this->ROWS = grid.size();
-        this->COLS = grid[0].size();
-        this->visit = vector<vector<bool>>(ROWS, vector<bool>(COLS, false));
+        int ROWS = grid.size(), COLS = grid[0].size();
+        vector<vector<int>> direct = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
+        vector<vector<bool>> visit(ROWS, vector<bool>(COLS, false));
+        queue<pair<int, int>> q;
 
         int land = 0, borderLand = 0;
         for (int r = 0; r < ROWS; r++) {
             for (int c = 0; c < COLS; c++) {
                 land += grid[r][c];
-                if (grid[r][c] == 1 && !visit[r][c] &&
+                if (grid[r][c] == 1 &&
                     (r == 0 || r == ROWS - 1 || c == 0 || c == COLS - 1)) {
-                    borderLand += dfs(r, c, grid);
+                    q.push({r, c});
+                    visit[r][c] = true;
                 }
             }
         }
-        return land - borderLand;
-    }
 
-private:
-    int dfs(int r, int c, vector<vector<int>>& grid) {
-        if (r < 0 || c < 0 || r == ROWS || c == COLS ||
-            grid[r][c] == 0 || visit[r][c]) {
-            return 0;
+        while (!q.empty()) {
+            auto [r, c] = q.front();
+            q.pop();
+            borderLand++;
+
+            for (auto& d : direct) {
+                int nr = r + d[0], nc = c + d[1];
+                if (nr >= 0 && nc >= 0 && nr < ROWS && nc < COLS &&
+                    grid[nr][nc] == 1 && !visit[nr][nc]) {
+                    q.push({nr, nc});
+                    visit[nr][nc] = true;
+                }
+            }
         }
-        visit[r][c] = true;
-        int res = 1;
-        for (auto& d : direct) {
-            res += dfs(r + d[0], c + d[1], grid);
-        }
-        return res;
+
+        return land - borderLand;
     }
 };
 ```
@@ -431,6 +621,180 @@ public class Solution {
 }
 ```
 
+```go
+func numEnclaves(grid [][]int) int {
+    ROWS, COLS := len(grid), len(grid[0])
+    direct := []int{0, 1, 0, -1, 0}
+    visit := make([][]bool, ROWS)
+    for i := range visit {
+        visit[i] = make([]bool, COLS)
+    }
+
+    q := [][]int{}
+    land, borderLand := 0, 0
+
+    for r := 0; r < ROWS; r++ {
+        for c := 0; c < COLS; c++ {
+            land += grid[r][c]
+            if grid[r][c] == 1 &&
+               (r == 0 || r == ROWS-1 || c == 0 || c == COLS-1) {
+                q = append(q, []int{r, c})
+                visit[r][c] = true
+            }
+        }
+    }
+
+    for len(q) > 0 {
+        cell := q[0]
+        q = q[1:]
+        r, c := cell[0], cell[1]
+        borderLand++
+
+        for d := 0; d < 4; d++ {
+            nr, nc := r+direct[d], c+direct[d+1]
+            if nr >= 0 && nc >= 0 && nr < ROWS && nc < COLS &&
+               grid[nr][nc] == 1 && !visit[nr][nc] {
+                q = append(q, []int{nr, nc})
+                visit[nr][nc] = true
+            }
+        }
+    }
+
+    return land - borderLand
+}
+```
+
+```kotlin
+class Solution {
+    fun numEnclaves(grid: Array<IntArray>): Int {
+        val ROWS = grid.size
+        val COLS = grid[0].size
+        val direct = intArrayOf(0, 1, 0, -1, 0)
+        val visit = Array(ROWS) { BooleanArray(COLS) }
+
+        val q: java.util.LinkedList<IntArray> = java.util.LinkedList()
+        var land = 0
+        var borderLand = 0
+
+        for (r in 0 until ROWS) {
+            for (c in 0 until COLS) {
+                land += grid[r][c]
+                if (grid[r][c] == 1 &&
+                    (r == 0 || r == ROWS - 1 || c == 0 || c == COLS - 1)) {
+                    q.offer(intArrayOf(r, c))
+                    visit[r][c] = true
+                }
+            }
+        }
+
+        while (q.isNotEmpty()) {
+            val (r, c) = q.poll()
+            borderLand++
+
+            for (d in 0 until 4) {
+                val nr = r + direct[d]
+                val nc = c + direct[d + 1]
+                if (nr in 0 until ROWS && nc in 0 until COLS &&
+                    grid[nr][nc] == 1 && !visit[nr][nc]) {
+                    q.offer(intArrayOf(nr, nc))
+                    visit[nr][nc] = true
+                }
+            }
+        }
+
+        return land - borderLand
+    }
+}
+```
+
+```swift
+class Solution {
+    func numEnclaves(_ grid: [[Int]]) -> Int {
+        let ROWS = grid.count, COLS = grid[0].count
+        let direct = [0, 1, 0, -1, 0]
+        var visit = Array(repeating: Array(repeating: false, count: COLS), count: ROWS)
+
+        var q = [[Int]]()
+        var land = 0, borderLand = 0
+
+        for r in 0..<ROWS {
+            for c in 0..<COLS {
+                land += grid[r][c]
+                if grid[r][c] == 1 &&
+                   (r == 0 || r == ROWS - 1 || c == 0 || c == COLS - 1) {
+                    q.append([r, c])
+                    visit[r][c] = true
+                }
+            }
+        }
+
+        while !q.isEmpty {
+            let cell = q.removeFirst()
+            let r = cell[0], c = cell[1]
+            borderLand += 1
+
+            for d in 0..<4 {
+                let nr = r + direct[d], nc = c + direct[d + 1]
+                if nr >= 0 && nc >= 0 && nr < ROWS && nc < COLS &&
+                   grid[nr][nc] == 1 && !visit[nr][nc] {
+                    q.append([nr, nc])
+                    visit[nr][nc] = true
+                }
+            }
+        }
+
+        return land - borderLand
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn num_enclaves(grid: Vec<Vec<i32>>) -> i32 {
+        let rows = grid.len();
+        let cols = grid[0].len();
+        let direct: [i32; 5] = [0, 1, 0, -1, 0];
+        let mut visit = vec![vec![false; cols]; rows];
+        let mut q = VecDeque::new();
+
+        let mut land = 0i32;
+        let mut border_land = 0i32;
+
+        for r in 0..rows {
+            for c in 0..cols {
+                land += grid[r][c];
+                if grid[r][c] == 1
+                    && (r == 0 || r == rows - 1 || c == 0 || c == cols - 1)
+                {
+                    q.push_back((r, c));
+                    visit[r][c] = true;
+                }
+            }
+        }
+
+        while let Some((r, c)) = q.pop_front() {
+            border_land += 1;
+            for d in 0..4 {
+                let nr = r as i32 + direct[d];
+                let nc = c as i32 + direct[d + 1];
+                if nr >= 0
+                    && nc >= 0
+                    && (nr as usize) < rows
+                    && (nc as usize) < cols
+                    && grid[nr as usize][nc as usize] == 1
+                    && !visit[nr as usize][nc as usize]
+                {
+                    visit[nr as usize][nc as usize] = true;
+                    q.push_back((nr as usize, nc as usize));
+                }
+            }
+        }
+
+        land - border_land
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -443,6 +807,20 @@ public class Solution {
 ---
 
 ## 3. Disjoint Set Union
+
+### Intuition
+
+Union-Find provides another perspective on this problem. We create a virtual boundary node and union all boundary land cells with it. We also union adjacent land cells together. After processing, the size of the boundary node's component tells us how many land cells can reach the boundary. The answer is total land minus this count (plus 1 to account for the virtual node itself being counted in the size).
+
+### Algorithm
+
+1. Create a DSU with size `ROWS * COLS + 1`, where index `N` represents the boundary.
+2. For each land cell:
+    - Count it toward total land.
+    - Union with adjacent land cells.
+    - If on the boundary (neighbor out of bounds), union with the virtual boundary node `N`.
+3. Get the size of the boundary component using `find(N)`.
+4. Return `land - borderLand + 1` (the +1 adjusts for the virtual boundary node).
 
 ::tabs-start
 
@@ -771,6 +1149,274 @@ public class Solution {
 }
 ```
 
+```go
+type DSU struct {
+    Parent []int
+    Size   []int
+}
+
+func NewDSU(n int) *DSU {
+    parent := make([]int, n+1)
+    size := make([]int, n+1)
+    for i := 0; i <= n; i++ {
+        parent[i] = i
+        size[i] = 1
+    }
+    return &DSU{Parent: parent, Size: size}
+}
+
+func (d *DSU) Find(node int) int {
+    if d.Parent[node] != node {
+        d.Parent[node] = d.Find(d.Parent[node])
+    }
+    return d.Parent[node]
+}
+
+func (d *DSU) Union(u, v int) bool {
+    pu, pv := d.Find(u), d.Find(v)
+    if pu == pv {
+        return false
+    }
+    if d.Size[pu] >= d.Size[pv] {
+        d.Size[pu] += d.Size[pv]
+        d.Parent[pv] = pu
+    } else {
+        d.Size[pv] += d.Size[pu]
+        d.Parent[pu] = pv
+    }
+    return true
+}
+
+func numEnclaves(grid [][]int) int {
+    ROWS, COLS := len(grid), len(grid[0])
+    N := ROWS * COLS
+    dsu := NewDSU(N)
+    directions := []int{0, 1, 0, -1, 0}
+    land := 0
+
+    for r := 0; r < ROWS; r++ {
+        for c := 0; c < COLS; c++ {
+            if grid[r][c] == 0 {
+                continue
+            }
+            land++
+            for d := 0; d < 4; d++ {
+                nr, nc := r+directions[d], c+directions[d+1]
+                if nr >= 0 && nc >= 0 && nr < ROWS && nc < COLS {
+                    if grid[nr][nc] == 1 {
+                        dsu.Union(r*COLS+c, nr*COLS+nc)
+                    }
+                } else {
+                    dsu.Union(N, r*COLS+c)
+                }
+            }
+        }
+    }
+
+    borderLand := dsu.Size[dsu.Find(N)]
+    return land - borderLand + 1
+}
+```
+
+```kotlin
+class DSU(n: Int) {
+    val parent = IntArray(n + 1) { it }
+    val size = IntArray(n + 1) { 1 }
+
+    fun find(node: Int): Int {
+        if (parent[node] != node) {
+            parent[node] = find(parent[node])
+        }
+        return parent[node]
+    }
+
+    fun union(u: Int, v: Int): Boolean {
+        val pu = find(u)
+        val pv = find(v)
+        if (pu == pv) return false
+        if (size[pu] >= size[pv]) {
+            size[pu] += size[pv]
+            parent[pv] = pu
+        } else {
+            size[pv] += size[pu]
+            parent[pu] = pv
+        }
+        return true
+    }
+}
+
+class Solution {
+    fun numEnclaves(grid: Array<IntArray>): Int {
+        val ROWS = grid.size
+        val COLS = grid[0].size
+        val N = ROWS * COLS
+        val dsu = DSU(N)
+        val directions = intArrayOf(0, 1, 0, -1, 0)
+        var land = 0
+
+        for (r in 0 until ROWS) {
+            for (c in 0 until COLS) {
+                if (grid[r][c] == 0) continue
+                land++
+                for (d in 0 until 4) {
+                    val nr = r + directions[d]
+                    val nc = c + directions[d + 1]
+                    if (nr in 0 until ROWS && nc in 0 until COLS) {
+                        if (grid[nr][nc] == 1) {
+                            dsu.union(r * COLS + c, nr * COLS + nc)
+                        }
+                    } else {
+                        dsu.union(N, r * COLS + c)
+                    }
+                }
+            }
+        }
+
+        val borderLand = dsu.size[dsu.find(N)]
+        return land - borderLand + 1
+    }
+}
+```
+
+```swift
+class DSU {
+    var parent: [Int]
+    var size: [Int]
+
+    init(_ n: Int) {
+        parent = Array(0...n)
+        size = Array(repeating: 1, count: n + 1)
+    }
+
+    func find(_ node: Int) -> Int {
+        if parent[node] != node {
+            parent[node] = find(parent[node])
+        }
+        return parent[node]
+    }
+
+    func union(_ u: Int, _ v: Int) -> Bool {
+        let pu = find(u), pv = find(v)
+        if pu == pv { return false }
+        if size[pu] >= size[pv] {
+            size[pu] += size[pv]
+            parent[pv] = pu
+        } else {
+            size[pv] += size[pu]
+            parent[pu] = pv
+        }
+        return true
+    }
+}
+
+class Solution {
+    func numEnclaves(_ grid: [[Int]]) -> Int {
+        let ROWS = grid.count, COLS = grid[0].count
+        let N = ROWS * COLS
+        let dsu = DSU(N)
+        let directions = [0, 1, 0, -1, 0]
+        var land = 0
+
+        for r in 0..<ROWS {
+            for c in 0..<COLS {
+                if grid[r][c] == 0 { continue }
+                land += 1
+                for d in 0..<4 {
+                    let nr = r + directions[d], nc = c + directions[d + 1]
+                    if nr >= 0 && nc >= 0 && nr < ROWS && nc < COLS {
+                        if grid[nr][nc] == 1 {
+                            _ = dsu.union(r * COLS + c, nr * COLS + nc)
+                        }
+                    } else {
+                        _ = dsu.union(N, r * COLS + c)
+                    }
+                }
+            }
+        }
+
+        let borderLand = dsu.size[dsu.find(N)]
+        return land - borderLand + 1
+    }
+}
+```
+
+```rust
+struct DSU {
+    parent: Vec<usize>,
+    size: Vec<usize>,
+}
+
+impl DSU {
+    fn new(n: usize) -> Self {
+        Self {
+            parent: (0..=n).collect(),
+            size: vec![1; n + 1],
+        }
+    }
+
+    fn find(&mut self, node: usize) -> usize {
+        if self.parent[node] != node {
+            self.parent[node] = self.find(self.parent[node]);
+        }
+        self.parent[node]
+    }
+
+    fn union(&mut self, u: usize, v: usize) -> bool {
+        let pu = self.find(u);
+        let pv = self.find(v);
+        if pu == pv {
+            return false;
+        }
+        if self.size[pu] >= self.size[pv] {
+            self.size[pu] += self.size[pv];
+            self.parent[pv] = pu;
+        } else {
+            self.size[pv] += self.size[pu];
+            self.parent[pu] = pv;
+        }
+        true
+    }
+}
+
+impl Solution {
+    pub fn num_enclaves(grid: Vec<Vec<i32>>) -> i32 {
+        let rows = grid.len();
+        let cols = grid[0].len();
+        let n = rows * cols;
+        let mut dsu = DSU::new(n);
+        let directions: [i32; 5] = [0, 1, 0, -1, 0];
+        let mut land = 0i32;
+
+        for r in 0..rows {
+            for c in 0..cols {
+                if grid[r][c] == 0 {
+                    continue;
+                }
+                land += 1;
+                for d in 0..4 {
+                    let nr = r as i32 + directions[d];
+                    let nc = c as i32 + directions[d + 1];
+                    if nr >= 0
+                        && nc >= 0
+                        && (nr as usize) < rows
+                        && (nc as usize) < cols
+                    {
+                        if grid[nr as usize][nc as usize] == 1 {
+                            dsu.union(r * cols + c, nr as usize * cols + nc as usize);
+                        }
+                    } else {
+                        dsu.union(n, r * cols + c);
+                    }
+                }
+            }
+        }
+
+        let border_land = dsu.size[dsu.find(n)] as i32;
+        land - border_land + 1
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -779,3 +1425,19 @@ public class Solution {
 - Space complexity: $O(m * n)$
 
 > Where $m$ is the number of rows and $n$ is the number of columns in the given grid.
+
+---
+
+## Common Pitfalls
+
+### Counting All Land Cells Instead of Enclaves Only
+
+A common mistake is to count all land cells that are not on the boundary. However, an enclave is defined as land that cannot reach any boundary cell through adjacent land connections. Interior land cells connected to boundary land are not enclaves and must be excluded from the count.
+
+### Starting DFS/BFS From Interior Cells Instead of Boundary
+
+The efficient approach starts traversal from boundary land cells and marks all reachable land. Starting from each interior cell and checking if it can reach the boundary is much slower and prone to errors. Always initiate searches from boundary cells to find non-enclave land.
+
+### Off-by-One Errors in Boundary Detection
+
+When checking if a cell is on the boundary, ensure you correctly identify cells where row equals 0 or `ROWS - 1`, and column equals 0 or `COLS - 1`. Using incorrect boundary conditions (like `row == ROWS` instead of `row == ROWS - 1`) will cause cells to be misclassified as boundary or interior cells.

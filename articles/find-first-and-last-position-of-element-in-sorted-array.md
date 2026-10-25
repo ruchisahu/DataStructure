@@ -1,4 +1,27 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Binary Search** - Finding elements in sorted arrays with O(log n) time complexity
+- **Lower Bound / Upper Bound** - Modifying binary search to find the first or last occurrence of a target
+- **Sorted Array Properties** - Understanding that duplicates appear consecutively in sorted arrays
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+Since the array is sorted, all occurrences of the target will be consecutive. We can scan through the array once, recording the first and last positions where we encounter the target. The first time we see the target, we set both the start and end to that index. For subsequent matches, we only update the end position.
+
+### Algorithm
+
+1. Initialize result array `res = [-1, -1]`.
+2. Iterate through the array with index `i`:
+    - If `nums[i]` equals the target:
+        - If `res[0]` is still `-1`, set both `res[0]` and `res[1]` to `i`.
+        - Otherwise, update `res[1]` to `i`.
+3. Return `res`.
 
 ::tabs-start
 
@@ -102,6 +125,88 @@ public class Solution {
 }
 ```
 
+```go
+func searchRange(nums []int, target int) []int {
+    res := []int{-1, -1}
+
+    for i, num := range nums {
+        if num == target {
+            if res[0] == -1 {
+                res[0] = i
+                res[1] = i
+            } else {
+                res[1] = i
+            }
+        }
+    }
+
+    return res
+}
+```
+
+```kotlin
+class Solution {
+    fun searchRange(nums: IntArray, target: Int): IntArray {
+        val res = intArrayOf(-1, -1)
+
+        for (i in nums.indices) {
+            if (nums[i] == target) {
+                if (res[0] == -1) {
+                    res[0] = i
+                    res[1] = i
+                } else {
+                    res[1] = i
+                }
+            }
+        }
+
+        return res
+    }
+}
+```
+
+```swift
+class Solution {
+    func searchRange(_ nums: [Int], _ target: Int) -> [Int] {
+        var res = [-1, -1]
+
+        for i in 0..<nums.count {
+            if nums[i] == target {
+                if res[0] == -1 {
+                    res[0] = i
+                    res[1] = i
+                } else {
+                    res[1] = i
+                }
+            }
+        }
+
+        return res
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn search_range(nums: Vec<i32>, target: i32) -> Vec<i32> {
+        let mut res = vec![-1, -1];
+
+        for i in 0..nums.len() {
+            if nums[i] == target {
+                if res[0] == -1 {
+                    res[0] = i as i32;
+                    res[1] = i as i32;
+                } else {
+                    res[1] = i as i32;
+                }
+            }
+        }
+
+        res
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -112,6 +217,20 @@ public class Solution {
 ---
 
 ## 2. Binary Search - I
+
+### Intuition
+
+Binary search can find any occurrence of the target in O(log n) time, but we need both the first and last occurrences. The key insight is that when we find the target, instead of returning immediately, we continue searching. For the leftmost occurrence, we search the left half after finding a match. For the rightmost, we search the right half. This gives us two separate binary searches with a bias parameter.
+
+### Algorithm
+
+1. Implement a binary search helper that takes a `leftBias` parameter.
+2. When `nums[m] == target`:
+    - Record index `m` as a candidate.
+    - If `leftBias` is `true`, continue searching left (`r = m - 1`).
+    - Otherwise, continue searching right (`l = m + 1`).
+3. Call the helper twice: once with `leftBias = true` for the start position, and once with `leftBias = false` for the end position.
+4. Return `[left, right]`.
 
 ::tabs-start
 
@@ -275,6 +394,128 @@ public class Solution {
 }
 ```
 
+```go
+func searchRange(nums []int, target int) []int {
+    left := binarySearch(nums, target, true)
+    right := binarySearch(nums, target, false)
+    return []int{left, right}
+}
+
+func binarySearch(nums []int, target int, leftBias bool) int {
+    l, r, i := 0, len(nums)-1, -1
+    for l <= r {
+        m := (l + r) / 2
+        if target > nums[m] {
+            l = m + 1
+        } else if target < nums[m] {
+            r = m - 1
+        } else {
+            i = m
+            if leftBias {
+                r = m - 1
+            } else {
+                l = m + 1
+            }
+        }
+    }
+    return i
+}
+```
+
+```kotlin
+class Solution {
+    fun searchRange(nums: IntArray, target: Int): IntArray {
+        val left = binarySearch(nums, target, true)
+        val right = binarySearch(nums, target, false)
+        return intArrayOf(left, right)
+    }
+
+    private fun binarySearch(nums: IntArray, target: Int, leftBias: Boolean): Int {
+        var l = 0
+        var r = nums.size - 1
+        var i = -1
+        while (l <= r) {
+            val m = (l + r) / 2
+            if (target > nums[m]) {
+                l = m + 1
+            } else if (target < nums[m]) {
+                r = m - 1
+            } else {
+                i = m
+                if (leftBias) {
+                    r = m - 1
+                } else {
+                    l = m + 1
+                }
+            }
+        }
+        return i
+    }
+}
+```
+
+```swift
+class Solution {
+    func searchRange(_ nums: [Int], _ target: Int) -> [Int] {
+        let left = binarySearch(nums, target, true)
+        let right = binarySearch(nums, target, false)
+        return [left, right]
+    }
+
+    private func binarySearch(_ nums: [Int], _ target: Int, _ leftBias: Bool) -> Int {
+        var l = 0
+        var r = nums.count - 1
+        var i = -1
+        while l <= r {
+            let m = (l + r) / 2
+            if target > nums[m] {
+                l = m + 1
+            } else if target < nums[m] {
+                r = m - 1
+            } else {
+                i = m
+                if leftBias {
+                    r = m - 1
+                } else {
+                    l = m + 1
+                }
+            }
+        }
+        return i
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn search_range(nums: Vec<i32>, target: i32) -> Vec<i32> {
+        let left = Self::binary_search(&nums, target, true);
+        let right = Self::binary_search(&nums, target, false);
+        vec![left, right]
+    }
+
+    fn binary_search(nums: &[i32], target: i32, left_bias: bool) -> i32 {
+        let (mut l, mut r, mut i) = (0i32, nums.len() as i32 - 1, -1i32);
+        while l <= r {
+            let m = (l + r) / 2;
+            if target > nums[m as usize] {
+                l = m + 1;
+            } else if target < nums[m as usize] {
+                r = m - 1;
+            } else {
+                i = m;
+                if left_bias {
+                    r = m - 1;
+                } else {
+                    l = m + 1;
+                }
+            }
+        }
+        i
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -285,6 +526,18 @@ public class Solution {
 ---
 
 ## 3. Binary Search - II
+
+### Intuition
+
+We can use a single style of binary search that finds the insertion point for a value. The insertion point for `target` gives us the first occurrence (if it exists). The insertion point for `target + 1` gives us one past the last occurrence. This approach uses the standard lower-bound binary search pattern, which finds the smallest index where `nums[index] >= target`.
+
+### Algorithm
+
+1. Implement a binary search that finds the leftmost position where `nums[m] >= target`.
+2. Find `start = binarySearch(target)`.
+3. If `start` equals the array length or `nums[start] != target`, return `[-1, -1]`.
+4. Find `end = binarySearch(target + 1) - 1`.
+5. Return `[start, end]`.
 
 ::tabs-start
 
@@ -431,6 +684,118 @@ public class Solution {
 }
 ```
 
+```go
+func searchRange(nums []int, target int) []int {
+    n := len(nums)
+
+    binarySearch := func(t int) int {
+        l, r := 0, n
+        for l < r {
+            m := l + (r-l)/2
+            if nums[m] >= t {
+                r = m
+            } else {
+                l = m + 1
+            }
+        }
+        return l
+    }
+
+    start := binarySearch(target)
+    if start == n || nums[start] != target {
+        return []int{-1, -1}
+    }
+
+    return []int{start, binarySearch(target+1) - 1}
+}
+```
+
+```kotlin
+class Solution {
+    fun searchRange(nums: IntArray, target: Int): IntArray {
+        val n = nums.size
+
+        fun binarySearch(t: Int): Int {
+            var l = 0
+            var r = n
+            while (l < r) {
+                val m = l + (r - l) / 2
+                if (nums[m] >= t) {
+                    r = m
+                } else {
+                    l = m + 1
+                }
+            }
+            return l
+        }
+
+        val start = binarySearch(target)
+        if (start == n || nums[start] != target) {
+            return intArrayOf(-1, -1)
+        }
+
+        return intArrayOf(start, binarySearch(target + 1) - 1)
+    }
+}
+```
+
+```swift
+class Solution {
+    func searchRange(_ nums: [Int], _ target: Int) -> [Int] {
+        let n = nums.count
+
+        func binarySearch(_ t: Int) -> Int {
+            var l = 0
+            var r = n
+            while l < r {
+                let m = l + (r - l) / 2
+                if nums[m] >= t {
+                    r = m
+                } else {
+                    l = m + 1
+                }
+            }
+            return l
+        }
+
+        let start = binarySearch(target)
+        if start == n || nums[start] != target {
+            return [-1, -1]
+        }
+
+        return [start, binarySearch(target + 1) - 1]
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn search_range(nums: Vec<i32>, target: i32) -> Vec<i32> {
+        let n = nums.len();
+
+        let binary_search = |t: i32| -> usize {
+            let (mut l, mut r) = (0, n);
+            while l < r {
+                let m = l + (r - l) / 2;
+                if nums[m] >= t {
+                    r = m;
+                } else {
+                    l = m + 1;
+                }
+            }
+            l
+        };
+
+        let start = binary_search(target);
+        if start == n || nums[start] != target {
+            return vec![-1, -1];
+        }
+
+        vec![start as i32, (binary_search(target + 1) - 1) as i32]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -441,6 +806,17 @@ public class Solution {
 ---
 
 ## 4. In-Built Function
+
+### Intuition
+
+Most programming languages provide built-in functions for binary search that find lower and upper bounds. These functions are optimized and well-tested, making them a practical choice when available. The lower bound gives the first occurrence, and the upper bound (minus one) gives the last occurrence.
+
+### Algorithm
+
+1. Use the language's built-in lower-bound function to find the first position where the target could be inserted.
+2. If this position is out of bounds or doesn't contain the target, return `[-1, -1]`.
+3. Use the upper-bound function to find the position just after the last occurrence.
+4. Return `[lower_bound, upper_bound - 1]`.
 
 ::tabs-start
 
@@ -545,9 +921,82 @@ public class Solution {
 }
 ```
 
+```go
+func searchRange(nums []int, target int) []int {
+    left := sort.SearchInts(nums, target)
+    if left >= len(nums) || nums[left] != target {
+        return []int{-1, -1}
+    }
+
+    right := sort.SearchInts(nums, target+1) - 1
+    return []int{left, right}
+}
+```
+
+```kotlin
+class Solution {
+    fun searchRange(nums: IntArray, target: Int): IntArray {
+        val left = nums.binarySearch(target).let {
+            if (it < 0) return intArrayOf(-1, -1)
+            var idx = it
+            while (idx > 0 && nums[idx - 1] == target) idx--
+            idx
+        }
+
+        var right = left
+        while (right < nums.size - 1 && nums[right + 1] == target) right++
+
+        return intArrayOf(left, right)
+    }
+}
+```
+
+```swift
+class Solution {
+    func searchRange(_ nums: [Int], _ target: Int) -> [Int] {
+        guard let idx = nums.firstIndex(of: target) else {
+            return [-1, -1]
+        }
+        guard let lastIdx = nums.lastIndex(of: target) else {
+            return [-1, -1]
+        }
+        return [idx, lastIdx]
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn search_range(nums: Vec<i32>, target: i32) -> Vec<i32> {
+        let left = nums.partition_point(|&x| x < target);
+        if left >= nums.len() || nums[left] != target {
+            return vec![-1, -1];
+        }
+        let right = nums.partition_point(|&x| x <= target) - 1;
+        vec![left as i32, right as i32]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(\log n)$
 - Space complexity: $O(1)$
+
+---
+
+## Common Pitfalls
+
+### Returning Early When Target Is Found
+
+Standard binary search returns immediately upon finding the target, but this gives an arbitrary occurrence, not the first or last. You must continue searching (leftward for first, rightward for last) even after finding a match to locate the boundary positions.
+
+### Not Handling the Target-Not-Found Case
+
+After performing binary search for the first occurrence, you must verify that the found index actually contains the target. If the target does not exist in the array, the binary search returns an insertion point, not a valid position. Always check bounds and value equality before returning.
+
+### Off-by-One Errors in Boundary Calculation
+
+When using lower-bound and upper-bound style searches, the upper bound points to one past the last occurrence. Forgetting to subtract 1 when computing the end position, or using incorrect loop conditions (`l <= r` vs `l < r`), leads to wrong indices or infinite loops.

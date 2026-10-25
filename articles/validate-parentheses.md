@@ -1,4 +1,33 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Stack Data Structure** - Understanding LIFO (Last-In-First-Out) operations for push and pop
+- **Hash Maps** - Using dictionaries to map closing brackets to their corresponding opening brackets
+- **String Traversal** - Iterating through characters in a string one by one
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+The idea is simple:
+valid parentheses must always appear in matching pairs like `"()"`, `"{}"`, or `"[]"`.
+So if the string is valid, we can repeatedly remove these matching pairs until nothing is left.
+If, after removing all possible pairs, the string becomes empty, then the parentheses were properly matched.
+Otherwise, some unmatched characters remain, meaning the string is invalid.
+
+### Algorithm
+
+1. While the string still contains `"()"`, `"{}"`, or `"[]"`:
+    - Remove all occurrences of those pairs.
+2. After no more pairs can be removed:
+    - If the string is empty, return `true`.
+    - Otherwise, return `false`.
+
+
+<br>
 
 ::tabs-start
 
@@ -119,6 +148,24 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn is_valid(s: String) -> bool {
+        let mut s = s;
+        loop {
+            let prev = s.len();
+            s = s.replace("()", "");
+            s = s.replace("{}", "");
+            s = s.replace("[]", "");
+            if s.len() == prev {
+                break;
+            }
+        }
+        s.is_empty()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -129,6 +176,31 @@ class Solution {
 ---
 
 ## 2. Stack
+
+### Intuition
+
+Valid parentheses must follow a last-opened, first-closed order — just like stacking plates.
+So we use a **stack** to track opening brackets.
+Whenever we see a closing bracket, we simply check whether it matches the most recent opening bracket on top of the stack.
+If it matches, we remove that opening bracket.
+If it doesn't match (or the stack is empty), the string is invalid.
+A valid string ends with an empty stack.
+
+### Algorithm
+
+1. Create a `stack` to store opening brackets.
+2. For each character `c` in the string:
+    - If it is an opening bracket, push it onto the `stack`.
+    - If it is a closing bracket:
+        - Check if the `stack` is not empty **and** its top matches the corresponding opening bracket.
+        - If yes, pop the `stack`.
+        - Otherwise, return `false`.
+3. After processing all characters:
+    - If the `stack` is empty, return `true`.
+    - Otherwise, return `false`.
+
+
+<br>
 
 ::tabs-start
 
@@ -154,7 +226,7 @@ class Solution:
 public class Solution {
     public boolean isValid(String s) {
         Stack<Character> stack = new Stack<>();
-        java.util.Map<Character, Character> closeToOpen = new java.util.HashMap<>();
+        Map<Character, Character> closeToOpen = new HashMap<>();
         closeToOpen.put(')', '(');
         closeToOpen.put(']', '[');
         closeToOpen.put('}', '{');
@@ -263,25 +335,26 @@ public class Solution {
 
 ```go
 func isValid(s string) bool {
-    stack := linkedliststack.New()
+    stack := []rune{}
     closeToOpen := map[rune]rune{')': '(', ']': '[', '}': '{'}
 
     for _, c := range s {
         if open, exists := closeToOpen[c]; exists {
-            if !stack.Empty() {
-                top, ok := stack.Pop()
-                if ok && top.(rune) != open {
+            if len(stack) > 0 {
+                top := stack[len(stack)-1]
+                stack = stack[:len(stack)-1]
+                if top != open {
                     return false
                 }
             } else {
                 return false
             }
         } else {
-            stack.Push(c)
+            stack = append(stack, c)
         }
     }
 
-    return stack.Empty()
+    return len(stack) == 0
 }
 ```
 
@@ -331,9 +404,66 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn is_valid(s: String) -> bool {
+        let mut stack = Vec::new();
+        let close_to_open: HashMap<char, char> =
+            [(')', '('), (']', '['), ('}', '{')].into();
+
+        for c in s.chars() {
+            if let Some(&open) = close_to_open.get(&c) {
+                if !stack.is_empty() && *stack.last().unwrap() == open {
+                    stack.pop();
+                } else {
+                    return false;
+                }
+            } else {
+                stack.push(c);
+            }
+        }
+        stack.is_empty()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(n)$
+
+---
+
+## Common Pitfalls
+
+### Checking Stack Empty Before Popping
+
+When encountering a closing bracket, you must verify the stack is not empty before checking the top element. Attempting to pop from an empty stack causes an error.
+
+```python
+# Wrong: crashes on empty stack
+if stack[-1] == closeToOpen[c]:
+# Correct: check stack first
+if stack and stack[-1] == closeToOpen[c]:
+```
+
+### Forgetting to Check if Stack is Empty at the End
+
+After processing all characters, some opening brackets might remain unmatched. The string `"(()"` processes without errors but leaves `"("` on the stack, making it invalid.
+
+### Mixing Up Opening and Closing Brackets
+
+In the stack implementation above, the stack stores opening brackets, so the mapping goes from closing brackets to their corresponding opening brackets. Look up the mapping when you encounter a closing bracket.
+
+```python
+# Mapping used above: closing -> opening
+closeToOpen = {")": "(", "]": "[", "}": "{"}
+```
+
+An opening-to-closing mapping is also valid if you instead push the expected closing bracket for each opening bracket. When a closing bracket arrives, reject an empty stack or a mismatch with the stack's top, then pop on a match. The stack must still be empty at the end.
+
+### Using Wrong Data Structure
+
+Using a queue instead of a stack fails because parentheses follow LIFO (last-in, first-out) order. The most recent opening bracket must be closed first, which requires stack behavior.

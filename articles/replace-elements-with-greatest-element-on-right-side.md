@@ -1,4 +1,25 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Array Traversal** - Iterating through arrays both forward and backward
+- **Suffix Maximum Pattern** - Maintaining a running maximum while traversing from right to left
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+For each element at index `i`, we need to find the maximum value among all elements to its right. The most straightforward approach is to scan every element to the right for each position using index `j`. The last element has no elements to its right, so it becomes `-1`.
+
+### Algorithm
+
+1. Create a result array `ans` of the same size as the input.
+2. For each index `i`, initialize `rightMax` to `-1`.
+3. Iterate through all indices `j` from `i + 1` to the end, updating `rightMax` with the maximum value found.
+4. Store `rightMax` in `ans` at position `i`.
+5. Return the `ans` array.
 
 ::tabs-start
 
@@ -88,6 +109,74 @@ public class Solution {
 }
 ```
 
+```go
+func replaceElements(arr []int) []int {
+    n := len(arr)
+    ans := make([]int, n)
+    for i := 0; i < n; i++ {
+        rightMax := -1
+        for j := i + 1; j < n; j++ {
+            if arr[j] > rightMax {
+                rightMax = arr[j]
+            }
+        }
+        ans[i] = rightMax
+    }
+    return ans
+}
+```
+
+```kotlin
+class Solution {
+    fun replaceElements(arr: IntArray): IntArray {
+        val n = arr.size
+        val ans = IntArray(n)
+        for (i in 0 until n) {
+            var rightMax = -1
+            for (j in i + 1 until n) {
+                rightMax = maxOf(rightMax, arr[j])
+            }
+            ans[i] = rightMax
+        }
+        return ans
+    }
+}
+```
+
+```swift
+class Solution {
+    func replaceElements(_ arr: [Int]) -> [Int] {
+        let n = arr.count
+        var ans = [Int](repeating: 0, count: n)
+        for i in 0..<n {
+            var rightMax = -1
+            for j in (i + 1)..<n {
+                rightMax = max(rightMax, arr[j])
+            }
+            ans[i] = rightMax
+        }
+        return ans
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn replace_elements(arr: Vec<i32>) -> Vec<i32> {
+        let n = arr.len();
+        let mut ans = vec![0; n];
+        for i in 0..n {
+            let mut right_max = -1;
+            for j in (i + 1)..n {
+                right_max = right_max.max(arr[j]);
+            }
+            ans[i] = right_max;
+        }
+        ans
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -95,9 +184,24 @@ public class Solution {
 - Time complexity: $O(n ^ 2)$
 - Space complexity: $O(1)$
 
+> The output array is not counted towards space complexity, as the [standard convention](https://en.wikipedia.org/wiki/DSPACE) measures only auxiliary working space.
+
 ---
 
 ## 2. Suffix Max
+
+### Intuition
+
+By traversing right to left, we can maintain a running maximum of all elements seen so far in `rightMax`. When we visit position `i`, the current running maximum represents the greatest element to the right of `i`. We then update `rightMax` to include `arr[i]` for the next iteration. This eliminates redundant scanning.
+
+### Algorithm
+
+1. Create a result array `ans` of the same size as the input.
+2. Initialize `rightMax` to `-1` (the value for the last position).
+3. Traverse the array from right to left using index `i`.
+4. For each index `i`, store the current `rightMax` in `ans`.
+5. Update `rightMax` to be the maximum of itself and `arr[i]`.
+6. Return the `ans` array.
 
 ::tabs-start
 
@@ -178,9 +282,83 @@ public class Solution {
 }
 ```
 
+```go
+func replaceElements(arr []int) []int {
+    n := len(arr)
+    ans := make([]int, n)
+    rightMax := -1
+    for i := n - 1; i >= 0; i-- {
+        ans[i] = rightMax
+        if arr[i] > rightMax {
+            rightMax = arr[i]
+        }
+    }
+    return ans
+}
+```
+
+```kotlin
+class Solution {
+    fun replaceElements(arr: IntArray): IntArray {
+        val n = arr.size
+        val ans = IntArray(n)
+        var rightMax = -1
+        for (i in n - 1 downTo 0) {
+            ans[i] = rightMax
+            rightMax = maxOf(rightMax, arr[i])
+        }
+        return ans
+    }
+}
+```
+
+```swift
+class Solution {
+    func replaceElements(_ arr: [Int]) -> [Int] {
+        let n = arr.count
+        var ans = [Int](repeating: 0, count: n)
+        var rightMax = -1
+        for i in stride(from: n - 1, through: 0, by: -1) {
+            ans[i] = rightMax
+            rightMax = max(rightMax, arr[i])
+        }
+        return ans
+    }
+}
+```
+
+```rust
+impl Solution {
+    pub fn replace_elements(arr: Vec<i32>) -> Vec<i32> {
+        let n = arr.len();
+        let mut ans = vec![0; n];
+        let mut right_max = -1;
+        for i in (0..n).rev() {
+            ans[i] = right_max;
+            right_max = right_max.max(arr[i]);
+        }
+        ans
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(1)$
+
+> The output array is not counted towards space complexity, as the [standard convention](https://en.wikipedia.org/wiki/DSPACE) measures only auxiliary working space.
+
+---
+
+## Common Pitfalls
+
+### Traversing Left to Right
+
+Processing the array from left to right requires recalculating the maximum of all right elements for each position, resulting in O(n^2) time complexity. The optimal approach traverses right to left, maintaining a running maximum in a single pass.
+
+### Updating the Maximum Before Storing the Result
+
+When traversing right to left, the current element's value must be stored in the result before updating `rightMax`. Updating `rightMax` first causes the current element to incorrectly include itself in its own replacement value.

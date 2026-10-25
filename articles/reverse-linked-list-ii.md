@@ -1,4 +1,29 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Reverse Linked List (Basic)** - This problem builds on the standard linked list reversal technique
+- **Dummy Node Technique** - Using a dummy node to simplify edge cases when the head might change
+- **Linked List Traversal** - Navigating to specific positions in a linked list by counting nodes
+- **Pointer Manipulation** - Carefully managing multiple pointers to disconnect, reverse, and reconnect list segments
+
+---
+
 ## 1. Recursion - I
+
+### Intuition
+
+To reverse a portion of a linked list, we first locate the sublist boundaries, disconnect it from the rest, reverse it using standard list reversal, and reconnect the pieces. A dummy node simplifies edge cases where the reversal starts at the head. The recursive reversal handles the sublist by making each node point to its predecessor.
+
+### Algorithm
+
+1. Create a dummy node pointing to the head to handle edge cases.
+2. Traverse to find the node just before position `left` (call it `prev`).
+3. Identify the sublist head `sublist_head` and traverse to find the sublist tail `sublist_tail` at position `right`.
+4. Save the node after the sublist (`nextNode`) and disconnect the sublist by setting `sublist_tail.next` to `null`.
+5. Recursively reverse the sublist: base case returns the single node; otherwise, recurse on the next node and make it point back.
+6. Connect `prev` to the new sublist head (returned from reversal) and connect the original sublist head (now tail) to `nextNode`.
+7. Return `dummy.next`.
 
 ::tabs-start
 
@@ -245,6 +270,191 @@ public class Solution {
 }
 ```
 
+```go
+/**
+ * Definition for singly-linked list.
+ * type ListNode struct {
+ *     Val int
+ *     Next *ListNode
+ * }
+ */
+func reverseBetween(head *ListNode, left int, right int) *ListNode {
+    dummy := &ListNode{Val: 0, Next: head}
+    prev := dummy
+
+    for i := 0; i < left-1; i++ {
+        prev = prev.Next
+    }
+
+    sublistHead := prev.Next
+    sublistTail := sublistHead
+    for i := 0; i < right-left; i++ {
+        sublistTail = sublistTail.Next
+    }
+
+    nextNode := sublistTail.Next
+    sublistTail.Next = nil
+
+    var reverseList func(*ListNode) *ListNode
+    reverseList = func(node *ListNode) *ListNode {
+        if node == nil {
+            return nil
+        }
+        newHead := node
+        if node.Next != nil {
+            newHead = reverseList(node.Next)
+            node.Next.Next = node
+        }
+        node.Next = nil
+        return newHead
+    }
+
+    prev.Next = reverseList(sublistHead)
+    sublistHead.Next = nextNode
+
+    return dummy.Next
+}
+```
+
+```kotlin
+/**
+ * Example:
+ * var li = ListNode(5)
+ * var v = li.`val`
+ * Definition for singly-linked list.
+ * class ListNode(var `val`: Int) {
+ *     var next: ListNode? = null
+ * }
+ */
+class Solution {
+    fun reverseBetween(head: ListNode?, left: Int, right: Int): ListNode? {
+        val dummy = ListNode(0)
+        dummy.next = head
+        var prev: ListNode? = dummy
+
+        for (i in 0 until left - 1) {
+            prev = prev?.next
+        }
+
+        val sublistHead = prev?.next
+        var sublistTail = sublistHead
+        for (i in 0 until right - left) {
+            sublistTail = sublistTail?.next
+        }
+
+        val nextNode = sublistTail?.next
+        sublistTail?.next = null
+
+        prev?.next = reverseList(sublistHead)
+        sublistHead?.next = nextNode
+
+        return dummy.next
+    }
+
+    private fun reverseList(head: ListNode?): ListNode? {
+        if (head == null) return null
+
+        var newHead = head
+        if (head.next != null) {
+            newHead = reverseList(head.next)
+            head.next?.next = head
+        }
+        head.next = null
+        return newHead
+    }
+}
+```
+
+```swift
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     public var val: Int
+ *     public var next: ListNode?
+ *     public init() { self.val = 0; self.next = nil; }
+ *     public init(_ val: Int) { self.val = val; self.next = nil; }
+ *     public init(_ val: Int, _ next: ListNode?) { self.val = val; self.next = next; }
+ * }
+ */
+class Solution {
+    func reverseBetween(_ head: ListNode?, _ left: Int, _ right: Int) -> ListNode? {
+        let dummy = ListNode(0, head)
+        var prev: ListNode? = dummy
+
+        for _ in 0..<(left - 1) {
+            prev = prev?.next
+        }
+
+        let sublistHead = prev?.next
+        var sublistTail = sublistHead
+        for _ in 0..<(right - left) {
+            sublistTail = sublistTail?.next
+        }
+
+        let nextNode = sublistTail?.next
+        sublistTail?.next = nil
+
+        prev?.next = reverseList(sublistHead)
+        sublistHead?.next = nextNode
+
+        return dummy.next
+    }
+
+    private func reverseList(_ head: ListNode?) -> ListNode? {
+        if head == nil {
+            return nil
+        }
+
+        var newHead = head
+        if head?.next != nil {
+            newHead = reverseList(head?.next)
+            head?.next?.next = head
+        }
+        head?.next = nil
+        return newHead
+    }
+}
+```
+
+```rust
+// Definition for singly-linked list.
+// #[derive(PartialEq, Eq, Clone, Debug)]
+// pub struct ListNode {
+//     pub val: i32,
+//     pub next: Option<Box<ListNode>>,
+// }
+impl Solution {
+    pub fn reverse_between(
+        head: Option<Box<ListNode>>, left: i32, right: i32,
+    ) -> Option<Box<ListNode>> {
+        let mut dummy = Box::new(ListNode { val: 0, next: head });
+        let mut prev = &mut dummy;
+        for _ in 0..left - 1 {
+            prev = prev.next.as_mut().unwrap();
+        }
+
+        let mut curr = prev.next.take();
+        let mut reversed: Option<Box<ListNode>> = None;
+        for _ in 0..right - left + 1 {
+            let mut node = curr.unwrap();
+            curr = node.next.take();
+            node.next = reversed;
+            reversed = Some(node);
+        }
+
+        // Connect tail of reversed portion to remainder
+        let mut tail = &mut reversed;
+        while tail.as_ref().unwrap().next.is_some() {
+            tail = &mut tail.as_mut().unwrap().next;
+        }
+        tail.as_mut().unwrap().next = curr;
+        prev.next = reversed;
+
+        dummy.next
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -255,6 +465,20 @@ public class Solution {
 ---
 
 ## 2. Recursion - II
+
+### Intuition
+
+This approach uses recursion to navigate to the start of the reversal range. Once `left` equals 1, we reverse the first `right` nodes using a helper that tracks the successor node (the node after the reversed portion). The key insight is that as recursion unwinds, we can rewire pointers to achieve the reversal while maintaining the connection to the rest of the list.
+
+### Algorithm
+
+1. If `left` is 1, call the helper function `reverseList` to reverse the first `right` nodes.
+2. Otherwise, recurse with `head.next` and decremented `left` and `right` values, then attach the result to `head.next`.
+3. The helper function `reverseList` reverses `n` nodes starting from the given node:
+    - Base case: when `n` is 1, save the `successor` (next node) and return current node.
+    - Recurse on the next node with `n - 1`.
+    - After recursion, make the next node point back to current and set current's next to the saved `successor`.
+4. Return the new head of the reversed portion.
 
 ::tabs-start
 
@@ -421,6 +645,144 @@ public class Solution {
 }
 ```
 
+```go
+/**
+ * Definition for singly-linked list.
+ * type ListNode struct {
+ *     Val int
+ *     Next *ListNode
+ * }
+ */
+func reverseBetween(head *ListNode, left int, right int) *ListNode {
+    var successor *ListNode
+
+    var reverseList func(*ListNode, int) *ListNode
+    reverseList = func(node *ListNode, n int) *ListNode {
+        if n == 1 {
+            successor = node.Next
+            return node
+        }
+        newHead := reverseList(node.Next, n-1)
+        node.Next.Next = node
+        node.Next = successor
+        return newHead
+    }
+
+    if left == 1 {
+        return reverseList(head, right)
+    }
+    head.Next = reverseBetween(head.Next, left-1, right-1)
+    return head
+}
+```
+
+```kotlin
+/**
+ * Example:
+ * var li = ListNode(5)
+ * var v = li.`val`
+ * Definition for singly-linked list.
+ * class ListNode(var `val`: Int) {
+ *     var next: ListNode? = null
+ * }
+ */
+class Solution {
+    private var successor: ListNode? = null
+
+    fun reverseBetween(head: ListNode?, left: Int, right: Int): ListNode? {
+        if (left == 1) {
+            return reverseList(head, right)
+        }
+        head?.next = reverseBetween(head?.next, left - 1, right - 1)
+        return head
+    }
+
+    private fun reverseList(node: ListNode?, n: Int): ListNode? {
+        if (n == 1) {
+            successor = node?.next
+            return node
+        }
+        val newHead = reverseList(node?.next, n - 1)
+        node?.next?.next = node
+        node?.next = successor
+        return newHead
+    }
+}
+```
+
+```swift
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     public var val: Int
+ *     public var next: ListNode?
+ *     public init() { self.val = 0; self.next = nil; }
+ *     public init(_ val: Int) { self.val = val; self.next = nil; }
+ *     public init(_ val: Int, _ next: ListNode?) { self.val = val; self.next = next; }
+ * }
+ */
+class Solution {
+    private var successor: ListNode? = nil
+
+    func reverseBetween(_ head: ListNode?, _ left: Int, _ right: Int) -> ListNode? {
+        if left == 1 {
+            return reverseList(head, right)
+        }
+        head?.next = reverseBetween(head?.next, left - 1, right - 1)
+        return head
+    }
+
+    private func reverseList(_ node: ListNode?, _ n: Int) -> ListNode? {
+        if n == 1 {
+            successor = node?.next
+            return node
+        }
+        let newHead = reverseList(node?.next, n - 1)
+        node?.next?.next = node
+        node?.next = successor
+        return newHead
+    }
+}
+```
+
+```rust
+// Definition for singly-linked list.
+// #[derive(PartialEq, Eq, Clone, Debug)]
+// pub struct ListNode {
+//     pub val: i32,
+//     pub next: Option<Box<ListNode>>,
+// }
+impl Solution {
+    pub fn reverse_between(
+        head: Option<Box<ListNode>>, left: i32, right: i32,
+    ) -> Option<Box<ListNode>> {
+        let mut dummy = Box::new(ListNode { val: 0, next: head });
+        let mut prev = &mut dummy;
+        for _ in 0..left - 1 {
+            prev = prev.next.as_mut().unwrap();
+        }
+
+        let mut curr = prev.next.take();
+        let mut reversed: Option<Box<ListNode>> = None;
+        for _ in 0..right - left + 1 {
+            let mut node = curr.unwrap();
+            curr = node.next.take();
+            node.next = reversed;
+            reversed = Some(node);
+        }
+
+        let mut tail = &mut reversed;
+        while tail.as_ref().unwrap().next.is_some() {
+            tail = &mut tail.as_mut().unwrap().next;
+        }
+        tail.as_mut().unwrap().next = curr;
+        prev.next = reversed;
+
+        dummy.next
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -431,6 +793,21 @@ public class Solution {
 ---
 
 ## 3. Iteration - I
+
+### Intuition
+
+The iterative approach follows the same structure as the first recursive solution but reverses the sublist using a loop instead of recursion. We traverse to find the boundaries, detach the sublist, reverse it in place using the standard three-pointer technique, and reconnect everything.
+
+### Algorithm
+
+1. Create a dummy node pointing to the head.
+2. Traverse `left - 1` steps to find `prev` (node before the sublist).
+3. Identify the sublist head `sublist_head` and traverse `right - left` more steps to find the sublist tail `sublist_tail`.
+4. Save the node after the sublist `nextNode` and disconnect by setting `sublist_tail.next` to `null`.
+5. Reverse the sublist iteratively using `prev` and `curr` pointers:
+    - For each node, save next, point `curr` to `prev`, advance both pointers.
+6. Connect `prev.next` to the new head (final `prev` after reversal) and connect the original head (now tail) to the saved successor.
+7. Return `dummy.next`.
 
 ::tabs-start
 
@@ -679,6 +1056,186 @@ public class Solution {
 }
 ```
 
+```go
+/**
+ * Definition for singly-linked list.
+ * type ListNode struct {
+ *     Val int
+ *     Next *ListNode
+ * }
+ */
+func reverseBetween(head *ListNode, left int, right int) *ListNode {
+    dummy := &ListNode{Val: 0, Next: head}
+    prev := dummy
+
+    for i := 0; i < left-1; i++ {
+        prev = prev.Next
+    }
+
+    sublistHead := prev.Next
+    sublistTail := sublistHead
+    for i := 0; i < right-left; i++ {
+        sublistTail = sublistTail.Next
+    }
+
+    nextNode := sublistTail.Next
+    sublistTail.Next = nil
+    prev.Next = reverseList(sublistHead)
+    sublistHead.Next = nextNode
+
+    return dummy.Next
+}
+
+func reverseList(head *ListNode) *ListNode {
+    var prev *ListNode
+    curr := head
+
+    for curr != nil {
+        temp := curr.Next
+        curr.Next = prev
+        prev = curr
+        curr = temp
+    }
+    return prev
+}
+```
+
+```kotlin
+/**
+ * Example:
+ * var li = ListNode(5)
+ * var v = li.`val`
+ * Definition for singly-linked list.
+ * class ListNode(var `val`: Int) {
+ *     var next: ListNode? = null
+ * }
+ */
+class Solution {
+    fun reverseBetween(head: ListNode?, left: Int, right: Int): ListNode? {
+        val dummy = ListNode(0)
+        dummy.next = head
+        var prev: ListNode? = dummy
+
+        for (i in 0 until left - 1) {
+            prev = prev?.next
+        }
+
+        val sublistHead = prev?.next
+        var sublistTail = sublistHead
+        for (i in 0 until right - left) {
+            sublistTail = sublistTail?.next
+        }
+
+        val nextNode = sublistTail?.next
+        sublistTail?.next = null
+        prev?.next = reverseList(sublistHead)
+        sublistHead?.next = nextNode
+
+        return dummy.next
+    }
+
+    private fun reverseList(head: ListNode?): ListNode? {
+        var prev: ListNode? = null
+        var curr = head
+
+        while (curr != null) {
+            val temp = curr.next
+            curr.next = prev
+            prev = curr
+            curr = temp
+        }
+        return prev
+    }
+}
+```
+
+```swift
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     public var val: Int
+ *     public var next: ListNode?
+ *     public init() { self.val = 0; self.next = nil; }
+ *     public init(_ val: Int) { self.val = val; self.next = nil; }
+ *     public init(_ val: Int, _ next: ListNode?) { self.val = val; self.next = next; }
+ * }
+ */
+class Solution {
+    func reverseBetween(_ head: ListNode?, _ left: Int, _ right: Int) -> ListNode? {
+        let dummy = ListNode(0, head)
+        var prev: ListNode? = dummy
+
+        for _ in 0..<(left - 1) {
+            prev = prev?.next
+        }
+
+        let sublistHead = prev?.next
+        var sublistTail = sublistHead
+        for _ in 0..<(right - left) {
+            sublistTail = sublistTail?.next
+        }
+
+        let nextNode = sublistTail?.next
+        sublistTail?.next = nil
+        prev?.next = reverseList(sublistHead)
+        sublistHead?.next = nextNode
+
+        return dummy.next
+    }
+
+    private func reverseList(_ head: ListNode?) -> ListNode? {
+        var prev: ListNode? = nil
+        var curr = head
+
+        while curr != nil {
+            let temp = curr?.next
+            curr?.next = prev
+            prev = curr
+            curr = temp
+        }
+        return prev
+    }
+}
+```
+
+```rust
+// Definition for singly-linked list.
+// #[derive(PartialEq, Eq, Clone, Debug)]
+// pub struct ListNode {
+//     pub val: i32,
+//     pub next: Option<Box<ListNode>>,
+// }
+impl Solution {
+    pub fn reverse_between(
+        head: Option<Box<ListNode>>, left: i32, right: i32,
+    ) -> Option<Box<ListNode>> {
+        let mut dummy = Box::new(ListNode { val: 0, next: head });
+        let mut prev = &mut dummy;
+        for _ in 0..left - 1 {
+            prev = prev.next.as_mut().unwrap();
+        }
+
+        let mut curr = prev.next.take();
+        let mut reversed: Option<Box<ListNode>> = None;
+        for _ in 0..right - left + 1 {
+            let mut node = curr.unwrap();
+            curr = node.next.take();
+            node.next = reversed;
+            reversed = Some(node);
+        }
+
+        let mut tail = &mut reversed;
+        while tail.as_ref().unwrap().next.is_some() {
+            tail = &mut tail.as_mut().unwrap().next;
+        }
+        tail.as_mut().unwrap().next = curr;
+        prev.next = reversed;
+
+        dummy.next
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -689,6 +1246,23 @@ public class Solution {
 ---
 
 ## 4. Iteration - II
+
+### Intuition
+
+This approach reverses in a single pass without explicitly detaching the sublist. After finding the node before the reversal starts, we reverse links one at a time as we traverse. The key is maintaining a reference to the original sublist head (which becomes the tail after reversal) so we can reconnect it to the node following the reversed section.
+
+### Algorithm
+
+1. Create a dummy node pointing to the head.
+2. Traverse `left - 1` steps to position `leftPrev` (node before reversal) and `cur` (first node to reverse).
+3. Reverse `right - left + 1` nodes in place:
+    - Save `cur.next` as `tmpNext`.
+    - Point `cur.next` to `prev`.
+    - Advance `prev` to `cur` and `cur` to `tmpNext`.
+4. After the loop, `prev` points to the new head of the reversed section and `cur` points to the node after it.
+5. Connect `leftPrev.next.next` (original first node, now last) to `cur`.
+6. Connect `leftPrev.next` to `prev` (the new head).
+7. Return `dummy.next`.
 
 ::tabs-start
 
@@ -877,9 +1451,172 @@ public class Solution {
 }
 ```
 
+```go
+/**
+ * Definition for singly-linked list.
+ * type ListNode struct {
+ *     Val int
+ *     Next *ListNode
+ * }
+ */
+func reverseBetween(head *ListNode, left int, right int) *ListNode {
+    dummy := &ListNode{Val: 0, Next: head}
+    leftPrev := dummy
+    cur := head
+
+    for i := 0; i < left-1; i++ {
+        leftPrev = cur
+        cur = cur.Next
+    }
+
+    var prev *ListNode
+    for i := 0; i < right-left+1; i++ {
+        tmpNext := cur.Next
+        cur.Next = prev
+        prev = cur
+        cur = tmpNext
+    }
+
+    leftPrev.Next.Next = cur
+    leftPrev.Next = prev
+
+    return dummy.Next
+}
+```
+
+```kotlin
+/**
+ * Example:
+ * var li = ListNode(5)
+ * var v = li.`val`
+ * Definition for singly-linked list.
+ * class ListNode(var `val`: Int) {
+ *     var next: ListNode? = null
+ * }
+ */
+class Solution {
+    fun reverseBetween(head: ListNode?, left: Int, right: Int): ListNode? {
+        val dummy = ListNode(0)
+        dummy.next = head
+        var leftPrev: ListNode? = dummy
+        var cur = head
+
+        for (i in 0 until left - 1) {
+            leftPrev = cur
+            cur = cur?.next
+        }
+
+        var prev: ListNode? = null
+        for (i in 0 until right - left + 1) {
+            val tmpNext = cur?.next
+            cur?.next = prev
+            prev = cur
+            cur = tmpNext
+        }
+
+        leftPrev?.next?.next = cur
+        leftPrev?.next = prev
+
+        return dummy.next
+    }
+}
+```
+
+```swift
+/**
+ * Definition for singly-linked list.
+ * public class ListNode {
+ *     public var val: Int
+ *     public var next: ListNode?
+ *     public init() { self.val = 0; self.next = nil; }
+ *     public init(_ val: Int) { self.val = val; self.next = nil; }
+ *     public init(_ val: Int, _ next: ListNode?) { self.val = val; self.next = next; }
+ * }
+ */
+class Solution {
+    func reverseBetween(_ head: ListNode?, _ left: Int, _ right: Int) -> ListNode? {
+        let dummy = ListNode(0, head)
+        var leftPrev: ListNode? = dummy
+        var cur = head
+
+        for _ in 0..<(left - 1) {
+            leftPrev = cur
+            cur = cur?.next
+        }
+
+        var prev: ListNode? = nil
+        for _ in 0..<(right - left + 1) {
+            let tmpNext = cur?.next
+            cur?.next = prev
+            prev = cur
+            cur = tmpNext
+        }
+
+        leftPrev?.next?.next = cur
+        leftPrev?.next = prev
+
+        return dummy.next
+    }
+}
+```
+
+```rust
+// Definition for singly-linked list.
+// #[derive(PartialEq, Eq, Clone, Debug)]
+// pub struct ListNode {
+//     pub val: i32,
+//     pub next: Option<Box<ListNode>>,
+// }
+impl Solution {
+    pub fn reverse_between(
+        head: Option<Box<ListNode>>, left: i32, right: i32,
+    ) -> Option<Box<ListNode>> {
+        let mut dummy = Box::new(ListNode { val: 0, next: head });
+        let mut prev = &mut dummy;
+        for _ in 0..left - 1 {
+            prev = prev.next.as_mut().unwrap();
+        }
+
+        let mut curr = prev.next.take();
+        let mut reversed: Option<Box<ListNode>> = None;
+        for _ in 0..right - left + 1 {
+            let mut node = curr.unwrap();
+            curr = node.next.take();
+            node.next = reversed;
+            reversed = Some(node);
+        }
+
+        let mut tail = &mut reversed;
+        while tail.as_ref().unwrap().next.is_some() {
+            tail = &mut tail.as_mut().unwrap().next;
+        }
+        tail.as_mut().unwrap().next = curr;
+        prev.next = reversed;
+
+        dummy.next
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(1)$ extra space.
+
+---
+
+## Common Pitfalls
+
+### Not Using a Dummy Node for Edge Cases
+
+When `left` equals 1, the head of the list changes after reversal. Without a dummy node pointing to the head, you lose the reference to the new head and cannot return the correct result. The dummy node provides a stable anchor that simplifies edge case handling when the reversal starts at the beginning.
+
+### Forgetting to Reconnect the Reversed Sublist
+
+After reversing the sublist, both ends must be reconnected to the rest of the list. A common mistake is connecting only one end, either forgetting to link the node before position `left` to the new sublist head, or forgetting to link the new sublist tail to the node after position `right`. Both connections are essential.
+
+### Incorrect Pointer Updates During In-Place Reversal
+
+The single-pass reversal approach requires careful tracking of multiple pointers. A frequent error is updating `leftPrev.next` before using it to access the original sublist head. Since `leftPrev.next` initially points to the first node being reversed (which becomes the tail), you must save this reference or use it correctly before overwriting it with the new head.

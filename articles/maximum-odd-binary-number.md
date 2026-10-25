@@ -1,4 +1,28 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Binary Number Representation** - Understanding that odd numbers must end with bit 1, and higher-order bits contribute more to value
+- **String Manipulation** - Converting between strings and character arrays, swapping elements
+- **Greedy Algorithms** - The optimal structure can be determined without exhaustive search
+- **Two Pointers (optional)** - An efficient in-place partitioning approach similar to quicksort's partition step
+
+---
+
 ## 1. Sorting
+
+### Intuition
+
+A binary number is odd if and only if its last bit is `1`. To maximize the number, we want as many `1`s as possible in the higher-order positions (leftmost).
+
+We can sort the string in descending order to push all `1`s to the front. Then, we swap one `1` to the last position to ensure the number is odd. Since we sorted in descending order, the rightmost `1` is easy to find.
+
+### Algorithm
+
+1. Convert the string to a character array and sort in descending order (all `1`s come first).
+2. Find the last `1` in the sorted array (it will be at the boundary between `1`s and `0`s).
+3. Swap this `1` with the last character of the array.
+4. Return the resulting string.
 
 ::tabs-start
 
@@ -85,6 +109,62 @@ class Solution {
 }
 ```
 
+```go
+func maximumOddBinaryNumber(s string) string {
+    arr := []byte(s)
+    sort.Slice(arr, func(i, j int) bool {
+        return arr[i] > arr[j]
+    })
+
+    n := len(arr)
+    i := n - 1
+    for i >= 0 && arr[i] == '0' {
+        i--
+    }
+
+    arr[i], arr[n-1] = arr[n-1], arr[i]
+    return string(arr)
+}
+```
+
+```kotlin
+class Solution {
+    fun maximumOddBinaryNumber(s: String): String {
+        val arr = s.toCharArray()
+        arr.sortDescending()
+
+        val n = arr.size
+        var i = n - 1
+        while (i >= 0 && arr[i] == '0') {
+            i--
+        }
+
+        val temp = arr[i]
+        arr[i] = arr[n - 1]
+        arr[n - 1] = temp
+
+        return String(arr)
+    }
+}
+```
+
+```swift
+class Solution {
+    func maximumOddBinaryNumber(_ s: String) -> String {
+        var arr = Array(s).sorted(by: >)
+        let n = arr.count
+        var i = n - 1
+
+        while i >= 0 && arr[i] == "0" {
+            i -= 1
+        }
+
+        arr.swapAt(i, n - 1)
+        return String(arr)
+    }
+}
+```
+
 ```csharp
 public class Solution {
     public string MaximumOddBinaryNumber(string s) {
@@ -103,6 +183,24 @@ public class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn maximum_odd_binary_number(s: String) -> String {
+        let mut arr: Vec<u8> = s.into_bytes();
+        arr.sort_unstable_by(|a, b| b.cmp(a));
+
+        let n = arr.len();
+        let mut i = n - 1;
+        while i > 0 && arr[i] == b'0' {
+            i -= 1;
+        }
+
+        arr.swap(i, n - 1);
+        String::from_utf8(arr).unwrap()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -113,6 +211,18 @@ public class Solution {
 ---
 
 ## 2. Greedy
+
+### Intuition
+
+We do not actually need to sort. The optimal answer has a simple structure: place all but one `1` at the beginning, followed by all `0`s, and end with a single `1`.
+
+We just need to count the `1`s. If there are `count` ones, the result is `(count - 1)` ones, then `(n - count)` zeros, then one `1`.
+
+### Algorithm
+
+1. Count the number of `1`s in the string.
+2. Construct the result: `(count - 1)` ones + `(length - count)` zeros + `1`.
+3. Return the constructed string.
 
 ::tabs-start
 
@@ -180,6 +290,48 @@ class Solution {
 }
 ```
 
+```go
+func maximumOddBinaryNumber(s string) string {
+    count := 0
+    for _, c := range s {
+        if c == '1' {
+            count++
+        }
+    }
+
+    return strings.Repeat("1", count-1) + strings.Repeat("0", len(s)-count) + "1"
+}
+```
+
+```kotlin
+class Solution {
+    fun maximumOddBinaryNumber(s: String): String {
+        var count = 0
+        for (c in s) {
+            if (c == '1') count++
+        }
+
+        return "1".repeat(count - 1) + "0".repeat(s.length - count) + "1"
+    }
+}
+```
+
+```swift
+class Solution {
+    func maximumOddBinaryNumber(_ s: String) -> String {
+        var count = 0
+        for c in s {
+            if c == "1" {
+                count += 1
+            }
+        }
+
+        return String(repeating: "1", count: count - 1) +
+               String(repeating: "0", count: s.count - count) + "1"
+    }
+}
+```
+
 ```csharp
 public class Solution {
     public string MaximumOddBinaryNumber(string s) {
@@ -194,6 +346,15 @@ public class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn maximum_odd_binary_number(s: String) -> String {
+        let count = s.chars().filter(|&c| c == '1').count();
+        "1".repeat(count - 1) + &"0".repeat(s.len() - count) + "1"
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -204,6 +365,21 @@ public class Solution {
 ---
 
 ## 3. Two Pointers
+
+### Intuition
+
+We can rearrange the string in-place using a two-pointer technique similar to the partition step in quicksort. We move all `1`s to the left side of the array, then swap one `1` to the last position.
+
+This achieves the same result as sorting but with a single O(n) pass.
+
+### Algorithm
+
+1. Convert the string to a character array.
+2. Use a `left` pointer starting at `0`. Iterate through the array with index `i`.
+3. Whenever `s[i] == '1'`, swap `s[i]` with `s[left]` and increment `left`.
+4. After the loop, all `1`s are at positions `0` to `left - 1`.
+5. Swap `s[left - 1]` with `s[n - 1]` to place one `1` at the end.
+6. Return the resulting string.
 
 ::tabs-start
 
@@ -291,6 +467,66 @@ class Solution {
 }
 ```
 
+```go
+func maximumOddBinaryNumber(s string) string {
+    arr := []byte(s)
+    left := 0
+
+    for i := 0; i < len(arr); i++ {
+        if arr[i] == '1' {
+            arr[left], arr[i] = arr[i], arr[left]
+            left++
+        }
+    }
+
+    arr[left-1], arr[len(arr)-1] = arr[len(arr)-1], arr[left-1]
+    return string(arr)
+}
+```
+
+```kotlin
+class Solution {
+    fun maximumOddBinaryNumber(s: String): String {
+        val arr = s.toCharArray()
+        var left = 0
+
+        for (i in arr.indices) {
+            if (arr[i] == '1') {
+                val temp = arr[left]
+                arr[left] = arr[i]
+                arr[i] = temp
+                left++
+            }
+        }
+
+        val temp = arr[left - 1]
+        arr[left - 1] = arr[arr.size - 1]
+        arr[arr.size - 1] = temp
+
+        return String(arr)
+    }
+}
+```
+
+```swift
+class Solution {
+    func maximumOddBinaryNumber(_ s: String) -> String {
+        var arr = Array(s)
+        var left = 0
+
+        for i in 0..<arr.count {
+            if arr[i] == "1" {
+                arr.swapAt(left, i)
+                left += 1
+            }
+        }
+
+        arr.swapAt(left - 1, arr.count - 1)
+        return String(arr)
+    }
+}
+```
+
 ```csharp
 public class Solution {
     public string MaximumOddBinaryNumber(string s) {
@@ -314,9 +550,41 @@ public class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn maximum_odd_binary_number(s: String) -> String {
+        let mut arr: Vec<u8> = s.into_bytes();
+        let mut left = 0;
+
+        for i in 0..arr.len() {
+            if arr[i] == b'1' {
+                arr.swap(left, i);
+                left += 1;
+            }
+        }
+
+        let n = arr.len();
+        arr.swap(left - 1, n - 1);
+        String::from_utf8(arr).unwrap()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
 
 - Time complexity: $O(n)$
 - Space complexity: $O(n)$
+
+---
+
+## Common Pitfalls
+
+### Forgetting That Odd Numbers Must End With 1
+
+The defining property of an odd binary number is that its least significant bit (last character) must be `'1'`. A common mistake is placing all `1`s at the beginning without reserving one for the end, resulting in an even number. Always ensure exactly one `'1'` is placed at the last position.
+
+### Assuming the Input Always Has Multiple 1s
+
+When the input contains only a single `'1'`, the only valid output is that `'1'` at the end with all `'0'`s before it. Failing to handle this edge case (e.g., trying to place `count - 1` ones when `count` is 1) can cause index errors or incorrect string construction.

@@ -1,4 +1,27 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Queues** - Understanding FIFO (First-In-First-Out) operations including enqueue and dequeue
+- **Stacks** - Understanding LIFO (Last-In-First-Out) behavior and why it differs from queues
+
+---
+
 ## 1. Using Two Queues
+
+### Intuition
+
+A stack follows Last-In-First-Out (LIFO) order, but a queue follows First-In-First-Out (FIFO). To simulate a stack using queues, we need to reverse the order of elements on each push.
+The idea is to use two queues: when pushing a new element, we add it to the empty second queue, then move all elements from the first queue behind it. This places the newest element at the front, ready to be popped first.
+After rearranging, we swap the two queues so the main queue always has elements in stack order.
+
+### Algorithm
+
+1. Initialize two empty queues `q1` and `q2`.
+2. **push(x)**: Add `x` to `q2`, then move all elements from `q1` to `q2` one by one. Finally, swap `q1` and `q2`.
+3. **pop()**: Remove and return the front element from `q1`.
+4. **top()**: Return the front element of `q1` without removing it.
+5. **empty()**: Return `true` if `q1` is empty.
 
 ::tabs-start
 
@@ -172,6 +195,140 @@ public class MyStack {
 }
 ```
 
+```go
+type MyStack struct {
+    q1 []int
+    q2 []int
+}
+
+func Constructor() MyStack {
+    return MyStack{
+        q1: []int{},
+        q2: []int{},
+    }
+}
+
+func (this *MyStack) Push(x int) {
+    this.q2 = append(this.q2, x)
+    for len(this.q1) > 0 {
+        this.q2 = append(this.q2, this.q1[0])
+        this.q1 = this.q1[1:]
+    }
+    this.q1, this.q2 = this.q2, this.q1
+}
+
+func (this *MyStack) Pop() int {
+    top := this.q1[0]
+    this.q1 = this.q1[1:]
+    return top
+}
+
+func (this *MyStack) Top() int {
+    return this.q1[0]
+}
+
+func (this *MyStack) Empty() bool {
+    return len(this.q1) == 0
+}
+```
+
+```kotlin
+class MyStack() {
+    private var q1 = ArrayDeque<Int>()
+    private var q2 = ArrayDeque<Int>()
+
+    fun push(x: Int) {
+        q2.addLast(x)
+        while (q1.isNotEmpty()) {
+            q2.addLast(q1.removeFirst())
+        }
+        val temp = q1
+        q1 = q2
+        q2 = temp
+    }
+
+    fun pop(): Int {
+        return q1.removeFirst()
+    }
+
+    fun top(): Int {
+        return q1.first()
+    }
+
+    fun empty(): Boolean {
+        return q1.isEmpty()
+    }
+}
+```
+
+```swift
+class MyStack {
+    private var q1: [Int]
+    private var q2: [Int]
+
+    init() {
+        q1 = []
+        q2 = []
+    }
+
+    func push(_ x: Int) {
+        q2.append(x)
+        while !q1.isEmpty {
+            q2.append(q1.removeFirst())
+        }
+        swap(&q1, &q2)
+    }
+
+    func pop() -> Int {
+        return q1.removeFirst()
+    }
+
+    func top() -> Int {
+        return q1.first!
+    }
+
+    func empty() -> Bool {
+        return q1.isEmpty
+    }
+}
+```
+
+```rust
+struct MyStack {
+    q1: VecDeque<i32>,
+    q2: VecDeque<i32>,
+}
+
+impl MyStack {
+    fn new() -> Self {
+        MyStack {
+            q1: VecDeque::new(),
+            q2: VecDeque::new(),
+        }
+    }
+
+    fn push(&mut self, x: i32) {
+        self.q2.push_back(x);
+        while let Some(val) = self.q1.pop_front() {
+            self.q2.push_back(val);
+        }
+        std::mem::swap(&mut self.q1, &mut self.q2);
+    }
+
+    fn pop(&mut self) -> i32 {
+        self.q1.pop_front().unwrap()
+    }
+
+    fn top(&self) -> i32 {
+        *self.q1.front().unwrap()
+    }
+
+    fn empty(&self) -> bool {
+        self.q1.is_empty()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -185,6 +342,20 @@ public class MyStack {
 ---
 
 ## 2. Using One Queue
+
+### Intuition
+
+We can achieve the same result with just one queue. The trick is to rotate the queue after each push so the newest element moves to the front.
+When we add an element, we push it to the back of the queue, then dequeue and re-enqueue all the elements that were already there. This effectively moves the new element to the front.
+This approach uses less space than two queues while maintaining the same time complexity for push operations.
+
+### Algorithm
+
+1. Initialize a single empty queue `q`.
+2. **push(x)**: Add `x` to the back of `q`. Then, rotate the queue by removing and re-adding elements `size - 1` times. This moves `x` to the front.
+3. **pop()**: Remove and return the front element from `q`.
+4. **top()**: Return the front element of `q` without removing it.
+5. **empty()**: Return `true` if `q` is empty.
 
 ::tabs-start
 
@@ -339,6 +510,126 @@ public class MyStack {
 }
 ```
 
+```go
+type MyStack struct {
+    q []int
+}
+
+func Constructor() MyStack {
+    return MyStack{q: []int{}}
+}
+
+func (this *MyStack) Push(x int) {
+    this.q = append(this.q, x)
+    for i := len(this.q) - 1; i > 0; i-- {
+        this.q = append(this.q, this.q[0])
+        this.q = this.q[1:]
+    }
+}
+
+func (this *MyStack) Pop() int {
+    top := this.q[0]
+    this.q = this.q[1:]
+    return top
+}
+
+func (this *MyStack) Top() int {
+    return this.q[0]
+}
+
+func (this *MyStack) Empty() bool {
+    return len(this.q) == 0
+}
+```
+
+```kotlin
+class MyStack() {
+    private val q = ArrayDeque<Int>()
+
+    fun push(x: Int) {
+        q.addLast(x)
+        for (i in 0 until q.size - 1) {
+            q.addLast(q.removeFirst())
+        }
+    }
+
+    fun pop(): Int {
+        return q.removeFirst()
+    }
+
+    fun top(): Int {
+        return q.first()
+    }
+
+    fun empty(): Boolean {
+        return q.isEmpty()
+    }
+}
+```
+
+```swift
+class MyStack {
+    private var q: [Int]
+
+    init() {
+        q = []
+    }
+
+    func push(_ x: Int) {
+        q.append(x)
+        for _ in 0..<(q.count - 1) {
+            q.append(q.removeFirst())
+        }
+    }
+
+    func pop() -> Int {
+        return q.removeFirst()
+    }
+
+    func top() -> Int {
+        return q.first!
+    }
+
+    func empty() -> Bool {
+        return q.isEmpty
+    }
+}
+```
+
+```rust
+struct MyStack {
+    q: VecDeque<i32>,
+}
+
+impl MyStack {
+    fn new() -> Self {
+        MyStack {
+            q: VecDeque::new(),
+        }
+    }
+
+    fn push(&mut self, x: i32) {
+        self.q.push_back(x);
+        for _ in 0..self.q.len() - 1 {
+            let val = self.q.pop_front().unwrap();
+            self.q.push_back(val);
+        }
+    }
+
+    fn pop(&mut self) -> i32 {
+        self.q.pop_front().unwrap()
+    }
+
+    fn top(&self) -> i32 {
+        *self.q.front().unwrap()
+    }
+
+    fn empty(&self) -> bool {
+        self.q.is_empty()
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -351,185 +642,16 @@ public class MyStack {
 
 ---
 
-## 3. Queue Of Queues
+## Common Pitfalls
 
-::tabs-start
+### Incorrect Rotation Count in Single Queue Approach
 
-```python
-class MyStack:
+When using one queue, after pushing a new element, the queue must be rotated exactly `size - 1` times to move the new element to the front. A common mistake is rotating `size` times, which brings the queue back to its original state and leaves the new element at the back. The loop should run `for i in range(len(q) - 1)`, not `for i in range(len(q))`.
 
-    def __init__(self):
-        self.q = None
+### Forgetting to Swap Queues in Two Queue Approach
 
-    def push(self, x: int) -> None:
-        self.q = deque([x, self.q])
+In the two-queue approach, after moving all elements from `q1` to `q2` behind the new element, the queues must be swapped so that `q1` always contains the elements in stack order. Forgetting to swap means subsequent `pop()` and `top()` operations will access the wrong queue, returning incorrect results or causing errors on an empty queue.
 
-    def pop(self) -> int:
-        top = self.q.popleft()
-        self.q = self.q.popleft()
-        return top
+### Exceeding the Queue Restrictions
 
-    def top(self) -> int:
-        return self.q[0]
-
-    def empty(self) -> bool:
-        return not self.q
-```
-
-```java
-public class MyStack {
-    private Queue<Object> q;
-
-    public MyStack() {
-        q = null;
-    }
-
-    public void push(int x) {
-        Queue<Object> newQueue = new LinkedList<>();
-        newQueue.add(x);
-        newQueue.add(q);
-        q = newQueue;
-    }
-
-    public int pop() {
-        if (q == null) return -1;
-
-        int top = (int) q.poll();
-        q = (Queue<Object>) q.poll();
-        return top;
-    }
-
-    public int top() {
-        if (q == null) return -1;
-        return (int) q.peek();
-    }
-
-    public boolean empty() {
-        return q == null;
-    }
-}
-```
-
-```cpp
-class MyStack {
-private:
-    struct Node {
-        int val;
-        shared_ptr<Node> next;
-        Node(int v, shared_ptr<Node> n) : val(v), next(n) {}
-    };
-    shared_ptr<Node> q;
-
-public:
-    MyStack() : q(nullptr) {}
-
-    void push(int x) {
-        q = make_shared<Node>(x, q);
-    }
-
-    int pop() {
-        if (!q) return -1;
-        int top = q->val;
-        q = q->next;
-        return top;
-    }
-
-    int top() {
-        if (!q) return -1;
-        return q->val;
-    }
-
-    bool empty() {
-        return q == nullptr;
-    }
-};
-```
-
-```javascript
-class MyStack {
-    constructor() {
-        this.q = null;
-    }
-
-    /**
-     * @param {number} x
-     * @return {void}
-     */
-    push(x) {
-        const newQueue = new Queue();
-        newQueue.enqueue(x);
-        newQueue.enqueue(this.q);
-        this.q = newQueue;
-    }
-
-    /**
-     * @return {number}
-     */
-    pop() {
-        if (this.q === null) return -1;
-
-        const top = this.q.dequeue();
-        this.q = this.q.dequeue();
-        return top;
-    }
-
-    /**
-     * @return {number}
-     */
-    top() {
-        if (this.q === null) return -1;
-        return this.q.front();
-    }
-
-    /**
-     * @return {boolean}
-     */
-    empty() {
-        return this.q === null;
-    }
-}
-```
-
-```csharp
-public class MyStack {
-    private Queue<object> q;
-
-    public MyStack() {
-        q = null;
-    }
-
-    public void Push(int x) {
-        Queue<object> newQueue = new Queue<object>();
-        newQueue.Enqueue(x);
-        newQueue.Enqueue(q);
-        q = newQueue;
-    }
-
-    public int Pop() {
-        if (q == null) return -1;
-
-        int top = (int)q.Dequeue();
-        q = (Queue<object>)q.Dequeue();
-        return top;
-    }
-
-    public int Top() {
-        if (q == null) return -1;
-        return (int)q.Peek();
-    }
-
-    public bool Empty() {
-        return q == null;
-    }
-}
-```
-
-::tabs-end
-
-### Time & Space Complexity
-
-- Time complexity:
-    - $O(1)$ time for initialization.
-    - $O(1)$ time for each $push()$ function call.
-    - $O(1)$ time for each $pop()$ function call.
-- Space complexity: $O(n)$
+Creating a new nested queue for each pushed value keeps $n$ queues alive for $n$ stack elements, exceeding the two-queue limit. Using linked-list nodes directly also bypasses the requirement to use queue operations. Even if these implementations return the correct outputs, they do not satisfy the problem's constraints. Use at most two queues and access their elements only through the permitted FIFO operations.

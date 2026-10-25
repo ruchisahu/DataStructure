@@ -1,4 +1,49 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Dynamic Programming (0/1 Knapsack Pattern)** - This problem is a classic subset sum variant of the knapsack problem
+- **Recursion with Memoization** - Essential for the top-down DP approach to avoid redundant calculations
+- **Subset Sum Problem** - Core concept of determining if a subset with a target sum exists
+- **Space Optimization in DP** - Techniques to reduce 2D DP to 1D using reverse iteration
+
+---
+
 ## 1. Recursion
+
+### Intuition
+
+The problem asks whether we can split the array into **two subsets with equal sum**.
+
+Key observation:
+
+- If the total sum is **odd**, it’s impossible → return `False`.
+- Otherwise, the problem becomes:
+    > Can we pick a subset whose sum is `totalSum / 2`?
+
+This is a classic **subset sum** decision problem.
+
+Using recursion:
+
+- At each index, we have **two choices**:
+    1. Take the current number into the subset
+    2. Skip the current number
+- We keep reducing the target (`sum/2`) until:
+    - Target becomes `0` → success
+    - We run out of numbers or target becomes negative → failure
+
+### Algorithm
+
+1. Compute `totalSum = sum(nums)`
+2. If `totalSum` is odd, return `false`
+3. Set `target = totalSum // 2`
+4. Define `dfs(i, target)`:
+    - If `target == 0`, return `true`
+    - If `i == len(nums)` or `target < 0`, return `false`
+    - Try both choices:
+        - Skip `nums[i]`
+        - Take `nums[i]` (reduce target)
+5. Return `dfs(0, target)`
 
 ::tabs-start
 
@@ -223,6 +268,29 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn can_partition(nums: Vec<i32>) -> bool {
+        let total: i32 = nums.iter().sum();
+        if total % 2 != 0 {
+            return false;
+        }
+
+        fn dfs(nums: &[i32], i: usize, target: i32) -> bool {
+            if i == nums.len() {
+                return target == 0;
+            }
+            if target < 0 {
+                return false;
+            }
+            dfs(nums, i + 1, target) || dfs(nums, i + 1, target - nums[i])
+        }
+
+        dfs(&nums, 0, total / 2)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -233,6 +301,42 @@ class Solution {
 ---
 
 ## 2. Dynamic Programming (Top-Down)
+
+### Intuition
+
+This is the same **subset sum** idea as the recursive approach, but optimized using **memoization**.
+
+Key observations:
+
+- If the total sum is **odd**, we can’t split it into two equal subsets.
+- Otherwise, we only need to check if **some subset sums to `totalSum / 2`**.
+
+In plain recursion, many subproblems repeat:
+
+- Same index `i`
+- Same remaining `target`
+
+To avoid recomputing them, we store results in a **DP table**:
+
+- `memo[i][t]` = whether it’s possible to form sum `t` using elements from index `i` onward.
+
+This turns the exponential recursion into a **polynomial-time solution**.
+
+### Algorithm
+
+1. Compute `total = sum(nums)`
+2. If `total` is odd, return `false`
+3. Set `target = total // 2`
+4. Create a memo table `memo[n][target + 1]` initialized to `-1`
+5. Define `dfs(i, target)`:
+    - If `target == 0`, return `true`
+    - If `i == n` or `target < 0`, return `false`
+    - If result already exists in `memo`, return it
+    - Otherwise:
+        - Option 1: skip current element → `dfs(i + 1, target)`
+        - Option 2: take current element → `dfs(i + 1, target - nums[i])`
+        - Store and return the OR of both choices
+6. Return `dfs(0, target)`
 
 ::tabs-start
 
@@ -518,6 +622,38 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn can_partition(nums: Vec<i32>) -> bool {
+        let total: i32 = nums.iter().sum();
+        if total % 2 != 0 {
+            return false;
+        }
+        let target = total as usize / 2;
+        let n = nums.len();
+        let mut memo = vec![vec![-1i8; target + 1]; n];
+
+        fn dfs(nums: &[i32], i: usize, target: i32, memo: &mut [Vec<i8>]) -> bool {
+            if target == 0 {
+                return true;
+            }
+            if i == nums.len() || target < 0 {
+                return false;
+            }
+            if memo[i][target as usize] != -1 {
+                return memo[i][target as usize] == 1;
+            }
+            let res = dfs(nums, i + 1, target, memo)
+                || dfs(nums, i + 1, target - nums[i], memo);
+            memo[i][target as usize] = res as i8;
+            res
+        }
+
+        dfs(&nums, 0, target as i32, &mut memo)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -530,6 +666,41 @@ class Solution {
 ---
 
 ## 3. Dynamic Programming (Bottom-Up)
+
+### Intuition
+
+This is a classic **0/1 subset sum** DP.
+
+We want to split `nums` into two subsets with equal sum. That’s only possible if:
+
+- `total = sum(nums)` is **even**
+- there exists a subset that sums to `target = total / 2`
+
+Instead of trying all subsets (exponential), we build the answer gradually:
+
+- Let `dp[i][j]` mean: using the **first `i` numbers**, can we form sum `j`?
+
+For each number, we have two choices:
+
+- **Skip it** → the possibility stays `dp[i-1][j]`
+- **Take it** (only if `nums[i-1] <= j`) → check `dp[i-1][j - nums[i-1]]`
+
+If either is true, then `dp[i][j]` is true.
+
+### Algorithm
+
+1. Compute `total = sum(nums)`. If `total` is odd, return `false`.
+2. Set `target = total // 2`, `n = len(nums)`.
+3. Create a DP table `dp` of size `(n+1) x (target+1)` filled with `false`.
+4. Base case: `dp[i][0] = true` for all `i` (sum `0` is always achievable by taking nothing).
+5. Fill DP:
+    - For `i` from `1..n`:
+        - For `j` from `1..target`:
+            - If `nums[i-1] <= j`:
+                - `dp[i][j] = dp[i-1][j] OR dp[i-1][j - nums[i-1]]`
+            - Else:
+                - `dp[i][j] = dp[i-1][j]`
+6. Return `dp[n][target]`.
 
 ::tabs-start
 
@@ -797,6 +968,37 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn can_partition(nums: Vec<i32>) -> bool {
+        let total: i32 = nums.iter().sum();
+        if total % 2 != 0 {
+            return false;
+        }
+
+        let target = total as usize / 2;
+        let n = nums.len();
+        let mut dp = vec![vec![false; target + 1]; n + 1];
+
+        for i in 0..=n {
+            dp[i][0] = true;
+        }
+
+        for i in 1..=n {
+            for j in 1..=target {
+                if nums[i - 1] as usize <= j {
+                    dp[i][j] = dp[i - 1][j] || dp[i - 1][j - nums[i - 1] as usize];
+                } else {
+                    dp[i][j] = dp[i - 1][j];
+                }
+            }
+        }
+
+        dp[n][target]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -809,6 +1011,37 @@ class Solution {
 ---
 
 ## 4. Dynamic Programming (Space Optimized)
+
+### Intuition
+
+This is the same **subset sum** idea as before, but optimized to use **1D DP**.
+
+Instead of keeping a full 2D table (`dp[i][j]`), we only track:
+
+- `dp[j]` → whether sum `j` is achievable using numbers processed so far
+
+At each number, we build a new state (`nextDp`) from the previous one:
+
+- Either we **don’t take** the current number → `dp[j]`
+- Or we **take** it (if possible) → `dp[j - nums[i]]`
+
+This works because each state only depends on the previous row.
+
+### Algorithm
+
+1. Compute `total = sum(nums)`. If `total` is odd, return `false`.
+2. Set `target = total // 2`.
+3. Initialize a boolean array `dp` of size `target + 1`.
+    - `dp[0] = true` (sum `0` is always possible).
+4. For each number `num` in `nums`:
+    - Create a new array `nextDp`.
+    - For each sum `j` from `1` to `target`:
+        - If `j >= num`:
+            - `nextDp[j] = dp[j] OR dp[j - num]`
+        - Else:
+            - `nextDp[j] = dp[j]`
+    - Replace `dp` with `nextDp`.
+5. Return `dp[target]`.
 
 ::tabs-start
 
@@ -1063,6 +1296,36 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn can_partition(nums: Vec<i32>) -> bool {
+        let total: i32 = nums.iter().sum();
+        if total % 2 != 0 {
+            return false;
+        }
+
+        let target = total as usize / 2;
+        let mut dp = vec![false; target + 1];
+        let mut next_dp = vec![false; target + 1];
+        dp[0] = true;
+
+        for &num in &nums {
+            let num = num as usize;
+            for j in 1..=target {
+                if j >= num {
+                    next_dp[j] = dp[j] || dp[j - num];
+                } else {
+                    next_dp[j] = dp[j];
+                }
+            }
+            std::mem::swap(&mut dp, &mut next_dp);
+        }
+
+        dp[target]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1075,6 +1338,36 @@ class Solution {
 ---
 
 ## 5. Dynamic Programming (Hash Set)
+
+### Intuition
+
+This approach also solves **Partition Equal Subset Sum**, but instead of arrays, it uses a **Hash Set** to track all achievable sums.
+
+At any point:
+
+- `dp` contains **all subset sums** that can be formed using the processed numbers.
+
+For each new number:
+
+- Every existing sum `t` can either:
+    - Stay the same (don’t pick the number)
+    - Become `t + num` (pick the number)
+
+If at any time we form `target`, we can stop early and return `True`.
+
+### Algorithm
+
+1. Compute `total = sum(nums)`. If `total` is odd, return `false`.
+2. Set `target = total // 2`.
+3. Initialize a set `dp = {0}` (sum `0` is always possible).
+4. Traverse numbers (order doesn't matter):
+    - Create an empty set `nextDP`.
+    - For each sum `t` in `dp`:
+        - If `t + num == target`, return `true`.
+        - Add `t` to `nextDP` (skip current number).
+        - Add `t + num` to `nextDP` (take current number).
+    - Replace `dp` with `nextDP`.
+5. If loop finishes without finding `target`, return `false`.
 
 ::tabs-start
 
@@ -1296,6 +1589,35 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn can_partition(nums: Vec<i32>) -> bool {
+        let total: i32 = nums.iter().sum();
+        if total % 2 != 0 {
+            return false;
+        }
+
+        let target = total / 2;
+        let mut dp = HashSet::new();
+        dp.insert(0);
+
+        for i in (0..nums.len()).rev() {
+            let mut next_dp = HashSet::new();
+            for &t in &dp {
+                if t + nums[i] == target {
+                    return true;
+                }
+                next_dp.insert(t + nums[i]);
+                next_dp.insert(t);
+            }
+            dp = next_dp;
+        }
+
+        false
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1308,6 +1630,34 @@ class Solution {
 ---
 
 ## 6. Dynamic Programming (Optimal)
+
+### Intuition
+
+This is the **most optimal DP solution** for _Partition Equal Subset Sum_.
+
+We reduce the problem to:
+
+> Can we pick some numbers whose sum equals `target = total_sum / 2`?
+
+We use a **1D DP array** where:
+
+- `dp[j] = True` means we can form sum `j` using some of the numbers so far.
+
+Key idea:
+
+- For each number, update the DP **from right to left** so that each number is used **only once**.
+- This avoids overwriting results from the same iteration.
+
+### Algorithm
+
+1. Compute `total = sum(nums)`. If `total` is odd, return `false`.
+2. Set `target = total // 2`.
+3. Create a boolean array `dp` of size `target + 1`.
+    - Initialize `dp[0] = true` (sum `0` is always achievable).
+4. For each number `num` in `nums`:
+    - Traverse `j` from `target` down to `num`:
+        - Set `dp[j] = dp[j] OR dp[j - num]`
+5. Return `dp[target]`.
 
 ::tabs-start
 
@@ -1513,6 +1863,30 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn can_partition(nums: Vec<i32>) -> bool {
+        let total: i32 = nums.iter().sum();
+        if total % 2 != 0 {
+            return false;
+        }
+
+        let target = total as usize / 2;
+        let mut dp = vec![false; target + 1];
+        dp[0] = true;
+
+        for &num in &nums {
+            let num = num as usize;
+            for j in (num..=target).rev() {
+                dp[j] = dp[j] || dp[j - num];
+            }
+        }
+
+        dp[target]
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -1577,3 +1951,19 @@ public:
 - Space complexity: $O(target)$
 
 > Where $n$ is the length of the array $nums$ and $target$ is the sum of array elements divided by 2.
+
+---
+
+## Common Pitfalls
+
+### Forgetting the Odd Sum Check
+
+The most common mistake is forgetting to check if the total sum is odd before proceeding. If `sum(nums)` is odd, it's impossible to split into two equal subsets, and you should immediately return `false`. Skipping this check leads to incorrect results or wasted computation.
+
+### Using Left-to-Right Iteration in Space-Optimized DP
+
+When using a 1D DP array, iterating from left to right causes elements to be counted multiple times in the same iteration. You must iterate from right to left (`target` down to `num`) to ensure each element is used at most once per subset, preserving the 0/1 knapsack property.
+
+### Integer Overflow in Target Calculation
+
+For languages without arbitrary precision integers, the sum of array elements can overflow if not handled carefully. Always use appropriate data types (like `long` in Java/C++) when computing the total sum before dividing by 2 to get the target.

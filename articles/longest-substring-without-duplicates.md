@@ -1,4 +1,32 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Sliding Window Technique** - Used to maintain a window of unique characters that can expand and shrink dynamically
+- **Hash Set** - Needed to track which characters are currently in the window for O(1) duplicate detection
+- **Hash Map (optional)** - The optimal solution uses a map to store character indices for direct pointer jumps
+
+---
+
 ## 1. Brute Force
+
+### Intuition
+
+The brute-force idea is to try starting a substring at every index and keep extending it until we see a repeated character.  
+For each starting point, we use a set to track the characters we’ve seen so far.  
+As soon as a duplicate appears, that substring can’t grow anymore, so we stop and record its length.  
+By doing this for every index, we are guaranteed to find the longest valid substring, though the approach is slow.
+
+### Algorithm
+
+1. Initialize `res = 0` to store the maximum length.
+2. For each starting index `i`:
+    - Create an empty set `charSet`.
+    - Extend the substring by moving `j` from `i` forward:
+        - If `s[j]` is already in the set, break.
+        - Otherwise, add it to the set.
+    - Update `res` with the size of `charSet`.
+3. Return `res` after checking all starting positions.
 
 ::tabs-start
 
@@ -137,7 +165,7 @@ class Solution {
 }
 ```
 
-```kotlin
+```swift
 class Solution {
     func lengthOfLongestSubstring(_ s: String) -> Int {
         var res = 0
@@ -158,6 +186,27 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn length_of_longest_substring(s: String) -> i32 {
+        let s = s.as_bytes();
+        let mut res = 0;
+
+        for i in 0..s.len() {
+            let mut char_set = HashSet::new();
+            for j in i..s.len() {
+                if char_set.contains(&s[j]) {
+                    break;
+                }
+                char_set.insert(s[j]);
+            }
+            res = res.max(char_set.len());
+        }
+        res as i32
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -170,6 +219,26 @@ class Solution {
 ---
 
 ## 2. Sliding Window
+
+### Intuition
+
+Instead of restarting at every index like brute force, we can keep one **window** that always has _unique_ characters.
+We expand the window by moving the `right` pointer.
+If we ever see a repeated character, we shrink the window from the `left` until the duplicate is removed.
+This way, the window always represents a valid substring, and we track its maximum size.
+It's efficient because each character is added and removed at most once.
+
+### Algorithm
+
+1. Create an empty set `charSet` and two pointers:
+    - `l` = left edge of the window
+    - `r` = right edge that moves through the string
+2. For each `r`:
+    - While `s[r]` is already in the set:
+        - Remove `s[l]` from the set and move `l` right.
+    - Add `s[r]` to the set.
+    - Update the result with the window size: `r - l + 1`.
+3. Return the maximum window size found.
 
 ::tabs-start
 
@@ -333,6 +402,27 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn length_of_longest_substring(s: String) -> i32 {
+        let s = s.as_bytes();
+        let mut char_set = HashSet::new();
+        let mut l = 0;
+        let mut res = 0;
+
+        for r in 0..s.len() {
+            while char_set.contains(&s[r]) {
+                char_set.remove(&s[l]);
+                l += 1;
+            }
+            char_set.insert(s[r]);
+            res = res.max(r - l + 1);
+        }
+        res as i32
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -345,6 +435,25 @@ class Solution {
 ---
 
 ## 3. Sliding Window (Optimal)
+
+### Intuition
+
+Instead of removing characters one by one when we see a repeat, we can **jump the `left` pointer** directly to the correct position.
+We keep a map that stores the last index where each character appeared.
+When a character repeats, the earliest valid starting point moves to **one position after** its previous occurrence.
+This lets us adjust the window in one step and always keep it valid, making the approach fast and clean.
+
+### Algorithm
+
+1. Create a map `mp` to store the last index of each character.
+2. Initialize:
+    - `l = 0` for the start of the window,
+    - `res = 0` for the longest length.
+3. Loop through the string with index `r`:
+    - If `s[r]` is already in `mp`, move `l` to `mp[s[r]] + 1`, but never backward.
+    - Update `mp[s[r]] = r`.
+    - Update the longest length: `res = max(res, r - l + 1)`.
+4. Return `res` at the end.
 
 ::tabs-start
 
@@ -497,6 +606,26 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn length_of_longest_substring(s: String) -> i32 {
+        let s = s.as_bytes();
+        let mut mp = HashMap::new();
+        let mut l = 0usize;
+        let mut res = 0;
+
+        for r in 0..s.len() {
+            if let Some(&idx) = mp.get(&s[r]) {
+                l = l.max(idx + 1);
+            }
+            mp.insert(s[r], r);
+            res = res.max(r - l + 1);
+        }
+        res as i32
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -505,3 +634,19 @@ class Solution {
 - Space complexity: $O(m)$
 
 > Where $n$ is the length of the string and $m$ is the total number of unique characters in the string.
+
+---
+
+## Common Pitfalls
+
+### Not Taking the Maximum When Jumping the Left Pointer
+
+In the optimal sliding window approach, when you find a duplicate character, you should move the left pointer to `max(left, lastIndex[char] + 1)`. Forgetting the `max` operation can cause the left pointer to move backwards if the duplicate character's last occurrence is before the current window start, leading to incorrect results.
+
+### Forgetting to Update the Character's Last Index
+
+After processing each character, you must update its last seen index in the map, regardless of whether it was a duplicate. Failing to update the index means future duplicate checks will reference stale positions, causing incorrect window calculations.
+
+### Off-by-One in Window Size Calculation
+
+When calculating the substring length, ensure you use `right - left + 1` since both indices are inclusive. Using `right - left` will undercount the length by one, resulting in an answer that is consistently one less than correct.

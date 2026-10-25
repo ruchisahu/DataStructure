@@ -1,4 +1,42 @@
+## Prerequisites
+
+Before attempting this problem, you should be comfortable with:
+
+- **Heap / Priority Queue** - Efficiently retrieving and removing the maximum (or minimum) element
+- **Sorting** - Sorting arrays to process elements in order
+- **Simulation** - Implementing step-by-step processes as described in problem statements
+
+---
+
 ## 1. Sorting
+
+### Intuition
+
+You always need to smash the **two heaviest stones** together.  
+A simple way to ensure this is:
+
+1. **Sort the list of stones** so the heaviest stones are at the end.
+2. Remove the last two stones (the largest values).
+3. Smash them:
+    - If they are equal → both disappear.
+    - If they are different → the difference becomes a new stone.
+4. Insert the new stone (if any) back into the list.
+5. Repeat until at most one stone remains.
+
+Sorting each time is not the most efficient approach, but it is straightforward and easy to implement.
+
+### Algorithm
+
+1. **While** the number of stones is greater than `1`:
+    - Sort the stones in increasing order.
+    - Remove the two largest stones:
+        - Let `a` = largest stone
+        - Let `b` = second largest stone
+    - Compute `difference = a - b`
+    - If `difference > 0`, insert the new stone back into the list.
+
+2. **If** the list is empty, return `0`
+   **Else** return the remaining stone.
 
 ::tabs-start
 
@@ -145,6 +183,26 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn last_stone_weight(stones: Vec<i32>) -> i32 {
+        let mut stone_list = stones;
+
+        while stone_list.len() > 1 {
+            stone_list.sort_unstable();
+            let a = stone_list.pop().unwrap();
+            let b = stone_list.pop().unwrap();
+            let cur = a - b;
+            if cur != 0 {
+                stone_list.push(cur);
+            }
+        }
+
+        if stone_list.is_empty() { 0 } else { stone_list[0] }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -155,6 +213,36 @@ class Solution {
 ---
 
 ## 2. Binary Search
+
+### Intuition
+
+We always smash the **two heaviest stones**.  
+If we keep the stones in **sorted order**, the two heaviest are at the **end** of the array, so we can pick them easily.
+
+After smashing:
+
+- We remove the two heaviest stones.
+- If they are different, their **difference** becomes a new stone.
+- To keep the array sorted, we need to insert this new stone at the **correct position**.
+
+Instead of scanning linearly to find the position, we use **binary search** to quickly find where this new stone should go in the sorted list, and then shift elements to insert it there. This keeps the list sorted for the next iteration.
+
+### Algorithm
+
+1. Sort the array of stones in **non-decreasing** order.
+2. Let `n` be the current number of stones.
+3. While `n > 1`:
+    1. Take the last two stones (the two heaviest).
+    2. Compute `cur = heaviest1 - heaviest2`.
+    3. Decrease `n` by `2` (since we used two stones).
+    4. If `cur > 0`:
+        - Use **binary search** on the first `n` elements to find the position `pos` where `cur` should be inserted to keep the array sorted.
+        - Increase `n` by `1`.
+        - Shift elements from the end to `pos` one step to the right.
+        - Place `cur` at index `pos`.
+4. After the loop:
+    - If `n == 1`, return the remaining stone.
+    - If `n == 0`, return `0`.
 
 ::tabs-start
 
@@ -421,6 +509,46 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn last_stone_weight(stones: Vec<i32>) -> i32 {
+        let mut stones = stones;
+        stones.sort_unstable();
+        let mut n = stones.len();
+
+        while n > 1 {
+            let cur = stones[n - 1] - stones[n - 2];
+            n -= 2;
+            if cur > 0 {
+                let mut l = 0usize;
+                let mut r = n;
+                while l < r {
+                    let mid = (l + r) / 2;
+                    if stones[mid] < cur {
+                        l = mid + 1;
+                    } else {
+                        r = mid;
+                    }
+                }
+                let pos = l;
+                if n < stones.len() {
+                    stones[n] = 0;
+                } else {
+                    stones.push(0);
+                }
+                n += 1;
+                for i in (pos + 1..n).rev() {
+                    stones[i] = stones[i - 1];
+                }
+                stones[pos] = cur;
+            }
+        }
+
+        if n > 0 { stones[0] } else { 0 }
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -431,6 +559,35 @@ class Solution {
 ---
 
 ## 3. Heap
+
+### Intuition
+
+We always need to repeatedly remove the **two heaviest stones**.  
+A **max-heap** is perfect for this because it lets us efficiently extract the largest values.
+
+Most languages provide **min-heaps**, so a common trick is to **store negative values**.  
+This makes the smallest (most negative) value represent the _largest_ stone.
+
+Process:
+
+1. Convert all stones to negative and build a heap.
+2. Repeatedly pop the two smallest (i.e., the two heaviest stones).
+3. Smash them:
+    - If equal → both are destroyed.
+    - If different → push the negative of their difference back into the heap.
+4. When one or zero stones remain, return the remaining weight or `0`.
+
+### Algorithm
+
+1. Convert every stone weight `x` into `-x` and build a min-heap.
+2. While the heap contains more than one stone:
+    - Pop two values `a` and `b` (these represent the two heaviest stones).
+    - If `a != b`, compute the remaining stone weight:
+        - `diff = a - b` (still negative)
+        - Push `diff` back into the heap.
+3. After the loop:
+    - If the heap is empty, return `0`.
+    - Otherwise return the absolute value of the remaining stone.
 
 ::tabs-start
 
@@ -551,26 +708,38 @@ public class Solution {
 ```
 
 ```go
+type MinHeap []int
+
+func (h MinHeap) Len() int            { return len(h) }
+func (h MinHeap) Less(i, j int) bool  { return h[i] < h[j] }
+func (h MinHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }
+func (h *MinHeap) Push(x interface{}) { *h = append(*h, x.(int)) }
+func (h *MinHeap) Pop() interface{} {
+    old := *h
+    n := len(old)
+    x := old[n-1]
+    *h = old[:n-1]
+    return x
+}
+
 func lastStoneWeight(stones []int) int {
-    pq := priorityqueue.NewWith(func(a, b interface{}) int {
-        return a.(int) - b.(int)
-    })
+    pq := &MinHeap{}
+    heap.Init(pq)
 
     for _, s := range stones {
-        pq.Enqueue(-s)
+        heap.Push(pq, -s)
     }
 
-    for pq.Size() > 1 {
-        first, _ := pq.Dequeue()
-        second, _ := pq.Dequeue()
-        if second.(int) > first.(int) {
-            pq.Enqueue(first.(int) - second.(int))
+    for pq.Len() > 1 {
+        first := heap.Pop(pq).(int)
+        second := heap.Pop(pq).(int)
+        if second > first {
+            heap.Push(pq, first-second)
         }
     }
 
-    pq.Enqueue(0)
-    result, _ := pq.Dequeue()
-    return -result.(int)
+    heap.Push(pq, 0)
+    return -heap.Pop(pq).(int)
 }
 ```
 
@@ -612,6 +781,27 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn last_stone_weight(stones: Vec<i32>) -> i32 {
+        let mut heap = BinaryHeap::new();
+        for s in stones {
+            heap.push(s);
+        }
+
+        while heap.len() > 1 {
+            let first = heap.pop().unwrap();
+            let second = heap.pop().unwrap();
+            if first != second {
+                heap.push(first - second);
+            }
+        }
+
+        heap.pop().unwrap_or(0)
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -622,6 +812,36 @@ class Solution {
 ---
 
 ## 4. Bucket Sort
+
+### Intuition
+
+Since all stone values lie within a **limited numeric range**, we can avoid sorting or using a heap by using **bucket sort / frequency counting**.
+
+Instead of tracking every stone individually, we store how many stones exist for each possible weight.
+
+Key ideas:
+
+- Let `bucket[w]` store how many stones of weight `w` we have.
+- We repeatedly look for the **heaviest available stone**.
+- When smashing stones of weights `a` and `b`:
+    - If `a == b`, they cancel out.
+    - If different, the leftover stone `a - b` gets added back into the bucket.
+- We continue until only one non-zero weight remains.
+
+This works because bucket operations (increment, decrement, scanning) are efficient when the weight range is manageable.
+
+### Algorithm
+
+1. Find the maximum stone weight.
+2. Create a frequency array `bucket` of size `maxWeight + 1`.
+3. Count how many stones of each weight exist.
+4. Start from the heaviest weight and repeat:
+    - If the count at this weight is even, all stones cancel in pairs.
+    - If odd, one stone remains; find the next heaviest stone to smash with it.
+    - Compute the difference and update the bucket.
+    - Move the pointer to the next heaviest relevant weight.
+5. When only one weight remains with an odd count, return it.
+6. If all stones cancel out, return `0`.
 
 ::tabs-start
 
@@ -953,6 +1173,45 @@ class Solution {
 }
 ```
 
+```rust
+impl Solution {
+    pub fn last_stone_weight(stones: Vec<i32>) -> i32 {
+        let max_stone = *stones.iter().max().unwrap() as usize;
+        let mut bucket = vec![0i32; max_stone + 1];
+        for &stone in &stones {
+            bucket[stone as usize] += 1;
+        }
+
+        let mut first = max_stone;
+        let mut second = max_stone;
+
+        while first > 0 {
+            if bucket[first] % 2 == 0 {
+                first -= 1;
+                continue;
+            }
+
+            let mut j = first.min(second).saturating_sub(1);
+            while j > 0 && bucket[j] == 0 {
+                j -= 1;
+            }
+
+            if j == 0 {
+                return first as i32;
+            }
+
+            second = j;
+            bucket[first] -= 1;
+            bucket[second] -= 1;
+            bucket[first - second] += 1;
+            first = (first - second).max(second);
+        }
+
+        first as i32
+    }
+}
+```
+
 ::tabs-end
 
 ### Time & Space Complexity
@@ -961,3 +1220,15 @@ class Solution {
 - Space complexity: $O(w)$
 
 > Where $n$ is the length of the $stones$ array and $w$ is the maximum value in the $stones$ array.
+
+---
+
+## Common Pitfalls
+
+### Using a Min-Heap Instead of Max-Heap
+
+Many languages provide min-heaps by default (like Python's `heapq`). You need to either use a max-heap or negate the values when inserting and extracting. Forgetting this results in smashing the two _smallest_ stones instead of the two heaviest.
+
+### Forgetting to Handle the Empty Result Case
+
+After all smashing is complete, the stones array could be empty (all stones canceled out). Returning `stones[0]` without checking if the array is empty causes an index error. Always check if the result is empty and return `0` in that case.
